@@ -1,0 +1,17 @@
+.label {
+  color: var(--color-text-label);
+}
+
+.default {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.inline {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}

@@ -1,0 +1,24 @@
+.layout {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100svh;
+  padding: 56px 24px 40px;
+  background: var(--color-bg);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 36px;
+  width: 100%;
+  max-width: var(--form-max-width);
+}
+
+@media (min-height: 760px) {
+  .layout {
+    align-items: center;
+    padding-top: 40px;
+  }
+}

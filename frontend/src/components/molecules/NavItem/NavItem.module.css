@@ -1,0 +1,38 @@
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: #3f3f3f;
+  text-decoration: none;
+}
+
+.icon {
+  display: inline-flex;
+  color: #5c5c5c;
+}
+
+.item:hover:not(.disabled) {
+  background: var(--color-nav-hover);
+}
+
+.active {
+  background: var(--color-nav-active);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.active .icon {
+  color: var(--color-text);
+}
+
+.indented {
+  padding-left: 34px;
+}
+
+.disabled {
+  opacity: 0.42;
+  pointer-events: none;
+}

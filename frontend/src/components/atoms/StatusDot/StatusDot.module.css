@@ -1,0 +1,19 @@
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.warning {
+  background: var(--color-warning);
+}
+
+.alert {
+  background: var(--color-alert);
+}
+
+.success {
+  background: var(--color-success);
+}
