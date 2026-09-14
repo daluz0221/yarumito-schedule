@@ -56,3 +56,87 @@ docker compose up -d
 
 
 ```
+
+## Arquitectura
+
+### Backend
+
+```
+src/
+├── main/
+│   ├── java/
+│   │   └── co/
+│   │       └── edu/
+│   │           └── ieruralyarumito/
+│   │               └── backend/
+│   │                   ├── BackendApplication.java
+│   │                   │
+│   │                   ├── config/                    # Configuraciones globales
+│   │                   │   ├── SecurityConfig.java
+│   │                   │   ├── WebConfig.java
+│   │                   │   └── SwaggerConfig.java
+│   │                   │
+│   │                   ├── controller/                # Capa de presentación (endpoints)
+│   │                   │   ├── UsuarioController.java
+│   │                   │   ├── ProductoController.java
+│   │                   │   └── PedidoController.java
+│   │                   │
+│   │                   ├── service/                   # Capa de negocio
+│   │                   │   ├── UsuarioService.java
+│   │                   │   ├── ProductoService.java
+│   │                   │   └── PedidoService.java
+│   │                   │
+│   │                   ├── repository/                # Capa de acceso a datos
+│   │                   │   ├── UsuarioRepository.java
+│   │                   │   ├── ProductoRepository.java
+│   │                   │   └── PedidoRepository.java
+│   │                   │
+│   │                   ├── model/                     # Entidades de base de datos
+│   │                   │   ├── Usuario.java
+│   │                   │   ├── Producto.java
+│   │                   │   └── Pedido.java
+│   │                   │
+│   │                   ├── dto/                       # Data Transfer Objects
+│   │                   │   ├── request/
+│   │                   │   │   ├── CrearUsuarioRequest.java
+│   │                   │   │   └── ActualizarUsuarioRequest.java
+│   │                   │   └── response/
+│   │                   │       ├── UsuarioResponse.java
+│   │                   │       └── ProductoResponse.java
+│   │                   │
+│   │                   ├── exception/                 # Manejo de errores
+│   │                   │   ├── GlobalExceptionHandler.java
+│   │                   │   ├── ResourceNotFoundException.java
+│   │                   │   └── BusinessException.java
+│   │                   │
+│   │                   └── util/                      # Utilidades y helpers
+│   │                       ├── DateUtils.java
+│   │                       └── ValidationUtils.java
+│   │
+│   └── resources/
+│       ├── application.properties                     # Configuración principal
+│       ├── application-dev.properties                 # Configuración desarrollo
+│       ├── application-prod.properties                # Configuración producción
+│       │
+│       ├── db/
+│       │   └── migration/                             # Migraciones Flyway/Liquibase
+│       │       ├── V1__create_usuarios_table.sql
+│       │       └── V2__create_productos_table.sql
+│       │
+│       └── static/                                    # Archivos estáticos (si los necesitas)
+│           └── .gitkeep
+│
+└── test/
+    └── java/
+        └── co/
+            └── edu/
+                └── ieruralyarumito/
+                    └── backend/
+                        ├── BackendApplicationTests.java
+                        ├── controller/
+                        │   └── UsuarioControllerTest.java
+                        ├── service/
+                        │   └── UsuarioServiceTest.java
+                        └── repository/
+                            └── UsuarioRepositoryTest.java
+```
