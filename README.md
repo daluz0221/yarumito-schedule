@@ -56,6 +56,20 @@ docker compose up -d
 
 
 ```
+### Configurar variables de entorno
+
+
+1. Copia el archivo `.env.example` a `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+2. Completa con las credenciales locales
+
+    ```
+    
+    ```
+
+
 
 ## Arquitectura
 

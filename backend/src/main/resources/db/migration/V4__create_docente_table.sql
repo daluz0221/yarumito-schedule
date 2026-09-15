@@ -1,0 +1,22 @@
+create table accesopersonas.docente(
+	id uuid primary key default gen_random_uuid(),
+	usuario_id uuid unique,
+	nombres varchar(100) not null,
+	apellidos varchar(100) not null,
+	tipo_documento varchar(5) not null check (tipo_documento in ('CC','TI','CE','TE','PA','PEP','PPT','NIT')),
+	numero_documento varchar(20) unique not null,
+	telefono varchar(20),
+	correo_institucional varchar(100),
+	tipo_vinculacion varchar(10) not null check (tipo_vinculacion in ('PLANTA','PROVISIONAL','CONTRATISTA')),
+	area_nombramiento uuid,
+	numero_decreto varchar(20),
+	fecha_decreto date,
+	escalafon varchar(5) check (escalafon in ('G1A', 'G1B', 'G1C', 'G1D', 'G2A', 'G2B', 'G2C', 'G2D', 'G3')),
+	horas_semanales_contratadas integer not null check (horas_semanales_contratadas >= 0 and horas_semanales_contratadas <= 22) default 22,
+	max_horas_extra integer not null check (max_horas_extra >= 0 and max_horas_extra <= 10) default 10,
+	exclusivo_med_tec bool not null default false,
+	estado varchar(20) not null check (estado in ('ACTIVO','LICENCIA','RETIRADO')),
+	fecha_vinculacion date,
+	foreign key (usuario_id) references accesopersonas.usuario (id),
+	foreign key (area_nombramiento) references catalogoacademico.area (id)
+);
