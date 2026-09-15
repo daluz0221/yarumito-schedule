@@ -81,8 +81,135 @@ public class Docente {
     @Column(name = "fecha_vinculacion") // Mapea la columna fecha_vinculacion
     private LocalDate fechaVinculacion; // Fecha de inicio de vinculación del docente
 
+    public UUID getId() {
+        return id;
+    }
 
+    public String getNombres() {
+        return nombres;
+    }
 
+    public void setNombres(String nombres) {
+        this.nombres = nombres;
+    }
 
+    public String getApellidos() {
+        return apellidos;
+    }
 
+    public void setApellidos(String apellidos) {
+        this.apellidos = apellidos;
+    }
+
+    public String getTipoDocumento() {
+        return tipoDocumento;
+    }
+
+    public void setTipoDocumento(String tipoDocumento) {
+        this.tipoDocumento = tipoDocumento;
+    }
+
+    public String getNumeroDocumento() {
+        return numeroDocumento;
+    }
+
+    public void setNumeroDocumento(String numeroDocumento) {
+        this.numeroDocumento = numeroDocumento;
+    }
+
+    public String getTelefono() {
+        return telefono;
+    }
+
+    public void setTelefono(String telefono) {
+        this.telefono = telefono;
+    }
+
+    public String getCorreoInstitucional() {
+        return correoInstitucional;
+    }
+
+    public void setCorreoInstitucional(String correoInstitucional) {
+        this.correoInstitucional = correoInstitucional;
+    }
+
+    public TipoVinculacion getTipoVinculacion() {
+        return tipoVinculacion;
+    }
+
+    public void setTipoVinculacion(TipoVinculacion tipoVinculacion) {
+        this.tipoVinculacion = tipoVinculacion;
+    }
+
+    public Area getAreaNombramiento() {
+        return areaNombramiento;
+    }
+
+    public void setAreaNombramiento(Area areaNombramiento) {
+        this.areaNombramiento = areaNombramiento;
+    }
+
+    public String getNumeroDecreto() {
+        return numeroDecreto;
+    }
+
+    public void setNumeroDecreto(String numeroDecreto) {
+        this.numeroDecreto = numeroDecreto;
+    }
+
+    public LocalDate getFechaDecreto() {
+        return fechaDecreto;
+    }
+
+    public void setFechaDecreto(LocalDate fechaDecreto) {
+        this.fechaDecreto = fechaDecreto;
+    }
+
+    public String getEscalafon() {
+        return escalafon;
+    }
+
+    public void setEscalafon(String escalafon) {
+        this.escalafon = escalafon;
+    }
+
+    public int getHorasSemanalesContratadas() {
+        return horasSemanalesContratadas;
+    }
+
+    public void setHorasSemanalesContratadas(int horasSemanalesContratadas) {
+        this.horasSemanalesContratadas = horasSemanalesContratadas;
+    }
+
+    public int getMaxHorasExtra() {
+        return maxHorasExtra;
+    }
+
+    public void setMaxHorasExtra(int maxHorasExtra) {
+        this.maxHorasExtra = maxHorasExtra;
+    }
+
+    public boolean isEsExclusivoMediaTecnica() {
+        return esExclusivoMediaTecnica;
+    }
+
+    public void setEsExclusivoMediaTecnica(boolean esExclusivoMediaTecnica) {
+        this.esExclusivoMediaTecnica = esExclusivoMediaTecnica;
+    }
+
+    public EstadoDocente getEstado() {
+        return estado;
+    }
+
+    public void setEstado(EstadoDocente estado) {
+        this.estado = estado;
+    }
+
+    public LocalDate getFechaVinculacion() {
+        return fechaVinculacion;
+    }
+
+    public void setFechaVinculacion(LocalDate fechaVinculacion) {
+        this.fechaVinculacion = fechaVinculacion;
+    }
 }

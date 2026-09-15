@@ -35,4 +35,8 @@ public class Area {
     @Column(nullable = false)
     private boolean activa; // Indica si el área está activa
 
+    // Permite consultar el identificador del área.
+    public UUID getId() {
+        return id; // Retorna el UUID del área
+    }
 }

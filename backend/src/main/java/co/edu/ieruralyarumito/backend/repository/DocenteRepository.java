@@ -9,7 +9,10 @@ import java.util.UUID; // Tipo del identificador
 
 // Permite realizar operaciones de persistencia sobre Docente.
 public interface DocenteRepository extends JpaRepository<Docente, UUID> {
+
+    // Verifica si ya existe un docente con el número de documento indicado.
+    boolean existsByNumeroDocumento(String numeroDocumento);
+
+    // Verifica duplicidad de documento excluyendo al docente que se está actualizando.
+    boolean existsByNumeroDocumentoAndIdNot(String numeroDocumento, UUID id);
 }
-
-
-
