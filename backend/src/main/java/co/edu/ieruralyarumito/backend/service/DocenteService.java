@@ -12,6 +12,12 @@ import co.edu.ieruralyarumito.backend.entity.Docente;
 import co.edu.ieruralyarumito.backend.dto.CrearDocenteRequest;
 import org.springframework.transaction.annotation.Transactional;
 import co.edu.ieruralyarumito.backend.dto.ActualizarDocenteRequest;
+import co.edu.ieruralyarumito.backend.entity.enums.EstadoDocente;
+import co.edu.ieruralyarumito.backend.entity.enums.TipoVinculacion;
+import co.edu.ieruralyarumito.backend.specification.DocenteSpecification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 // Contiene la lógica de negocio para la gestión de docentes.
 @Service
@@ -60,6 +66,27 @@ public class DocenteService {
             throw new RecursoDuplicadoException(
                     "Ya existe otro docente con ese número de documento");
         }
+    }
+
+    // Lista docentes aplicando búsqueda, filtros y paginación.
+    @Transactional(readOnly = true)
+    public Page<DocenteResponse> listarDocentes(
+            String texto,
+            UUID areaId,
+            EstadoDocente estado,
+            TipoVinculacion tipoVinculacion,
+            Pageable pageable) {
+
+        // Combina los filtros enviados en una sola consulta dinámica.
+        Specification<Docente> specification =
+                DocenteSpecification.buscarPorTexto(texto)
+                        .and(DocenteSpecification.porArea(areaId))
+                        .and(DocenteSpecification.porEstado(estado))
+                        .and(DocenteSpecification.porTipoVinculacion(tipoVinculacion));
+
+        // Ejecuta la consulta paginada y convierte cada entidad en DTO.
+        return docenteRepository.findAll(specification, pageable)
+                .map(this::convertirAResponse);
     }
 
     // Convierte la entidad Docente en el DTO que será devuelto por la API.

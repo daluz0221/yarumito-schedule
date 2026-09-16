@@ -15,8 +15,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import java.util.UUID;
 import co.edu.ieruralyarumito.backend.dto.ActualizarDocenteRequest;
 import org.springframework.web.bind.annotation.PutMapping;
+import co.edu.ieruralyarumito.backend.entity.enums.EstadoDocente;
+import co.edu.ieruralyarumito.backend.entity.enums.TipoVinculacion;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 // Expone los endpoints REST para la gestión de docentes.
+
 @RestController
 @RequestMapping("/api/v1/docentes")
 public class DocenteController {
@@ -39,6 +45,25 @@ public class DocenteController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+    }
+    // Lista docentes con búsqueda, filtros y paginación.
+    @GetMapping
+    public ResponseEntity<Page<DocenteResponse>> listarDocentes(
+            @RequestParam(required = false) String texto,
+            @RequestParam(required = false) UUID areaId,
+            @RequestParam(required = false) EstadoDocente estado,
+            @RequestParam(required = false) TipoVinculacion tipoVinculacion,
+            Pageable pageable) {
+
+        Page<DocenteResponse> response = docenteService.listarDocentes(
+                texto,
+                areaId,
+                estado,
+                tipoVinculacion,
+                pageable
+        );
+
+        return ResponseEntity.ok(response);
     }
 
     // Consulta un docente por su identificador.
