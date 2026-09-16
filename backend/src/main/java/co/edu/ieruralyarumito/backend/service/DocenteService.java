@@ -89,6 +89,11 @@ public class DocenteService {
                 .map(this::convertirAResponse);
     }
 
+    // TODO SCRUM-8:
+    // Completar el cambio de estado cuando estén disponibles las validaciones de
+    // responsabilidades vigentes: asignaciones académicas, dirección de grupo
+    // y actividades institucionales.
+
     // Convierte la entidad Docente en el DTO que será devuelto por la API.
     private DocenteResponse convertirAResponse(Docente docente) {
 

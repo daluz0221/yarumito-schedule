@@ -46,6 +46,7 @@ public class DocenteController {
                 .status(HttpStatus.CREATED)
                 .body(response);
     }
+
     // Lista docentes con búsqueda, filtros y paginación.
     @GetMapping
     public ResponseEntity<Page<DocenteResponse>> listarDocentes(
@@ -86,4 +87,9 @@ public class DocenteController {
 
         return ResponseEntity.ok(response);
     }
+
+    // TODO SCRUM-8:
+    // Habilitar PATCH /{id}/estado cuando esté implementada la validación de
+    // responsabilidades vigentes: asignaciones académicas, dirección de grupo
+    // y actividades institucionales.
 }
