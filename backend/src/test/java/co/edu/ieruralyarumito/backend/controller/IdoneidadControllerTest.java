@@ -19,6 +19,9 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import java.util.List;
+
 
 // Pruebas unitarias de los endpoints de IdoneidadController.
 @ExtendWith(MockitoExtension.class)
@@ -82,5 +85,60 @@ public class IdoneidadControllerTest {
                 .andExpect(jsonPath("$.areaId").value(areaId.toString()))
                 .andExpect(jsonPath("$.tipo").value("PRINCIPAL"))
                 .andExpect(jsonPath("$.vigenteDesde").value("2026-09-17"));
+    }
+    // Verifica que GET /api/v1/idoneidades/{id} retorne una idoneidad existente.
+    @Test
+    void consultarIdoneidad_debeRetornarOk() throws Exception {
+
+        UUID idoneidadId = UUID.randomUUID();
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        // Respuesta simulada del Service.
+        IdoneidadResponse response = new IdoneidadResponse();
+        response.setId(idoneidadId);
+        response.setDocenteId(docenteId);
+        response.setAreaId(areaId);
+        response.setTipo(TipoIdoneidad.PRINCIPAL);
+        response.setVigenteDesde(LocalDate.of(2026, 9, 17));
+
+        when(idoneidadService.consultarIdoneidad(idoneidadId))
+                .thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/idoneidades/{id}", idoneidadId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(idoneidadId.toString()))
+                .andExpect(jsonPath("$.docenteId").value(docenteId.toString()))
+                .andExpect(jsonPath("$.areaId").value(areaId.toString()))
+                .andExpect(jsonPath("$.tipo").value("PRINCIPAL"))
+                .andExpect(jsonPath("$.vigenteDesde").value("2026-09-17"));
+    }
+
+    // Verifica que GET /api/v1/idoneidades retorne la lista de idoneidades.
+    @Test
+    void listarIdoneidades_debeRetornarOk() throws Exception {
+
+        UUID idoneidadId = UUID.randomUUID();
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        // Respuesta simulada del Service.
+        IdoneidadResponse response = new IdoneidadResponse();
+        response.setId(idoneidadId);
+        response.setDocenteId(docenteId);
+        response.setAreaId(areaId);
+        response.setTipo(TipoIdoneidad.PRINCIPAL);
+        response.setVigenteDesde(LocalDate.of(2026, 9, 17));
+
+        when(idoneidadService.listarIdoneidades())
+                .thenReturn(List.of(response));
+
+        mockMvc.perform(get("/api/v1/idoneidades"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(idoneidadId.toString()))
+                .andExpect(jsonPath("$[0].docenteId").value(docenteId.toString()))
+                .andExpect(jsonPath("$[0].areaId").value(areaId.toString()))
+                .andExpect(jsonPath("$[0].tipo").value("PRINCIPAL"))
+                .andExpect(jsonPath("$[0].vigenteDesde").value("2026-09-17"));
     }
 }

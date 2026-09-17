@@ -13,11 +13,10 @@ import co.edu.ieruralyarumito.backend.repository.AsignaturaRepository;
 import co.edu.ieruralyarumito.backend.repository.DocenteRepository;
 import co.edu.ieruralyarumito.backend.repository.IdoneidadRepository;
 import co.edu.ieruralyarumito.backend.repository.TituloProfesionalRepository;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.UUID;
+import java.util.List;
 
 // Contiene la lógica de negocio para la gestión de idoneidades docentes.
 @Service
@@ -159,5 +158,27 @@ public class IdoneidadService {
                 idoneidadRepository.save(idoneidad);
 
         return convertirAResponse(idoneidadGuardada);
+    }
+
+    // Consulta una idoneidad por su identificador.
+    @Transactional(readOnly = true)
+    public IdoneidadResponse consultarIdoneidad(UUID id) {
+
+        Idoneidad idoneidad = idoneidadRepository.findById(id)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "La idoneidad no existe"));
+
+        return convertirAResponse(idoneidad);
+    }
+
+    // Lista todas las idoneidades registradas.
+    @Transactional(readOnly = true)
+    public List<IdoneidadResponse> listarIdoneidades() {
+
+        return idoneidadRepository.findAll()
+                .stream()
+                .map(this::convertirAResponse)
+                .toList();
     }
 }

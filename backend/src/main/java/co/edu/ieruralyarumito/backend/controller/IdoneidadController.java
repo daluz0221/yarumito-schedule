@@ -10,6 +10,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import java.util.UUID;
+import java.util.List;
 
 // Expone los endpoints REST para la gestión de idoneidades docentes.
 @RestController
@@ -35,6 +39,28 @@ public class IdoneidadController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+
     }
+    // Consulta una idoneidad por su identificador.
+    @GetMapping("/{id}")
+    public ResponseEntity<IdoneidadResponse> consultarIdoneidad(
+            @PathVariable UUID id) {
+
+        IdoneidadResponse response =
+                idoneidadService.consultarIdoneidad(id);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // Lista todas las idoneidades registradas.
+    @GetMapping
+    public ResponseEntity<List<IdoneidadResponse>> listarIdoneidades() {
+
+        List<IdoneidadResponse> response =
+                idoneidadService.listarIdoneidades();
+
+        return ResponseEntity.ok(response);
+    }
+
 }
 
