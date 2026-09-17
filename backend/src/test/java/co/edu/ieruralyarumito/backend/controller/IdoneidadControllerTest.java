@@ -1,0 +1,86 @@
+package co.edu.ieruralyarumito.backend.controller;
+
+import co.edu.ieruralyarumito.backend.dto.CrearIdoneidadRequest;
+import co.edu.ieruralyarumito.backend.dto.IdoneidadResponse;
+import co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad;
+import co.edu.ieruralyarumito.backend.service.IdoneidadService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import java.time.LocalDate;
+import java.util.UUID;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+// Pruebas unitarias de los endpoints de IdoneidadController.
+@ExtendWith(MockitoExtension.class)
+public class IdoneidadControllerTest {
+
+    // Simula la lógica de negocio utilizada por el Controller.
+    @Mock
+    private IdoneidadService idoneidadService;
+
+    // Permite simular peticiones HTTP contra el Controller.
+    private MockMvc mockMvc;
+
+    // Prepara el Controller antes de ejecutar cada prueba.
+    @BeforeEach
+    void configurar() {
+
+        IdoneidadController idoneidadController =
+                new IdoneidadController(idoneidadService);
+
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(idoneidadController)
+                .build();
+    }
+
+    // Verifica que POST /api/v1/idoneidades registre correctamente una idoneidad.
+    @Test
+    void registrarIdoneidad_debeRetornarCreated() throws Exception {
+
+        UUID idoneidadId = UUID.randomUUID();
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        // Respuesta simulada del Service.
+        IdoneidadResponse response = new IdoneidadResponse();
+        response.setId(idoneidadId);
+        response.setDocenteId(docenteId);
+        response.setAreaId(areaId);
+        response.setTipo(TipoIdoneidad.PRINCIPAL);
+        response.setVigenteDesde(LocalDate.of(2026, 9, 17));
+
+        when(idoneidadService.registrarIdoneidad(
+                any(CrearIdoneidadRequest.class)))
+                .thenReturn(response);
+
+        // Datos válidos enviados en la petición.
+        String json = """
+            {
+              "docenteId": "%s",
+              "areaId": "%s",
+              "tipo": "PRINCIPAL",
+              "vigenteDesde": "2026-09-17"
+            }
+            """.formatted(docenteId, areaId);
+
+        mockMvc.perform(post("/api/v1/idoneidades")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(idoneidadId.toString()))
+                .andExpect(jsonPath("$.docenteId").value(docenteId.toString()))
+                .andExpect(jsonPath("$.areaId").value(areaId.toString()))
+                .andExpect(jsonPath("$.tipo").value("PRINCIPAL"))
+                .andExpect(jsonPath("$.vigenteDesde").value("2026-09-17"));
+    }
+}
