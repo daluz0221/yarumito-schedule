@@ -2,6 +2,7 @@ package co.edu.ieruralyarumito.backend.service;
 
 import co.edu.ieruralyarumito.backend.dto.CrearIdoneidadRequest;
 import co.edu.ieruralyarumito.backend.dto.IdoneidadResponse;
+import co.edu.ieruralyarumito.backend.dto.ActualizarIdoneidadRequest;
 import co.edu.ieruralyarumito.backend.entity.Area;
 import co.edu.ieruralyarumito.backend.entity.Asignatura;
 import co.edu.ieruralyarumito.backend.entity.Docente;
@@ -115,6 +116,14 @@ public class IdoneidadService {
         return response;
     }
 
+    // Busca la idoneidad indicada y rechaza la operación si no existe.
+    private Idoneidad obtenerIdoneidad(UUID id) {
+        return idoneidadRepository.findById(id)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "La idoneidad no existe"));
+    }
+
     // Registra una nueva idoneidad docente.
     @Transactional
     public IdoneidadResponse registrarIdoneidad(CrearIdoneidadRequest request) {
@@ -180,5 +189,55 @@ public class IdoneidadService {
                 .stream()
                 .map(this::convertirAResponse)
                 .toList();
+    }
+
+    // Actualiza los datos permitidos de una idoneidad existente.
+    @Transactional
+    public IdoneidadResponse actualizarIdoneidad(
+            UUID id,
+            ActualizarIdoneidadRequest request) {
+
+        // Valida que la idoneidad exista.
+        Idoneidad idoneidad = obtenerIdoneidad(id);
+
+        // Valida que el área exista.
+        Area area = obtenerArea(request.getAreaId());
+
+        // Asocia la nueva área.
+        idoneidad.setArea(area);
+
+        // Actualiza la asignatura, que puede ser opcional.
+        if (request.getAsignaturaId() != null) {
+            Asignatura asignatura =
+                    obtenerAsignatura(request.getAsignaturaId());
+
+            idoneidad.setAsignatura(asignatura);
+        } else {
+            idoneidad.setAsignatura(null);
+        }
+
+        // Actualiza el tipo de idoneidad.
+        idoneidad.setTipo(request.getTipo());
+
+        // Actualiza el título profesional de soporte, cuando aplica.
+        if (request.getTituloSoporteId() != null) {
+            TituloProfesional tituloSoporte =
+                    obtenerTituloProfesional(request.getTituloSoporteId());
+
+            idoneidad.setTituloSoporte(tituloSoporte);
+        } else {
+            idoneidad.setTituloSoporte(null);
+        }
+
+        // Actualiza la justificación y la fecha de inicio de vigencia.
+        idoneidad.setJustificacion(request.getJustificacion());
+        idoneidad.setVigenteDesde(request.getVigenteDesde());
+
+        // Guarda los cambios realizados.
+        Idoneidad idoneidadActualizada =
+                idoneidadRepository.save(idoneidad);
+
+        return convertirAResponse(idoneidadActualizada);
+
     }
 }

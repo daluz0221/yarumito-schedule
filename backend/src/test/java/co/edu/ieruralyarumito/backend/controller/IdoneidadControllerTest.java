@@ -22,6 +22,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import java.util.List;
 
+import co.edu.ieruralyarumito.backend.dto.ActualizarIdoneidadRequest;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 // Pruebas unitarias de los endpoints de IdoneidadController.
 @ExtendWith(MockitoExtension.class)
@@ -68,13 +71,13 @@ public class IdoneidadControllerTest {
 
         // Datos válidos enviados en la petición.
         String json = """
-            {
-              "docenteId": "%s",
-              "areaId": "%s",
-              "tipo": "PRINCIPAL",
-              "vigenteDesde": "2026-09-17"
-            }
-            """.formatted(docenteId, areaId);
+                {
+                  "docenteId": "%s",
+                  "areaId": "%s",
+                  "tipo": "PRINCIPAL",
+                  "vigenteDesde": "2026-09-17"
+                }
+                """.formatted(docenteId, areaId);
 
         mockMvc.perform(post("/api/v1/idoneidades")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -86,6 +89,7 @@ public class IdoneidadControllerTest {
                 .andExpect(jsonPath("$.tipo").value("PRINCIPAL"))
                 .andExpect(jsonPath("$.vigenteDesde").value("2026-09-17"));
     }
+
     // Verifica que GET /api/v1/idoneidades/{id} retorne una idoneidad existente.
     @Test
     void consultarIdoneidad_debeRetornarOk() throws Exception {
@@ -140,5 +144,46 @@ public class IdoneidadControllerTest {
                 .andExpect(jsonPath("$[0].areaId").value(areaId.toString()))
                 .andExpect(jsonPath("$[0].tipo").value("PRINCIPAL"))
                 .andExpect(jsonPath("$[0].vigenteDesde").value("2026-09-17"));
+    }
+    // Verifica que PUT /api/v1/idoneidades/{id} actualice una idoneidad.
+    @Test
+    void actualizarIdoneidad_debeRetornarOk() throws Exception {
+
+        UUID idoneidadId = UUID.randomUUID();
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        // Respuesta simulada del Service.
+        IdoneidadResponse response = new IdoneidadResponse();
+        response.setId(idoneidadId);
+        response.setDocenteId(docenteId);
+        response.setAreaId(areaId);
+        response.setTipo(TipoIdoneidad.AUTORIZADA);
+        response.setVigenteDesde(LocalDate.of(2026, 9, 18));
+
+        when(idoneidadService.actualizarIdoneidad(
+                org.mockito.ArgumentMatchers.eq(idoneidadId),
+                any(ActualizarIdoneidadRequest.class)))
+                .thenReturn(response);
+
+        // Datos válidos enviados para actualizar.
+        String json = """
+            {
+              "areaId": "%s",
+              "tipo": "AUTORIZADA",
+              "justificacion": "Actualización de idoneidad",
+              "vigenteDesde": "2026-09-18"
+            }
+            """.formatted(areaId);
+
+        mockMvc.perform(put("/api/v1/idoneidades/{id}", idoneidadId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(idoneidadId.toString()))
+                .andExpect(jsonPath("$.docenteId").value(docenteId.toString()))
+                .andExpect(jsonPath("$.areaId").value(areaId.toString()))
+                .andExpect(jsonPath("$.tipo").value("AUTORIZADA"))
+                .andExpect(jsonPath("$.vigenteDesde").value("2026-09-18"));
     }
 }

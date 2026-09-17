@@ -2,6 +2,7 @@ package co.edu.ieruralyarumito.backend.controller;
 
 import co.edu.ieruralyarumito.backend.dto.CrearIdoneidadRequest;
 import co.edu.ieruralyarumito.backend.dto.IdoneidadResponse;
+import co.edu.ieruralyarumito.backend.dto.ActualizarIdoneidadRequest;
 import co.edu.ieruralyarumito.backend.service.IdoneidadService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import java.util.UUID;
 import java.util.List;
 
@@ -58,6 +60,18 @@ public class IdoneidadController {
 
         List<IdoneidadResponse> response =
                 idoneidadService.listarIdoneidades();
+
+        return ResponseEntity.ok(response);
+    }
+
+    // Actualiza los datos permitidos de una idoneidad existente.
+    @PutMapping("/{id}")
+    public ResponseEntity<IdoneidadResponse> actualizarIdoneidad(
+            @PathVariable UUID id,
+            @Valid @RequestBody ActualizarIdoneidadRequest request) {
+
+        IdoneidadResponse response =
+                idoneidadService.actualizarIdoneidad(id, request);
 
         return ResponseEntity.ok(response);
     }
