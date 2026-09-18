@@ -218,4 +218,34 @@ public class IdoneidadControllerTest {
                 .andExpect(jsonPath("$.id").value(idoneidadId.toString()))
                 .andExpect(jsonPath("$.vigenteHasta").value("2026-09-18"));
     }
+
+    // Verifica que GET /api/v1/idoneidades/docente/{docenteId}
+// retorne las idoneidades asociadas al docente.
+    @Test
+    void listarIdoneidadesPorDocente_debeRetornarOk() throws Exception {
+
+        UUID idoneidadId = UUID.randomUUID();
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        IdoneidadResponse response = new IdoneidadResponse();
+        response.setId(idoneidadId);
+        response.setDocenteId(docenteId);
+        response.setAreaId(areaId);
+        response.setTipo(TipoIdoneidad.PRINCIPAL);
+        response.setVigenteDesde(LocalDate.of(2026, 9, 18));
+
+        when(idoneidadService.listarIdoneidadesPorDocente(docenteId))
+                .thenReturn(List.of(response));
+
+        mockMvc.perform(
+                        get("/api/v1/idoneidades/docente/{docenteId}", docenteId)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(idoneidadId.toString()))
+                .andExpect(jsonPath("$[0].docenteId").value(docenteId.toString()))
+                .andExpect(jsonPath("$[0].areaId").value(areaId.toString()))
+                .andExpect(jsonPath("$[0].tipo").value("PRINCIPAL"))
+                .andExpect(jsonPath("$[0].vigenteDesde").value("2026-09-18"));
+    }
 }

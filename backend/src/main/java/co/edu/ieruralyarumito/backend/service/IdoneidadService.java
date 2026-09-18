@@ -225,6 +225,19 @@ public class IdoneidadService {
                 .toList();
     }
 
+    // Lista las idoneidades asociadas a un docente existente.
+    @Transactional(readOnly = true)
+    public List<IdoneidadResponse> listarIdoneidadesPorDocente(UUID docenteId) {
+
+        // Valida que el docente exista.
+        obtenerDocente(docenteId);
+
+        return idoneidadRepository.findByDocente_Id(docenteId)
+                .stream()
+                .map(this::convertirAResponse)
+                .toList();
+    }
+
     // Actualiza los datos permitidos de una idoneidad existente.
     @Transactional
     public IdoneidadResponse actualizarIdoneidad(

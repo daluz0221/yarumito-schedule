@@ -66,6 +66,17 @@ public class IdoneidadController {
         return ResponseEntity.ok(response);
     }
 
+    // Lista las idoneidades asociadas a un docente.
+    @GetMapping("/docente/{docenteId}")
+    public ResponseEntity<List<IdoneidadResponse>> listarIdoneidadesPorDocente(
+            @PathVariable UUID docenteId) {
+
+        List<IdoneidadResponse> response =
+                idoneidadService.listarIdoneidadesPorDocente(docenteId);
+
+        return ResponseEntity.ok(response);
+    }
+
     // Actualiza los datos permitidos de una idoneidad existente.
     @PutMapping("/{id}")
     public ResponseEntity<IdoneidadResponse> actualizarIdoneidad(

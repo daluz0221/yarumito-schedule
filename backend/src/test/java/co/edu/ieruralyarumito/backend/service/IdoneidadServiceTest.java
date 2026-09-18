@@ -15,6 +15,7 @@ import co.edu.ieruralyarumito.backend.exception.FechaVigenciaInvalidaException;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
@@ -314,5 +315,36 @@ public class IdoneidadServiceTest {
                 RelacionAcademicaInvalidaException.class,
                 () -> idoneidadService.actualizarIdoneidad(idoneidadId, request)
         );
+    }
+
+    // Verifica que se listen las idoneidades asociadas a un docente existente.
+    @Test
+    void listarIdoneidadesPorDocente_debeRetornarIdoneidadesDelDocente() {
+
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        Docente docente = spy(new Docente());
+        Area area = spy(new Area());
+
+        doReturn(docenteId).when(docente).getId();
+        doReturn(areaId).when(area).getId();
+
+        Idoneidad idoneidad = new Idoneidad();
+        idoneidad.setDocente(docente);
+        idoneidad.setArea(area);
+
+        when(docenteRepository.findById(docenteId))
+                .thenReturn(Optional.of(docente));
+
+        when(idoneidadRepository.findByDocente_Id(docenteId))
+                .thenReturn(List.of(idoneidad));
+
+        List<IdoneidadResponse> response =
+                idoneidadService.listarIdoneidadesPorDocente(docenteId);
+
+        assertEquals(1, response.size());
+        assertEquals(docenteId, response.get(0).getDocenteId());
+        assertEquals(areaId, response.get(0).getAreaId());
     }
 }
