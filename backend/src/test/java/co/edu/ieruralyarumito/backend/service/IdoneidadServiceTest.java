@@ -422,4 +422,75 @@ public class IdoneidadServiceTest {
                 () -> idoneidadService.consultarIdoneidad(idoneidadId)
         );
     }
+
+    // Verifica que no se pueda registrar una idoneidad con un área inexistente.
+    @Test
+    void registrarIdoneidad_debeRechazarAreaInexistente() {
+
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        CrearIdoneidadRequest request = new CrearIdoneidadRequest();
+        request.setDocenteId(docenteId);
+        request.setAreaId(areaId);
+
+        when(docenteRepository.findById(docenteId))
+                .thenReturn(Optional.of(new Docente()));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                RecursoNoEncontradoException.class,
+                () -> idoneidadService.registrarIdoneidad(request)
+        );
+    }
+
+    // Verifica que no se pueda registrar una idoneidad con una asignatura inexistente.
+    @Test
+    void registrarIdoneidad_debeRechazarAsignaturaInexistente() {
+
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+        UUID asignaturaId = UUID.randomUUID();
+
+        CrearIdoneidadRequest request = new CrearIdoneidadRequest();
+        request.setDocenteId(docenteId);
+        request.setAreaId(areaId);
+        request.setAsignaturaId(asignaturaId);
+
+        when(docenteRepository.findById(docenteId))
+                .thenReturn(Optional.of(new Docente()));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(new Area()));
+
+        when(asignaturaRepository.findById(asignaturaId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                RecursoNoEncontradoException.class,
+                () -> idoneidadService.registrarIdoneidad(request)
+        );
+    }
+
+    // Verifica que no se pueda registrar una idoneidad con un docente inexistente.
+    @Test
+    void registrarIdoneidad_debeRechazarDocenteInexistente() {
+
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        CrearIdoneidadRequest request = new CrearIdoneidadRequest();
+        request.setDocenteId(docenteId);
+        request.setAreaId(areaId);
+
+        when(docenteRepository.findById(docenteId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                RecursoNoEncontradoException.class,
+                () -> idoneidadService.registrarIdoneidad(request)
+        );
+    }
 }
