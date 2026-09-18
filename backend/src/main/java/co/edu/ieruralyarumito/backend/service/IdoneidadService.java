@@ -22,6 +22,8 @@ import co.edu.ieruralyarumito.backend.dto.FinalizarVigenciaIdoneidadRequest;
 import co.edu.ieruralyarumito.backend.exception.FechaVigenciaInvalidaException;
 import co.edu.ieruralyarumito.backend.exception.TransicionEstadoNoPermitidaException;
 import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
+import java.time.LocalDate;
+
 
 // Contiene la lógica de negocio para la gestión de idoneidades docentes.
 @Service
@@ -100,6 +102,19 @@ public class IdoneidadService {
         if (!tituloProfesional.getDocente().getId().equals(docente.getId())) {
             throw new RelacionAcademicaInvalidaException(
                     "El título profesional no pertenece al docente indicado");
+        }
+    }
+
+    // Valida que el rango de vigencia tenga fechas coherentes.
+    private void validarRangoVigencia(
+            LocalDate vigenteDesde,
+            LocalDate vigenteHasta) {
+
+        if (vigenteHasta != null
+                && vigenteHasta.isBefore(vigenteDesde)) {
+
+            throw new FechaVigenciaInvalidaException(
+                    "La fecha de finalización no puede ser anterior al inicio de vigencia");
         }
     }
 
@@ -190,6 +205,12 @@ public class IdoneidadService {
 
             idoneidad.setTituloSoporte(tituloSoporte);
         }
+
+        // Valida que las fechas de vigencia sean coherentes.
+        validarRangoVigencia(
+                request.getVigenteDesde(),
+                request.getVigenteHasta()
+        );
 
         // Completa los datos de la idoneidad.
         idoneidad.setJustificacion(request.getJustificacion());
@@ -284,6 +305,12 @@ public class IdoneidadService {
         } else {
             idoneidad.setTituloSoporte(null);
         }
+
+        // Valida que la nueva fecha de inicio sea coherente con la vigencia existente.
+        validarRangoVigencia(
+                request.getVigenteDesde(),
+                idoneidad.getVigenteHasta()
+        );
 
         // Actualiza la justificación y la fecha de inicio de vigencia.
         idoneidad.setJustificacion(request.getJustificacion());

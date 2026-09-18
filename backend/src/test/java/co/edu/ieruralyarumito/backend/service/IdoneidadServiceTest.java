@@ -347,4 +347,61 @@ public class IdoneidadServiceTest {
         assertEquals(docenteId, response.get(0).getDocenteId());
         assertEquals(areaId, response.get(0).getAreaId());
     }
+
+    // Verifica que no se pueda registrar una idoneidad con fecha final anterior al inicio.
+    @Test
+    void registrarIdoneidad_debeRechazarRangoDeVigenciaInvalido() {
+
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        CrearIdoneidadRequest request = new CrearIdoneidadRequest();
+        request.setDocenteId(docenteId);
+        request.setAreaId(areaId);
+        request.setVigenteDesde(LocalDate.of(2026, 9, 20));
+        request.setVigenteHasta(LocalDate.of(2026, 9, 19));
+
+        when(docenteRepository.findById(docenteId))
+                .thenReturn(Optional.of(new Docente()));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(new Area()));
+
+        assertThrows(
+                FechaVigenciaInvalidaException.class,
+                () -> idoneidadService.registrarIdoneidad(request)
+        );
+    }
+
+    // Verifica que no se pueda actualizar una idoneidad
+// con una fecha de inicio posterior a su fecha final existente.
+    @Test
+    void actualizarIdoneidad_debeRechazarRangoDeVigenciaInvalido() {
+
+        UUID idoneidadId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        Idoneidad idoneidad = new Idoneidad();
+        idoneidad.setVigenteHasta(LocalDate.of(2026, 9, 19));
+
+        ActualizarIdoneidadRequest request =
+                new ActualizarIdoneidadRequest();
+
+        request.setAreaId(areaId);
+        request.setVigenteDesde(LocalDate.of(2026, 9, 20));
+
+        when(idoneidadRepository.findById(idoneidadId))
+                .thenReturn(Optional.of(idoneidad));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(new Area()));
+
+        assertThrows(
+                FechaVigenciaInvalidaException.class,
+                () -> idoneidadService.actualizarIdoneidad(
+                        idoneidadId,
+                        request
+                )
+        );
+    }
 }
