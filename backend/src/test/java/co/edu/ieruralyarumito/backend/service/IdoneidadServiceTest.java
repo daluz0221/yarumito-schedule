@@ -32,6 +32,9 @@ import co.edu.ieruralyarumito.backend.entity.Asignatura;
 import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
 import co.edu.ieruralyarumito.backend.dto.ActualizarIdoneidadRequest;
 import co.edu.ieruralyarumito.backend.entity.TituloProfesional;
+import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
+
+
 
 // Pruebas unitarias de la lógica de negocio de IdoneidadService.
 @ExtendWith(MockitoExtension.class)
@@ -402,6 +405,21 @@ public class IdoneidadServiceTest {
                         idoneidadId,
                         request
                 )
+        );
+    }
+
+    // Verifica que consultar una idoneidad inexistente informe recurso no encontrado.
+    @Test
+    void consultarIdoneidad_debeRechazarIdInexistente() {
+
+        UUID idoneidadId = UUID.randomUUID();
+
+        when(idoneidadRepository.findById(idoneidadId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                RecursoNoEncontradoException.class,
+                () -> idoneidadService.consultarIdoneidad(idoneidadId)
         );
     }
 }
