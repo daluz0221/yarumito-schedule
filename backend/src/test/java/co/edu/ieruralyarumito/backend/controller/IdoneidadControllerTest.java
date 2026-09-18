@@ -25,6 +25,9 @@ import co.edu.ieruralyarumito.backend.dto.ActualizarIdoneidadRequest;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import co.edu.ieruralyarumito.backend.dto.FinalizarVigenciaIdoneidadRequest;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import co.edu.ieruralyarumito.backend.exception.GlobalExceptionHandler;
+import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
+
 
 // Pruebas unitarias de los endpoints de IdoneidadController.
 @ExtendWith(MockitoExtension.class)
@@ -46,6 +49,7 @@ public class IdoneidadControllerTest {
 
         mockMvc = MockMvcBuilders
                 .standaloneSetup(idoneidadController)
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
 
@@ -247,5 +251,24 @@ public class IdoneidadControllerTest {
                 .andExpect(jsonPath("$[0].areaId").value(areaId.toString()))
                 .andExpect(jsonPath("$[0].tipo").value("PRINCIPAL"))
                 .andExpect(jsonPath("$[0].vigenteDesde").value("2026-09-18"));
+    }
+
+    // Verifica que GET /api/v1/idoneidades/{id}
+// retorne 404 cuando la idoneidad no existe.
+    @Test
+    void consultarIdoneidad_debeRetornarNotFound() throws Exception {
+
+        UUID idoneidadId = UUID.randomUUID();
+
+        when(idoneidadService.consultarIdoneidad(idoneidadId))
+                .thenThrow(new RecursoNoEncontradoException(
+                        "La idoneidad no existe"));
+
+        mockMvc.perform(
+                        get("/api/v1/idoneidades/{id}", idoneidadId)
+                )
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.mensaje")
+                        .value("La idoneidad no existe"));
     }
 }
