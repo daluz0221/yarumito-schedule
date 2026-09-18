@@ -18,6 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 import java.util.List;
+import co.edu.ieruralyarumito.backend.dto.FinalizarVigenciaIdoneidadRequest;
+import co.edu.ieruralyarumito.backend.exception.FechaVigenciaInvalidaException;
+import co.edu.ieruralyarumito.backend.exception.TransicionEstadoNoPermitidaException;
 
 // Contiene la lógica de negocio para la gestión de idoneidades docentes.
 @Service
@@ -239,5 +242,38 @@ public class IdoneidadService {
 
         return convertirAResponse(idoneidadActualizada);
 
+    }
+
+    // Finaliza la vigencia de una idoneidad sin eliminar el registro.
+    @Transactional
+    public IdoneidadResponse finalizarVigencia(
+            UUID id,
+            FinalizarVigenciaIdoneidadRequest request) {
+
+        // Valida que la idoneidad exista.
+        Idoneidad idoneidad = obtenerIdoneidad(id);
+
+        // Evita finalizar nuevamente una idoneidad que ya tiene fecha de cierre.
+        if (idoneidad.getVigenteHasta() != null) {
+            throw new TransicionEstadoNoPermitidaException(
+                    "La idoneidad ya tiene su vigencia finalizada");
+        }
+
+        // Valida que la fecha de finalización no sea anterior al inicio de vigencia.
+        if (request.getVigenteHasta().isBefore(idoneidad.getVigenteDesde())) {
+            throw new FechaVigenciaInvalidaException(
+                    "La fecha de finalización no puede ser anterior al inicio de vigencia");
+        }
+
+
+
+        // Registra la fecha de finalización.
+        idoneidad.setVigenteHasta(request.getVigenteHasta());
+
+        // Guarda el cambio conservando el registro.
+        Idoneidad idoneidadActualizada =
+                idoneidadRepository.save(idoneidad);
+
+        return convertirAResponse(idoneidadActualizada);
     }
 }

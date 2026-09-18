@@ -21,10 +21,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import java.util.List;
-
 import co.edu.ieruralyarumito.backend.dto.ActualizarIdoneidadRequest;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import co.edu.ieruralyarumito.backend.dto.FinalizarVigenciaIdoneidadRequest;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
 // Pruebas unitarias de los endpoints de IdoneidadController.
 @ExtendWith(MockitoExtension.class)
@@ -185,5 +185,37 @@ public class IdoneidadControllerTest {
                 .andExpect(jsonPath("$.areaId").value(areaId.toString()))
                 .andExpect(jsonPath("$.tipo").value("AUTORIZADA"))
                 .andExpect(jsonPath("$.vigenteDesde").value("2026-09-18"));
+    }
+
+    // Verifica que PATCH /api/v1/idoneidades/{id}/vigencia finalice la vigencia.
+    @Test
+    void finalizarVigencia_debeRetornarOk() throws Exception {
+
+        UUID idoneidadId = UUID.randomUUID();
+        LocalDate vigenteHasta = LocalDate.of(2026, 9, 18);
+
+        // Respuesta simulada del Service.
+        IdoneidadResponse response = new IdoneidadResponse();
+        response.setId(idoneidadId);
+        response.setVigenteHasta(vigenteHasta);
+
+        when(idoneidadService.finalizarVigencia(
+                org.mockito.ArgumentMatchers.eq(idoneidadId),
+                any(FinalizarVigenciaIdoneidadRequest.class)))
+                .thenReturn(response);
+
+        // Fecha enviada para finalizar la vigencia.
+        String json = """
+        {
+          "vigenteHasta": "2026-09-18"
+        }
+        """;
+
+        mockMvc.perform(patch("/api/v1/idoneidades/{id}/vigencia", idoneidadId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(idoneidadId.toString()))
+                .andExpect(jsonPath("$.vigenteHasta").value("2026-09-18"));
     }
 }

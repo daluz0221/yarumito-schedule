@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import java.util.UUID;
 import java.util.List;
+import co.edu.ieruralyarumito.backend.dto.FinalizarVigenciaIdoneidadRequest;
+import org.springframework.web.bind.annotation.PatchMapping;
 
 // Expone los endpoints REST para la gestión de idoneidades docentes.
 @RestController
@@ -76,5 +78,16 @@ public class IdoneidadController {
         return ResponseEntity.ok(response);
     }
 
+    // Finaliza la vigencia de una idoneidad existente.
+    @PatchMapping("/{id}/vigencia")
+    public ResponseEntity<IdoneidadResponse> finalizarVigencia(
+            @PathVariable UUID id,
+            @Valid @RequestBody FinalizarVigenciaIdoneidadRequest request) {
+
+        IdoneidadResponse response =
+                idoneidadService.finalizarVigencia(id, request);
+
+        return ResponseEntity.ok(response);
+    }
 }
 
