@@ -12,4 +12,4 @@ create table catalogoacademico.asignatura(
 	max_clases_consecutivas integer not null default 2,
 	activa bool not null, 
 	foreign key(area_id) references catalogoacademico.area (id)
-);
+);+
