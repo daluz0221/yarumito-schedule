@@ -30,6 +30,7 @@ import co.edu.ieruralyarumito.backend.dto.CrearIdoneidadRequest;
 import co.edu.ieruralyarumito.backend.entity.Asignatura;
 import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
 import co.edu.ieruralyarumito.backend.dto.ActualizarIdoneidadRequest;
+import co.edu.ieruralyarumito.backend.entity.TituloProfesional;
 
 // Pruebas unitarias de la lógica de negocio de IdoneidadService.
 @ExtendWith(MockitoExtension.class)
@@ -223,6 +224,91 @@ public class IdoneidadServiceTest {
 
         when(asignaturaRepository.findById(asignaturaId))
                 .thenReturn(Optional.of(asignatura));
+
+        assertThrows(
+                RelacionAcademicaInvalidaException.class,
+                () -> idoneidadService.actualizarIdoneidad(idoneidadId, request)
+        );
+    }
+
+    // Verifica que no se pueda registrar una idoneidad con un título de otro docente.
+    @Test
+    void registrarIdoneidad_debeRechazarTituloDeOtroDocente() {
+
+        UUID docenteId = UUID.randomUUID();
+        UUID otroDocenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+        UUID tituloId = UUID.randomUUID();
+
+        // Simula dos docentes diferentes.
+        Docente docente = spy(new Docente());
+        Docente otroDocente = spy(new Docente());
+
+        doReturn(docenteId).when(docente).getId();
+        doReturn(otroDocenteId).when(otroDocente).getId();
+
+        // El título pertenece a otro docente.
+        TituloProfesional tituloProfesional = new TituloProfesional();
+        tituloProfesional.setDocente(otroDocente);
+
+        Area area = new Area();
+
+        CrearIdoneidadRequest request = new CrearIdoneidadRequest();
+        request.setDocenteId(docenteId);
+        request.setAreaId(areaId);
+        request.setTituloSoporteId(tituloId);
+
+        when(docenteRepository.findById(docenteId))
+                .thenReturn(Optional.of(docente));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
+
+        when(tituloProfesionalRepository.findById(tituloId))
+                .thenReturn(Optional.of(tituloProfesional));
+
+        assertThrows(
+                RelacionAcademicaInvalidaException.class,
+                () -> idoneidadService.registrarIdoneidad(request)
+        );
+    }
+
+    // Verifica que no se pueda actualizar una idoneidad con un título de otro docente.
+    @Test
+    void actualizarIdoneidad_debeRechazarTituloDeOtroDocente() {
+
+        UUID idoneidadId = UUID.randomUUID();
+        UUID docenteId = UUID.randomUUID();
+        UUID otroDocenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+        UUID tituloId = UUID.randomUUID();
+
+        Docente docente = spy(new Docente());
+        Docente otroDocente = spy(new Docente());
+
+        doReturn(docenteId).when(docente).getId();
+        doReturn(otroDocenteId).when(otroDocente).getId();
+
+        Idoneidad idoneidad = new Idoneidad();
+        idoneidad.setDocente(docente);
+
+        Area area = new Area();
+
+        TituloProfesional tituloProfesional = new TituloProfesional();
+        tituloProfesional.setDocente(otroDocente);
+
+        ActualizarIdoneidadRequest request = new ActualizarIdoneidadRequest();
+        request.setAreaId(areaId);
+        request.setTituloSoporteId(tituloId);
+
+        when(idoneidadRepository.findById(idoneidadId))
+                .thenReturn(Optional.of(idoneidad));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
+
+        when(tituloProfesionalRepository.findById(tituloId))
+                .thenReturn(Optional.of(tituloProfesional));
 
         assertThrows(
                 RelacionAcademicaInvalidaException.class,

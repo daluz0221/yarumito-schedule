@@ -92,6 +92,17 @@ public class IdoneidadService {
         }
     }
 
+    // Valida que el título profesional pertenezca al docente de la idoneidad.
+    private void validarTituloPerteneceDocente(
+            TituloProfesional tituloProfesional,
+            Docente docente) {
+
+        if (!tituloProfesional.getDocente().getId().equals(docente.getId())) {
+            throw new RelacionAcademicaInvalidaException(
+                    "El título profesional no pertenece al docente indicado");
+        }
+    }
+
     // Busca el título profesional indicado y rechaza la operación si no existe.
     private TituloProfesional obtenerTituloProfesional(UUID tituloSoporteId) {
         return tituloProfesionalRepository.findById(tituloSoporteId)
@@ -174,6 +185,9 @@ public class IdoneidadService {
             TituloProfesional tituloSoporte =
                     obtenerTituloProfesional(request.getTituloSoporteId());
 
+            // Valida que el título pertenezca al docente de la idoneidad.
+            validarTituloPerteneceDocente(tituloSoporte, docente);
+
             idoneidad.setTituloSoporte(tituloSoporte);
         }
 
@@ -246,6 +260,12 @@ public class IdoneidadService {
         if (request.getTituloSoporteId() != null) {
             TituloProfesional tituloSoporte =
                     obtenerTituloProfesional(request.getTituloSoporteId());
+
+            // Valida que el título pertenezca al docente de la idoneidad.
+            validarTituloPerteneceDocente(
+                    tituloSoporte,
+                    idoneidad.getDocente()
+            );
 
             idoneidad.setTituloSoporte(tituloSoporte);
         } else {
