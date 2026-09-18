@@ -65,5 +65,16 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("mensaje", exception.getMessage()));
     }
+
+    // Maneja los errores cuando una relación académica no es válida.
+    @ExceptionHandler(RelacionAcademicaInvalidaException.class)
+    public ResponseEntity<Map<String, String>> manejarRelacionAcademicaInvalida(
+            RelacionAcademicaInvalidaException exception) {
+
+        // Devuelve el mensaje de error con código HTTP 400.
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("mensaje", exception.getMessage()));
+    }
 }
 

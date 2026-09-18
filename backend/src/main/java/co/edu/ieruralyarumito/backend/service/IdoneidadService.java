@@ -21,6 +21,7 @@ import java.util.List;
 import co.edu.ieruralyarumito.backend.dto.FinalizarVigenciaIdoneidadRequest;
 import co.edu.ieruralyarumito.backend.exception.FechaVigenciaInvalidaException;
 import co.edu.ieruralyarumito.backend.exception.TransicionEstadoNoPermitidaException;
+import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
 
 // Contiene la lógica de negocio para la gestión de idoneidades docentes.
 @Service
@@ -78,6 +79,17 @@ public class IdoneidadService {
                 .orElseThrow(() ->
                         new RecursoNoEncontradoException(
                                 "La asignatura no existe"));
+    }
+
+    // Valida que la asignatura pertenezca al área indicada para la idoneidad.
+    private void validarAsignaturaPerteneceArea(
+            Asignatura asignatura,
+            Area area) {
+
+        if (!asignatura.getArea().getId().equals(area.getId())) {
+            throw new RelacionAcademicaInvalidaException(
+                    "La asignatura no pertenece al área indicada");
+        }
     }
 
     // Busca el título profesional indicado y rechaza la operación si no existe.
@@ -145,7 +157,12 @@ public class IdoneidadService {
 
         // Asocia la asignatura únicamente cuando fue enviada.
         if (request.getAsignaturaId() != null) {
-            Asignatura asignatura = obtenerAsignatura(request.getAsignaturaId());
+            Asignatura asignatura =
+                    obtenerAsignatura(request.getAsignaturaId());
+
+            // Valida que la asignatura pertenezca al área seleccionada.
+            validarAsignaturaPerteneceArea(asignatura, area);
+
             idoneidad.setAsignatura(asignatura);
         }
 
@@ -214,6 +231,9 @@ public class IdoneidadService {
             Asignatura asignatura =
                     obtenerAsignatura(request.getAsignaturaId());
 
+            // Valida que la asignatura pertenezca al área seleccionada.
+            validarAsignaturaPerteneceArea(asignatura, area);
+
             idoneidad.setAsignatura(asignatura);
         } else {
             idoneidad.setAsignatura(null);
@@ -264,8 +284,6 @@ public class IdoneidadService {
             throw new FechaVigenciaInvalidaException(
                     "La fecha de finalización no puede ser anterior al inicio de vigencia");
         }
-
-
 
         // Registra la fecha de finalización.
         idoneidad.setVigenteHasta(request.getVigenteHasta());

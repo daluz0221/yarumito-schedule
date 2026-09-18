@@ -24,6 +24,12 @@ import co.edu.ieruralyarumito.backend.entity.Area;
 import co.edu.ieruralyarumito.backend.entity.Docente;
 import co.edu.ieruralyarumito.backend.dto.IdoneidadResponse;
 import co.edu.ieruralyarumito.backend.exception.TransicionEstadoNoPermitidaException;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.doReturn;
+import co.edu.ieruralyarumito.backend.dto.CrearIdoneidadRequest;
+import co.edu.ieruralyarumito.backend.entity.Asignatura;
+import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
+import co.edu.ieruralyarumito.backend.dto.ActualizarIdoneidadRequest;
 
 // Pruebas unitarias de la lógica de negocio de IdoneidadService.
 @ExtendWith(MockitoExtension.class)
@@ -135,6 +141,92 @@ public class IdoneidadServiceTest {
         assertThrows(
                 TransicionEstadoNoPermitidaException.class,
                 () -> idoneidadService.finalizarVigencia(idoneidadId, request)
+        );
+    }
+
+    // Verifica que no se pueda registrar una idoneidad con una asignatura de otra área.
+    @Test
+    void registrarIdoneidad_debeRechazarAsignaturaDeOtraArea() {
+
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+        UUID otraAreaId = UUID.randomUUID();
+        UUID asignaturaId = UUID.randomUUID();
+
+        Docente docente = new Docente();
+
+        // Simula dos áreas diferentes con identificadores distintos.
+        Area area = spy(new Area());
+        Area otraArea = spy(new Area());
+
+        doReturn(areaId).when(area).getId();
+        doReturn(otraAreaId).when(otraArea).getId();
+
+        // La asignatura pertenece a otra área.
+        Asignatura asignatura = new Asignatura();
+        asignatura.setArea(otraArea);
+
+        CrearIdoneidadRequest request = new CrearIdoneidadRequest();
+        request.setDocenteId(docenteId);
+        request.setAreaId(areaId);
+        request.setAsignaturaId(asignaturaId);
+
+        when(docenteRepository.findById(docenteId))
+                .thenReturn(Optional.of(docente));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
+
+        when(asignaturaRepository.findById(asignaturaId))
+                .thenReturn(Optional.of(asignatura));
+
+        assertThrows(
+                RelacionAcademicaInvalidaException.class,
+                () -> idoneidadService.registrarIdoneidad(request)
+        );
+    }
+
+    // Verifica que no se pueda actualizar una idoneidad con una asignatura de otra área.
+    @Test
+    void actualizarIdoneidad_debeRechazarAsignaturaDeOtraArea() {
+
+        UUID idoneidadId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+        UUID otraAreaId = UUID.randomUUID();
+        UUID asignaturaId = UUID.randomUUID();
+
+        // Simula una idoneidad existente.
+        Idoneidad idoneidad = new Idoneidad();
+
+        // Simula dos áreas diferentes con identificadores distintos.
+        Area area = spy(new Area());
+        Area otraArea = spy(new Area());
+
+        doReturn(areaId).when(area).getId();
+        doReturn(otraAreaId).when(otraArea).getId();
+
+        // La asignatura pertenece a otra área.
+        Asignatura asignatura = new Asignatura();
+        asignatura.setArea(otraArea);
+
+        ActualizarIdoneidadRequest request =
+                new ActualizarIdoneidadRequest();
+
+        request.setAreaId(areaId);
+        request.setAsignaturaId(asignaturaId);
+
+        when(idoneidadRepository.findById(idoneidadId))
+                .thenReturn(Optional.of(idoneidad));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
+
+        when(asignaturaRepository.findById(asignaturaId))
+                .thenReturn(Optional.of(asignatura));
+
+        assertThrows(
+                RelacionAcademicaInvalidaException.class,
+                () -> idoneidadService.actualizarIdoneidad(idoneidadId, request)
         );
     }
 }
