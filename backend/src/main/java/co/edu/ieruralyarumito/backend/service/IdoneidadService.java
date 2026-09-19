@@ -121,6 +121,21 @@ public class IdoneidadService {
         }
     }
 
+    // Valida que una asignatura de Media Técnica que exige exclusividad
+// sea asociada únicamente a un docente exclusivo de Media Técnica.
+    private void validarDocenteMediaTecnica(
+            Docente docente,
+            Asignatura asignatura) {
+
+        if (asignatura.isEsMediaTecnica()
+                && asignatura.isRequiereDocenteExclusivo()
+                && !docente.isEsExclusivoMediaTecnica()) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "La asignatura de Media Técnica requiere un docente exclusivo de Media Técnica");
+        }
+    }
+
     // Valida que el rango de vigencia tenga fechas coherentes.
     private void validarRangoVigencia(
             LocalDate vigenteDesde,
@@ -211,6 +226,12 @@ public class IdoneidadService {
 
             // Valida que la asignatura pertenezca al área seleccionada.
             validarAsignaturaPerteneceArea(asignatura, area);
+
+            // Valida las condiciones especiales de Media Técnica.
+            validarDocenteMediaTecnica(
+                    docente,
+                    asignatura
+            );
 
             idoneidad.setAsignatura(asignatura);
         }
@@ -311,6 +332,12 @@ public class IdoneidadService {
 
             // Valida que la asignatura pertenezca al área seleccionada.
             validarAsignaturaPerteneceArea(asignatura, area);
+
+            // Valida las condiciones especiales de Media Técnica.
+            validarDocenteMediaTecnica(
+                    idoneidad.getDocente(),
+                    asignatura
+            );
 
             idoneidad.setAsignatura(asignatura);
         } else {
