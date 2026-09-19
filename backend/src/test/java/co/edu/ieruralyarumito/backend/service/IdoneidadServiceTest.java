@@ -819,4 +819,53 @@ public class IdoneidadServiceTest {
         assertEquals(asignaturaId, response.getAsignaturaId());
     }
 
+    // Verifica que una idoneidad PRINCIPAL permita una asignatura
+// perteneciente al área de nombramiento del docente.
+    @Test
+    void registrarIdoneidadPrincipal_debePermitirAsignaturaDelAreaNombramiento() {
+
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+        UUID asignaturaId = UUID.randomUUID();
+
+        Area area = spy(new Area());
+        doReturn(areaId).when(area).getId();
+
+        Docente docente = spy(new Docente());
+        doReturn(docenteId).when(docente).getId();
+        docente.setAreaNombramiento(area);
+
+        Asignatura asignatura = spy(new Asignatura());
+        doReturn(asignaturaId).when(asignatura).getId();
+        asignatura.setArea(area);
+
+        CrearIdoneidadRequest request = new CrearIdoneidadRequest();
+        request.setDocenteId(docenteId);
+        request.setAreaId(areaId);
+        request.setAsignaturaId(asignaturaId);
+        request.setTipo(
+                co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad.PRINCIPAL
+        );
+
+        when(docenteRepository.findById(docenteId))
+                .thenReturn(Optional.of(docente));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
+
+        when(asignaturaRepository.findById(asignaturaId))
+                .thenReturn(Optional.of(asignatura));
+
+        when(idoneidadRepository.save(any(Idoneidad.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        IdoneidadResponse response =
+                idoneidadService.registrarIdoneidad(request);
+
+        assertEquals(docenteId, response.getDocenteId());
+        assertEquals(areaId, response.getAreaId());
+        assertEquals(asignaturaId, response.getAsignaturaId());
+        assertEquals(request.getTipo(), response.getTipo());
+    }
+
 }
