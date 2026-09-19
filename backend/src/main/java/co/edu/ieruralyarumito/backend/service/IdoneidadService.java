@@ -23,6 +23,7 @@ import co.edu.ieruralyarumito.backend.exception.FechaVigenciaInvalidaException;
 import co.edu.ieruralyarumito.backend.exception.TransicionEstadoNoPermitidaException;
 import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
 import java.time.LocalDate;
+import co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad;
 
 
 // Contiene la lógica de negocio para la gestión de idoneidades docentes.
@@ -105,6 +106,21 @@ public class IdoneidadService {
         }
     }
 
+    // Valida que una idoneidad PRINCIPAL corresponda al área de nombramiento del docente.
+    private void validarAreaPrincipal(
+            Docente docente,
+            Area area,
+            TipoIdoneidad tipo) {
+
+        if (tipo == TipoIdoneidad.PRINCIPAL
+                && (docente.getAreaNombramiento() == null
+                || !docente.getAreaNombramiento().getId().equals(area.getId()))) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "Una idoneidad PRINCIPAL debe corresponder al área de nombramiento del docente");
+        }
+    }
+
     // Valida que el rango de vigencia tenga fechas coherentes.
     private void validarRangoVigencia(
             LocalDate vigenteDesde,
@@ -174,6 +190,13 @@ public class IdoneidadService {
 
         // Valida que el área exista.
         Area area = obtenerArea(request.getAreaId());
+
+        // Valida que una idoneidad PRINCIPAL use el área de nombramiento del docente.
+        validarAreaPrincipal(
+                docente,
+                area,
+                request.getTipo()
+        );
 
         // Construye la entidad Idoneidad.
         Idoneidad idoneidad = new Idoneidad();

@@ -591,4 +591,40 @@ public class IdoneidadServiceTest {
                 )
         );
     }
+
+    // Verifica que una idoneidad PRINCIPAL corresponda al área de nombramiento del docente.
+    @Test
+    void registrarIdoneidadPrincipal_debeRechazarAreaDistintaAlNombramiento() {
+
+        UUID docenteId = UUID.randomUUID();
+        UUID areaNombramientoId = UUID.randomUUID();
+        UUID otraAreaId = UUID.randomUUID();
+
+        Area areaNombramiento = spy(new Area());
+        Area otraArea = spy(new Area());
+
+        doReturn(areaNombramientoId).when(areaNombramiento).getId();
+        doReturn(otraAreaId).when(otraArea).getId();
+
+        Docente docente = new Docente();
+        docente.setAreaNombramiento(areaNombramiento);
+
+        CrearIdoneidadRequest request = new CrearIdoneidadRequest();
+        request.setDocenteId(docenteId);
+        request.setAreaId(otraAreaId);
+        request.setTipo(
+                co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad.PRINCIPAL
+        );
+
+        when(docenteRepository.findById(docenteId))
+                .thenReturn(Optional.of(docente));
+
+        when(areaRepository.findById(otraAreaId))
+                .thenReturn(Optional.of(otraArea));
+
+        assertThrows(
+                RelacionAcademicaInvalidaException.class,
+                () -> idoneidadService.registrarIdoneidad(request)
+        );
+    }
 }
