@@ -8,7 +8,3 @@ begin
 		execute format('create schema if not exists %I;', esquema);
 	end loop;
 end $$;
-
-
-
-

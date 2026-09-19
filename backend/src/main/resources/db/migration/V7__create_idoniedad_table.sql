@@ -1,4 +1,4 @@
-create table accesopersonas.idoniedad(
+create table accesopersonas.idoneidad(
 	id uuid primary key default gen_random_uuid(),
 	docente_id uuid,
 	area_id uuid,
