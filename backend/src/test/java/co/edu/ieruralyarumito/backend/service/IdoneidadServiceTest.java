@@ -907,4 +907,53 @@ public class IdoneidadServiceTest {
         assertEquals(request.getTipo(), response.getTipo());
     }
 
+    // Verifica que una idoneidad AUTORIZADA pueda actualizarse
+// con un área diferente al área de nombramiento del docente.
+    @Test
+    void actualizarIdoneidadAutorizada_debePermitirAreaDistintaAlNombramiento() {
+
+        UUID idoneidadId = UUID.randomUUID();
+        UUID docenteId = UUID.randomUUID();
+        UUID areaAutorizadaId = UUID.randomUUID();
+
+        Area areaNombramiento = new Area();
+
+        Area areaAutorizada = spy(new Area());
+        doReturn(areaAutorizadaId).when(areaAutorizada).getId();
+
+        Docente docente = spy(new Docente());
+        doReturn(docenteId).when(docente).getId();
+        docente.setAreaNombramiento(areaNombramiento);
+
+        Idoneidad idoneidad = new Idoneidad();
+        idoneidad.setDocente(docente);
+
+        ActualizarIdoneidadRequest request =
+                new ActualizarIdoneidadRequest();
+
+        request.setAreaId(areaAutorizadaId);
+        request.setTipo(
+                co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad.AUTORIZADA
+        );
+
+        when(idoneidadRepository.findById(idoneidadId))
+                .thenReturn(Optional.of(idoneidad));
+
+        when(areaRepository.findById(areaAutorizadaId))
+                .thenReturn(Optional.of(areaAutorizada));
+
+        when(idoneidadRepository.save(any(Idoneidad.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        IdoneidadResponse response =
+                idoneidadService.actualizarIdoneidad(
+                        idoneidadId,
+                        request
+                );
+
+        assertEquals(docenteId, response.getDocenteId());
+        assertEquals(areaAutorizadaId, response.getAreaId());
+        assertEquals(request.getTipo(), response.getTipo());
+    }
+
 }
