@@ -294,6 +294,13 @@ public class IdoneidadService {
         // Valida que el área exista.
         Area area = obtenerArea(request.getAreaId());
 
+        // Valida que una idoneidad PRINCIPAL use el área de nombramiento del docente.
+        validarAreaPrincipal(
+                idoneidad.getDocente(),
+                area,
+                request.getTipo()
+        );
+
         // Asocia la nueva área.
         idoneidad.setArea(area);
 
