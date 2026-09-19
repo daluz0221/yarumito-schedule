@@ -769,4 +769,54 @@ public class IdoneidadServiceTest {
         );
     }
 
+    // Verifica que una asignatura de Media Técnica pueda asociarse
+// cuando el docente sí es exclusivo de Media Técnica.
+    @Test
+    void registrarIdoneidadMediaTecnica_debePermitirDocenteExclusivo() {
+
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+        UUID asignaturaId = UUID.randomUUID();
+
+        Area area = spy(new Area());
+        doReturn(areaId).when(area).getId();
+
+        Docente docente = spy(new Docente());
+        doReturn(docenteId).when(docente).getId();
+        docente.setEsExclusivoMediaTecnica(true);
+
+        Asignatura asignatura = spy(new Asignatura());
+        doReturn(asignaturaId).when(asignatura).getId();
+        asignatura.setArea(area);
+        asignatura.setEsMediaTecnica(true);
+        asignatura.setRequiereDocenteExclusivo(true);
+
+        CrearIdoneidadRequest request = new CrearIdoneidadRequest();
+        request.setDocenteId(docenteId);
+        request.setAreaId(areaId);
+        request.setAsignaturaId(asignaturaId);
+        request.setTipo(
+                co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad.AUTORIZADA
+        );
+
+        when(docenteRepository.findById(docenteId))
+                .thenReturn(Optional.of(docente));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
+
+        when(asignaturaRepository.findById(asignaturaId))
+                .thenReturn(Optional.of(asignatura));
+
+        when(idoneidadRepository.save(any(Idoneidad.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        IdoneidadResponse response =
+                idoneidadService.registrarIdoneidad(request);
+
+        assertEquals(docenteId, response.getDocenteId());
+        assertEquals(areaId, response.getAreaId());
+        assertEquals(asignaturaId, response.getAsignaturaId());
+    }
+
 }
