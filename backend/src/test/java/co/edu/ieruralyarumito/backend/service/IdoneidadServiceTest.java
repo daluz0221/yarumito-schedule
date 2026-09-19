@@ -493,4 +493,102 @@ public class IdoneidadServiceTest {
                 () -> idoneidadService.registrarIdoneidad(request)
         );
     }
+
+    // Verifica que no se pueda actualizar una idoneidad con un área inexistente.
+    @Test
+    void actualizarIdoneidad_debeRechazarAreaInexistente() {
+
+        UUID idoneidadId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        Idoneidad idoneidad = new Idoneidad();
+
+        ActualizarIdoneidadRequest request =
+                new ActualizarIdoneidadRequest();
+
+        request.setAreaId(areaId);
+
+        when(idoneidadRepository.findById(idoneidadId))
+                .thenReturn(Optional.of(idoneidad));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                RecursoNoEncontradoException.class,
+                () -> idoneidadService.actualizarIdoneidad(
+                        idoneidadId,
+                        request
+                )
+        );
+    }
+
+    // Verifica que no se pueda actualizar una idoneidad con una asignatura inexistente.
+    @Test
+    void actualizarIdoneidad_debeRechazarAsignaturaInexistente() {
+
+        UUID idoneidadId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+        UUID asignaturaId = UUID.randomUUID();
+
+        Idoneidad idoneidad = new Idoneidad();
+
+        ActualizarIdoneidadRequest request =
+                new ActualizarIdoneidadRequest();
+
+        request.setAreaId(areaId);
+        request.setAsignaturaId(asignaturaId);
+
+        when(idoneidadRepository.findById(idoneidadId))
+                .thenReturn(Optional.of(idoneidad));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(new Area()));
+
+        when(asignaturaRepository.findById(asignaturaId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                RecursoNoEncontradoException.class,
+                () -> idoneidadService.actualizarIdoneidad(
+                        idoneidadId,
+                        request
+                )
+        );
+    }
+
+    // Verifica que no se pueda actualizar una idoneidad con un título profesional inexistente.
+    @Test
+    void actualizarIdoneidad_debeRechazarTituloInexistente() {
+
+        UUID idoneidadId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+        UUID tituloId = UUID.randomUUID();
+
+        Idoneidad idoneidad = new Idoneidad();
+        idoneidad.setDocente(new Docente());
+
+        ActualizarIdoneidadRequest request =
+                new ActualizarIdoneidadRequest();
+
+        request.setAreaId(areaId);
+        request.setTituloSoporteId(tituloId);
+
+        when(idoneidadRepository.findById(idoneidadId))
+                .thenReturn(Optional.of(idoneidad));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(new Area()));
+
+        when(tituloProfesionalRepository.findById(tituloId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                RecursoNoEncontradoException.class,
+                () -> idoneidadService.actualizarIdoneidad(
+                        idoneidadId,
+                        request
+                )
+        );
+    }
 }
