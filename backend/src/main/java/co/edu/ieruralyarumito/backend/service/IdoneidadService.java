@@ -149,6 +149,72 @@ public class IdoneidadService {
         }
     }
 
+    // Valida que no exista otra idoneidad del mismo docente,
+// área y asignatura con un periodo de vigencia superpuesto.
+    private void validarSolapamientoIdoneidad(Idoneidad nuevaIdoneidad) {
+
+        List<Idoneidad> existentes =
+                idoneidadRepository.findByDocente_Id(
+                        nuevaIdoneidad.getDocente().getId()
+                );
+
+        for (Idoneidad existente : existentes) {
+
+            boolean mismaArea =
+                    existente.getArea().getId()
+                            .equals(nuevaIdoneidad.getArea().getId());
+
+            boolean mismaAsignatura;
+
+            if (existente.getAsignatura() == null
+                    && nuevaIdoneidad.getAsignatura() == null) {
+
+                mismaAsignatura = true;
+
+            } else if (existente.getAsignatura() != null
+                    && nuevaIdoneidad.getAsignatura() != null) {
+
+                mismaAsignatura =
+                        existente.getAsignatura().getId()
+                                .equals(nuevaIdoneidad.getAsignatura().getId());
+
+            } else {
+                mismaAsignatura = false;
+            }
+
+            if (!mismaArea || !mismaAsignatura) {
+                continue;
+            }
+
+            LocalDate inicioNueva =
+                    nuevaIdoneidad.getVigenteDesde();
+
+            LocalDate finNueva =
+                    nuevaIdoneidad.getVigenteHasta();
+
+            LocalDate inicioExistente =
+                    existente.getVigenteDesde();
+
+            LocalDate finExistente =
+                    existente.getVigenteHasta();
+
+            boolean nuevaEmpiezaAntesDeQueTermineExistente =
+                    finExistente == null
+                            || !inicioNueva.isAfter(finExistente);
+
+            boolean existenteEmpiezaAntesDeQueTermineNueva =
+                    finNueva == null
+                            || !inicioExistente.isAfter(finNueva);
+
+            if (nuevaEmpiezaAntesDeQueTermineExistente
+                    && existenteEmpiezaAntesDeQueTermineNueva) {
+
+                throw new RelacionAcademicaInvalidaException(
+                        "Ya existe una idoneidad para el mismo docente, área y asignatura con una vigencia superpuesta");
+            }
+        }
+    }
+
     // Valida que el rango de vigencia tenga fechas coherentes.
     private void validarRangoVigencia(
             LocalDate vigenteDesde,
@@ -276,6 +342,10 @@ public class IdoneidadService {
         idoneidad.setJustificacion(request.getJustificacion());
         idoneidad.setVigenteDesde(request.getVigenteDesde());
         idoneidad.setVigenteHasta(request.getVigenteHasta());
+
+        // Evita duplicados o vigencias superpuestas
+        // para la misma habilitación del docente.
+        validarSolapamientoIdoneidad(idoneidad);
 
         // Guarda la idoneidad en la base de datos.
         Idoneidad idoneidadGuardada =
