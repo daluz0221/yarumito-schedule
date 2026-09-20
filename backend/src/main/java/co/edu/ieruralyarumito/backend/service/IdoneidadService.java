@@ -136,6 +136,19 @@ public class IdoneidadService {
         }
     }
 
+    // Valida que una idoneidad EXCEPCIONAL tenga una justificación.
+    private void validarJustificacionExcepcional(
+            TipoIdoneidad tipo,
+            String justificacion) {
+
+        if (tipo == TipoIdoneidad.EXCEPCIONAL
+                && (justificacion == null || justificacion.isBlank())) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "Una idoneidad EXCEPCIONAL requiere justificación");
+        }
+    }
+
     // Valida que el rango de vigencia tenga fechas coherentes.
     private void validarRangoVigencia(
             LocalDate vigenteDesde,
@@ -255,7 +268,10 @@ public class IdoneidadService {
                 request.getVigenteDesde(),
                 request.getVigenteHasta()
         );
-
+        validarJustificacionExcepcional(
+                request.getTipo(),
+                request.getJustificacion()
+        );
         // Completa los datos de la idoneidad.
         idoneidad.setJustificacion(request.getJustificacion());
         idoneidad.setVigenteDesde(request.getVigenteDesde());
@@ -303,7 +319,7 @@ public class IdoneidadService {
                 .toList();
     }
 
-    // Actualiza los datos permitidos de una idoneidad existente.
+    // Actualiza únicamente los datos permitidos de una idoneidad existente.
     @Transactional
     public IdoneidadResponse actualizarIdoneidad(
             UUID id,
@@ -312,73 +328,35 @@ public class IdoneidadService {
         // Valida que la idoneidad exista.
         Idoneidad idoneidad = obtenerIdoneidad(id);
 
-        // Valida que el área exista.
-        Area area = obtenerArea(request.getAreaId());
-
-        // Valida que una idoneidad PRINCIPAL use el área de nombramiento del docente.
-        validarAreaPrincipal(
-                idoneidad.getDocente(),
-                area,
-                request.getTipo()
-        );
-
-        // Asocia la nueva área.
-        idoneidad.setArea(area);
-
-        // Actualiza la asignatura, que puede ser opcional.
-        if (request.getAsignaturaId() != null) {
-            Asignatura asignatura =
-                    obtenerAsignatura(request.getAsignaturaId());
-
-            // Valida que la asignatura pertenezca al área seleccionada.
-            validarAsignaturaPerteneceArea(asignatura, area);
-
-            // Valida las condiciones especiales de Media Técnica.
-            validarDocenteMediaTecnica(
-                    idoneidad.getDocente(),
-                    asignatura
-            );
-
-            idoneidad.setAsignatura(asignatura);
-        } else {
-            idoneidad.setAsignatura(null);
-        }
-
-        // Actualiza el tipo de idoneidad.
-        idoneidad.setTipo(request.getTipo());
-
-        // Actualiza el título profesional de soporte, cuando aplica.
+        // Actualiza el título profesional de soporte cuando fue enviado.
         if (request.getTituloSoporteId() != null) {
+
             TituloProfesional tituloSoporte =
                     obtenerTituloProfesional(request.getTituloSoporteId());
 
-            // Valida que el título pertenezca al docente de la idoneidad.
             validarTituloPerteneceDocente(
                     tituloSoporte,
                     idoneidad.getDocente()
             );
 
             idoneidad.setTituloSoporte(tituloSoporte);
-        } else {
-            idoneidad.setTituloSoporte(null);
         }
 
-        // Valida que la nueva fecha de inicio sea coherente con la vigencia existente.
-        validarRangoVigencia(
-                request.getVigenteDesde(),
-                idoneidad.getVigenteHasta()
+        // Actualiza la justificación cuando fue enviada.
+        if (request.getJustificacion() != null) {
+            idoneidad.setJustificacion(request.getJustificacion());
+        }
+
+        // Una idoneidad EXCEPCIONAL siempre debe conservar justificación.
+        validarJustificacionExcepcional(
+                idoneidad.getTipo(),
+                idoneidad.getJustificacion()
         );
 
-        // Actualiza la justificación y la fecha de inicio de vigencia.
-        idoneidad.setJustificacion(request.getJustificacion());
-        idoneidad.setVigenteDesde(request.getVigenteDesde());
-
-        // Guarda los cambios realizados.
         Idoneidad idoneidadActualizada =
                 idoneidadRepository.save(idoneidad);
 
         return convertirAResponse(idoneidadActualizada);
-
     }
 
     // Finaliza la vigencia de una idoneidad sin eliminar el registro.

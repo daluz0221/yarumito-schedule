@@ -149,13 +149,16 @@ public class IdoneidadControllerTest {
                 .andExpect(jsonPath("$[0].tipo").value("PRINCIPAL"))
                 .andExpect(jsonPath("$[0].vigenteDesde").value("2026-09-17"));
     }
-    // Verifica que PUT /api/v1/idoneidades/{id} actualice una idoneidad.
+
+    // Verifica que PUT /api/v1/idoneidades/{id}
+// actualice únicamente los datos permitidos.
     @Test
     void actualizarIdoneidad_debeRetornarOk() throws Exception {
 
         UUID idoneidadId = UUID.randomUUID();
         UUID docenteId = UUID.randomUUID();
         UUID areaId = UUID.randomUUID();
+        UUID tituloSoporteId = UUID.randomUUID();
 
         // Respuesta simulada del Service.
         IdoneidadResponse response = new IdoneidadResponse();
@@ -163,6 +166,10 @@ public class IdoneidadControllerTest {
         response.setDocenteId(docenteId);
         response.setAreaId(areaId);
         response.setTipo(TipoIdoneidad.AUTORIZADA);
+        response.setTituloSoporteId(tituloSoporteId);
+        response.setJustificacion(
+                "Actualización del soporte académico"
+        );
         response.setVigenteDesde(LocalDate.of(2026, 9, 18));
 
         when(idoneidadService.actualizarIdoneidad(
@@ -170,25 +177,34 @@ public class IdoneidadControllerTest {
                 any(ActualizarIdoneidadRequest.class)))
                 .thenReturn(response);
 
-        // Datos válidos enviados para actualizar.
+        // Solo se envían los campos permitidos para actualización.
         String json = """
             {
-              "areaId": "%s",
-              "tipo": "AUTORIZADA",
-              "justificacion": "Actualización de idoneidad",
-              "vigenteDesde": "2026-09-18"
+              "tituloSoporteId": "%s",
+              "justificacion": "Actualización del soporte académico"
             }
-            """.formatted(areaId);
+            """.formatted(tituloSoporteId);
 
-        mockMvc.perform(put("/api/v1/idoneidades/{id}", idoneidadId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
+        mockMvc.perform(
+                        put("/api/v1/idoneidades/{id}", idoneidadId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json)
+                )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(idoneidadId.toString()))
-                .andExpect(jsonPath("$.docenteId").value(docenteId.toString()))
-                .andExpect(jsonPath("$.areaId").value(areaId.toString()))
-                .andExpect(jsonPath("$.tipo").value("AUTORIZADA"))
-                .andExpect(jsonPath("$.vigenteDesde").value("2026-09-18"));
+                .andExpect(jsonPath("$.id")
+                        .value(idoneidadId.toString()))
+                .andExpect(jsonPath("$.docenteId")
+                        .value(docenteId.toString()))
+                .andExpect(jsonPath("$.areaId")
+                        .value(areaId.toString()))
+                .andExpect(jsonPath("$.tipo")
+                        .value("AUTORIZADA"))
+                .andExpect(jsonPath("$.tituloSoporteId")
+                        .value(tituloSoporteId.toString()))
+                .andExpect(jsonPath("$.justificacion")
+                        .value("Actualización del soporte académico"))
+                .andExpect(jsonPath("$.vigenteDesde")
+                        .value("2026-09-18"));
     }
 
     // Verifica que PATCH /api/v1/idoneidades/{id}/vigencia finalice la vigencia.
