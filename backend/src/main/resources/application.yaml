@@ -1,3 +1,25 @@
 spring:
   application:
     name: backend
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/yarumito}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    open-in-view: false
+
+server:
+  port: ${SERVER_PORT:8080}
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:yarumito-dev-jwt-secret-key-32chars}
+    expiration: 8h
+    remember-expiration: 7d
+  seed:
+    email: ${APP_SEED_EMAIL:rector@yarumito.edu.co}
+    password: ${APP_SEED_PASSWORD:Admin123!}
+    demo: ${APP_SEED_DEMO:false}
+    exit-after: ${APP_SEED_EXIT_AFTER:false}

@@ -150,6 +150,14 @@ export function CloseIcon() {
   )
 }
 
+export function PlusIcon() {
+  return (
+    <IconFrame size={18}>
+      <path d="M12 5v14M5 12h14" {...stroke} />
+    </IconFrame>
+  )
+}
+
 export function LayersIcon() {
   return (
     <IconFrame>

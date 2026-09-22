@@ -76,5 +76,25 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("mensaje", exception.getMessage()));
     }
+
+    // Maneja correo o contraseña incorrectos en el login.
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<Map<String, String>> manejarCredencialesInvalidas(
+            CredencialesInvalidasException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("mensaje", exception.getMessage()));
+    }
+
+    // Maneja el intento de acceso de una cuenta deshabilitada.
+    @ExceptionHandler(CuentaInactivaException.class)
+    public ResponseEntity<Map<String, String>> manejarCuentaInactiva(
+            CuentaInactivaException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(Map.of("mensaje", exception.getMessage()));
+    }
 }
 

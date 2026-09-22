@@ -5,10 +5,16 @@ import { UserChip } from '../../molecules/UserChip'
 import styles from './DashboardHeader.module.css'
 
 export type DashboardHeaderProps = {
+  title: string
+  subtitle: string
   onMenuClick?: () => void
 }
 
-export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
+export function DashboardHeader({
+  title,
+  subtitle,
+  onMenuClick,
+}: DashboardHeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.left}>
@@ -17,10 +23,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
             <MenuIcon />
           </IconButton>
         </span>
-        <PageHeading
-          title="Panel principal"
-          subtitle="Gestión académica y planificación de horarios"
-        />
+        <PageHeading title={title} subtitle={subtitle} />
       </div>
       <UserChip
         initials="R"

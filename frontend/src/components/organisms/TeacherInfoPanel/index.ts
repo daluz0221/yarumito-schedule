@@ -1,0 +1,1 @@
+export { TeacherInfoPanel } from './TeacherInfoPanel'

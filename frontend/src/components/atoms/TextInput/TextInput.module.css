@@ -5,7 +5,6 @@
 
 .input {
   width: 100%;
-  height: var(--control-height);
   padding: 0 16px;
   border: 1px solid transparent;
   border-radius: var(--radius-md);
@@ -22,6 +21,15 @@
 .input:focus {
   border-color: var(--color-focus);
   box-shadow: 0 0 0 3px rgb(47 91 255 / 12%);
+}
+
+.md {
+  height: var(--control-height);
+}
+
+.sm {
+  height: 44px;
+  font-size: 14px;
 }
 
 .hasSlot {

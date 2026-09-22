@@ -1,4 +1,47 @@
 services:
+  postgres:
+    image: postgres:16
+    container_name: proyecto_postgres
+    environment:
+      POSTGRES_DB: yarumito
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d yarumito"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: proyecto_backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/yarumito
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      APP_JWT_SECRET: yarumito-dev-jwt-secret-key-32chars
+      APP_SEED_EMAIL: rector@yarumito.edu.co
+      APP_SEED_PASSWORD: Admin123!
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
   frontend:
     build:
       context: ./frontend
@@ -11,5 +54,33 @@ services:
       - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
+      - VITE_API_BASE_URL=http://localhost:8080
     stdin_open: true
     tty: true
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  seed:
+    profiles: ["seed"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: proyecto_seed
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/yarumito
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      APP_JWT_SECRET: yarumito-dev-jwt-secret-key-32chars
+      APP_SEED_EMAIL: rector@yarumito.edu.co
+      APP_SEED_PASSWORD: Admin123!
+      APP_SEED_DEMO: "true"
+      APP_SEED_EXIT_AFTER: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  postgres_data:

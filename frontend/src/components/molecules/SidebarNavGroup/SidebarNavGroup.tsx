@@ -53,8 +53,10 @@ export function SidebarNavGroup({
           icon={navIcons[item.icon]}
           label={item.label}
           to={item.to}
+          end={item.end}
           disabled={item.disabled}
           indented={item.indented}
+          onClick={item.onClick}
           onNavigate={onNavigate}
         />
       ))}

@@ -7,8 +7,10 @@ export type NavItemProps = {
   icon: ReactNode
   label: string
   to?: string
+  end?: boolean
   disabled?: boolean
   indented?: boolean
+  onClick?: () => void
   onNavigate?: () => void
 }
 
@@ -16,8 +18,10 @@ export function NavItem({
   icon,
   label,
   to,
+  end = false,
   disabled = false,
   indented = false,
+  onClick,
   onNavigate,
 }: NavItemProps) {
   const classes = [
@@ -35,7 +39,30 @@ export function NavItem({
     </>
   )
 
-  if (!to || disabled) {
+  if (disabled) {
+    return (
+      <span className={classes} aria-disabled="true">
+        {content}
+      </span>
+    )
+  }
+
+  if (onClick && !to) {
+    return (
+      <button
+        type="button"
+        className={`${classes} ${styles.action}`}
+        onClick={() => {
+          onClick()
+          onNavigate?.()
+        }}
+      >
+        {content}
+      </button>
+    )
+  }
+
+  if (!to) {
     return (
       <span className={classes} aria-disabled="true">
         {content}
@@ -46,6 +73,7 @@ export function NavItem({
   return (
     <NavLink
       to={to}
+      end={end}
       onClick={onNavigate}
       className={({ isActive }) =>
         [classes, isActive ? styles.active : ''].filter(Boolean).join(' ')

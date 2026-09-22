@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../../atoms/Button'
 import { Card } from '../../atoms/Card'
 import { Text } from '../../atoms/Text'
@@ -10,6 +11,7 @@ export type ModuleCardProps = {
   description: string
   available?: boolean
   highlighted?: boolean
+  to?: string
 }
 
 export function ModuleCard({
@@ -18,7 +20,10 @@ export function ModuleCard({
   description,
   available = true,
   highlighted = false,
+  to,
 }: ModuleCardProps) {
+  const navigate = useNavigate()
+
   return (
     <Card as="article" highlighted={highlighted} className={styles.card}>
       <span className={styles.icon}>{icon}</span>
@@ -33,6 +38,11 @@ export function ModuleCard({
         size="sm"
         fullWidth
         disabled={!available}
+        onClick={() => {
+          if (available && to) {
+            navigate(to)
+          }
+        }}
       >
         {available ? 'Abrir módulo' : 'Próximamente'}
       </Button>

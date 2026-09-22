@@ -39,4 +39,44 @@ public class Area {
     public UUID getId() {
         return id; // Retorna el UUID del área
     }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
+
+    public String getCodigo() {
+        return codigo;
+    }
+
+    public void setCodigo(String codigo) {
+        this.codigo = codigo;
+    }
+
+    public boolean isObligatoria() {
+        return obligatoria;
+    }
+
+    public void setObligatoria(boolean obligatoria) {
+        this.obligatoria = obligatoria;
+    }
+
+    public boolean isSoloMedia() {
+        return soloMedia;
+    }
+
+    public void setSoloMedia(boolean soloMedia) {
+        this.soloMedia = soloMedia;
+    }
+
+    public boolean isActiva() {
+        return activa;
+    }
+
+    public void setActiva(boolean activa) {
+        this.activa = activa;
+    }
 }

@@ -20,8 +20,10 @@ export type NavItemData = {
   label: string
   icon: NavIconName
   to?: string
+  end?: boolean
   disabled?: boolean
   indented?: boolean
+  onClick?: () => void
 }
 
 export type ModuleIconName =
@@ -41,6 +43,7 @@ export type ModuleItemData = {
   icon: ModuleIconName
   available: boolean
   highlighted?: boolean
+  to?: string
 }
 
 export type StatItemData = {
@@ -56,8 +59,8 @@ export type AlertItemData = {
 }
 
 export const sidebarPrimaryNav: NavItemData[] = [
-  { id: 'home', label: 'Inicio', icon: 'home', to: '/dashboard' },
-  { id: 'teachers', label: 'Docentes', icon: 'users' },
+  { id: 'home', label: 'Inicio', icon: 'home', to: '/dashboard', end: true },
+  { id: 'teachers', label: 'Docentes', icon: 'users', to: '/dashboard/docentes' },
   { id: 'academic', label: 'Gestión académica', icon: 'bookOpen' },
   { id: 'year', label: 'Año lectivo y grupos', icon: 'calendar' },
   { id: 'areas', label: 'Áreas y asignaturas', icon: 'book' },
@@ -74,7 +77,7 @@ export const sidebarSecondaryNav: NavItemData[] = [
 
 export const sidebarAccountNav: NavItemData[] = [
   { id: 'profile', label: 'Perfil', icon: 'user' },
-  { id: 'logout', label: 'Cerrar sesión', icon: 'logout', to: '/admin' },
+  { id: 'logout', label: 'Cerrar sesión', icon: 'logout' },
 ]
 
 export const dashboardStats: StatItemData[] = [
@@ -91,6 +94,7 @@ export const dashboardModules: ModuleItemData[] = [
     description: 'Registre y actualice la información de los docentes de la institución.',
     icon: 'users',
     available: true,
+    to: '/dashboard/docentes',
   },
   {
     id: 'academic',

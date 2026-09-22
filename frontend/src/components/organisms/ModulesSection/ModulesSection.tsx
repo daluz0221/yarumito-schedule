@@ -41,6 +41,7 @@ export function ModulesSection() {
             description={module.description}
             available={module.available}
             highlighted={module.highlighted}
+            to={module.to}
           />
         ))}
       </div>

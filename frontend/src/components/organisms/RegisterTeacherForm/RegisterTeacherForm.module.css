@@ -1,0 +1,43 @@
+.form {
+  width: 100%;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 28px 32px;
+}
+
+.notice {
+  color: #6f6f6f;
+}
+
+.error {
+  margin: 0;
+  color: #c0392b;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+@media (max-width: 720px) {
+  .card {
+    padding: 20px 16px;
+    gap: 24px;
+  }
+
+  .actions {
+    flex-direction: column-reverse;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}

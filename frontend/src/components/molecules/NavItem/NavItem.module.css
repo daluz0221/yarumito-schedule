@@ -9,6 +9,14 @@
   text-decoration: none;
 }
 
+.action {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
 .icon {
   display: inline-flex;
   color: #5c5c5c;
