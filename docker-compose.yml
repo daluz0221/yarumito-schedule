@@ -13,3 +13,22 @@ services:
       - CHOKIDAR_USEPOLLING=true
     stdin_open: true
     tty: true
+
+  postgres:
+    image: postgres:16
+    container_name: postgres_bd
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  volumes:
+    postgres_data:
