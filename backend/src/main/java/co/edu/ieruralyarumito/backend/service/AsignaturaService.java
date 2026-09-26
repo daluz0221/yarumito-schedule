@@ -15,6 +15,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
+import co.edu.ieruralyarumito.backend.repository.IdoneidadRepository;
 
 import java.util.UUID;
 
@@ -23,13 +25,16 @@ public class AsignaturaService {
 
     private final AsignaturaRepository asignaturaRepository;
     private final AreaRepository areaRepository;
+    private final IdoneidadRepository idoneidadRepository;
 
     public AsignaturaService(
             AsignaturaRepository asignaturaRepository,
-            AreaRepository areaRepository) {
+            AreaRepository areaRepository,
+            IdoneidadRepository idoneidadRepository) {
 
         this.asignaturaRepository = asignaturaRepository;
         this.areaRepository = areaRepository;
+        this.idoneidadRepository = idoneidadRepository;
     }
 
     private Area obtenerArea(UUID areaId) {
@@ -156,7 +161,30 @@ public class AsignaturaService {
 
         Area area = obtenerArea(request.getAreaId());
 
-        asignatura.setArea(area);
+        // El área académica de una asignatura no se modifica
+        // mediante la actualización ordinaria.
+        if (!asignatura.getArea().getId().equals(area.getId())) {
+            throw new RelacionAcademicaInvalidaException(
+                    "No se permite cambiar el área académica de una asignatura"
+            );
+        }
+
+        // Evita modificar la configuración de Media Técnica cuando
+        // la asignatura ya tiene idoneidades asociadas.
+        boolean cambiaConfiguracionMediaTecnica =
+                asignatura.isEsMediaTecnica() != request.getEsMediaTecnica()
+                        || asignatura.isRequiereDocenteExclusivo()
+                        != request.getRequiereDocenteExclusivo();
+
+        if (cambiaConfiguracionMediaTecnica
+                && idoneidadRepository.existsByAsignatura_Id(id)) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "No se puede modificar la configuración de Media Técnica "
+                            + "porque la asignatura tiene idoneidades asociadas"
+            );
+        }
+
         asignatura.setNombre(request.getNombre());
         asignatura.setCodigo(request.getCodigo());
         asignatura.setAbreviatura(request.getAbreviatura());

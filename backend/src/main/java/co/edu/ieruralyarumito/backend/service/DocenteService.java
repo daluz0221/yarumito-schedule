@@ -18,6 +18,9 @@ import co.edu.ieruralyarumito.backend.specification.DocenteSpecification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import co.edu.ieruralyarumito.backend.dto.CambiarEstadoDocenteRequest;
+import co.edu.ieruralyarumito.backend.exception.TransicionEstadoNoPermitidaException;
+import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
 
 // Contiene la lógica de negocio para la gestión de docentes.
 @Service
@@ -89,10 +92,70 @@ public class DocenteService {
                 .map(this::convertirAResponse);
     }
 
-    // TODO SCRUM-8:
-    // Completar el cambio de estado cuando estén disponibles las validaciones de
-    // responsabilidades vigentes: asignaciones académicas, dirección de grupo
-    // y actividades institucionales.
+    // Administra el cambio de estado de un docente existente.
+    @Transactional
+    public DocenteResponse cambiarEstado(
+            UUID id,
+            CambiarEstadoDocenteRequest request) {
+
+        // Verifica que el docente exista.
+        Docente docente = docenteRepository.findById(id)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "El docente no existe"));
+
+        // Valida que la transición solicitada esté permitida.
+        validarTransicionEstado(
+                docente.getEstado(),
+                request.getNuevoEstado()
+        );
+
+        /*
+         * Las responsabilidades académicas vigentes no bloquean
+         * el paso a LICENCIA ni a RETIRADO.
+         *
+         * En LICENCIA el docente conserva su vínculo, nombramiento,
+         * idoneidades e histórico de carga.
+         *
+         * En RETIRADO la salida puede producirse aunque exista carga
+         * académica vigente; su posterior cobertura corresponde al
+         * proceso de asignación académica.
+         */
+        docente.setEstado(request.getNuevoEstado());
+
+        // Guarda el nuevo estado conservando el mismo registro.
+        Docente docenteActualizado = docenteRepository.save(docente);
+
+        return convertirAResponse(docenteActualizado);
+    }
+
+    // Valida las transiciones permitidas entre estados del docente.
+    private void validarTransicionEstado(
+            EstadoDocente estadoActual,
+            EstadoDocente nuevoEstado) {
+
+        boolean transicionPermitida = switch (estadoActual) {
+
+            case ACTIVO ->
+                    nuevoEstado == EstadoDocente.LICENCIA
+                            || nuevoEstado == EstadoDocente.RETIRADO;
+
+            case LICENCIA ->
+                    nuevoEstado == EstadoDocente.ACTIVO
+                            || nuevoEstado == EstadoDocente.RETIRADO;
+
+            // Un docente retirado requiere un nuevo nombramiento
+            // para volver a estar activo.
+            case RETIRADO -> false;
+        };
+
+        if (!transicionPermitida) {
+            throw new TransicionEstadoNoPermitidaException(
+                    "No se permite cambiar el estado del docente de "
+                            + estadoActual + " a " + nuevoEstado
+            );
+        }
+    }
 
     // Convierte la entidad Docente en el DTO que será devuelto por la API.
     private DocenteResponse convertirAResponse(Docente docente) {
@@ -184,6 +247,15 @@ public class DocenteService {
         // Valida que el área de nombramiento exista.
         Area area = obtenerArea(request.getAreaNombramientoId());
 
+        // El área de nombramiento no puede modificarse mediante
+        // la actualización ordinaria del docente.
+        // Un cambio de área requiere un nuevo nombramiento respaldado por decreto.
+        if (!docente.getAreaNombramiento().getId().equals(area.getId())) {
+            throw new RelacionAcademicaInvalidaException(
+                    "El cambio de área de nombramiento requiere un nuevo nombramiento"
+            );
+        }
+
         // Actualiza los datos permitidos en esta HU.
         docente.setNombres(request.getNombres());
         docente.setApellidos(request.getApellidos());
@@ -192,7 +264,6 @@ public class DocenteService {
         docente.setTelefono(request.getTelefono());
         docente.setCorreoInstitucional(request.getCorreoInstitucional());
         docente.setTipoVinculacion(request.getTipoVinculacion());
-        docente.setAreaNombramiento(area);
         docente.setNumeroDecreto(request.getNumeroDecreto());
         docente.setFechaDecreto(request.getFechaDecreto());
         docente.setEscalafon(request.getEscalafon());

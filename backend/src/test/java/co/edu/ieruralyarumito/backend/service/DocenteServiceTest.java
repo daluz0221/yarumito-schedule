@@ -20,6 +20,8 @@ import co.edu.ieruralyarumito.backend.entity.Docente;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import co.edu.ieruralyarumito.backend.dto.ActualizarDocenteRequest;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.doReturn;
 
 // Pruebas unitarias de la lógica de negocio de DocenteService.
 @ExtendWith(MockitoExtension.class)
@@ -167,7 +169,11 @@ public class DocenteServiceTest {
 
         // Simula un docente y un área existentes.
         Docente docenteExistente = new Docente();
-        Area area = new Area();
+
+        Area area = spy(new Area());
+        doReturn(areaId).when(area).getId();
+
+        docenteExistente.setAreaNombramiento(area);
 
         ActualizarDocenteRequest request = new ActualizarDocenteRequest();
         request.setNombres("Carlos");
@@ -201,6 +207,7 @@ public class DocenteServiceTest {
         assertEquals("Bermúdez", response.getApellidos());
         assertEquals("777888999", response.getNumeroDocumento());
     }
+
     // Verifica que se consulte correctamente un docente existente.
     @Test
     void consultarDocente_debeRetornarDocenteExistente() {

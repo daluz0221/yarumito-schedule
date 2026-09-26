@@ -15,9 +15,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
+import co.edu.ieruralyarumito.backend.repository.IdoneidadRepository;
 import java.util.Optional;
 import java.util.UUID;
+import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -37,6 +38,9 @@ public class AsignaturaServiceTest {
 
     @Mock
     private AreaRepository areaRepository;
+
+    @Mock
+    private IdoneidadRepository idoneidadRepository;
 
     @InjectMocks
     private AsignaturaService asignaturaService;
@@ -188,6 +192,8 @@ public class AsignaturaServiceTest {
         Asignatura asignaturaExistente =
                 new Asignatura();
 
+        asignaturaExistente.setArea(area);
+
         ActualizarAsignaturaRequest request =
                 new ActualizarAsignaturaRequest();
 
@@ -233,6 +239,51 @@ public class AsignaturaServiceTest {
                 response.getTipoAulaRequerida()
         );
         assertTrue(response.isActiva());
+    }
+
+    @Test
+    void actualizarAsignatura_debeRechazarCambioMediaTecnicaConIdoneidades() {
+
+        UUID asignaturaId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        Area area = spy(new Area());
+        doReturn(areaId).when(area).getId();
+
+        Asignatura asignaturaExistente = new Asignatura();
+        asignaturaExistente.setArea(area);
+        asignaturaExistente.setEsMediaTecnica(false);
+        asignaturaExistente.setRequiereDocenteExclusivo(false);
+
+        ActualizarAsignaturaRequest request =
+                new ActualizarAsignaturaRequest();
+
+        request.setAreaId(areaId);
+        request.setCodigo("MT-01");
+        request.setEsMediaTecnica(true);
+        request.setRequiereDocenteExclusivo(false);
+
+        when(asignaturaRepository.findById(asignaturaId))
+                .thenReturn(Optional.of(asignaturaExistente));
+
+        when(asignaturaRepository.existsByCodigoAndIdNot(
+                "MT-01",
+                asignaturaId))
+                .thenReturn(false);
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
+
+        when(idoneidadRepository.existsByAsignatura_Id(asignaturaId))
+                .thenReturn(true);
+
+        assertThrows(
+                RelacionAcademicaInvalidaException.class,
+                () -> asignaturaService.actualizarAsignatura(
+                        asignaturaId,
+                        request
+                )
+        );
     }
 
     @Test
