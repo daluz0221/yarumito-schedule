@@ -35,7 +35,6 @@ import co.edu.ieruralyarumito.backend.entity.TituloProfesional;
 import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
 import static org.mockito.Mockito.lenient;
 
-
 // Pruebas unitarias de la lógica de negocio de IdoneidadService.
 @ExtendWith(MockitoExtension.class)
 public class IdoneidadServiceTest {
@@ -580,6 +579,63 @@ public class IdoneidadServiceTest {
         assertEquals(areaId, response.getAreaId());
         assertEquals(asignaturaId, response.getAsignaturaId());
     }
+
+    @Test
+    void registrarIdoneidad_debePermitirDocenteMediaTecnicaEnAsignaturaOrdinaria() {
+
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+        UUID asignaturaId = UUID.randomUUID();
+
+        Area area = spy(new Area());
+        doReturn(areaId).when(area).getId();
+
+        Docente docente = spy(new Docente());
+        doReturn(docenteId).when(docente).getId();
+
+        // El docente tiene habilitado el perfil de Media Técnica,
+        // pero esto no restringe su participación en asignaturas ordinarias.
+        docente.setEsExclusivoMediaTecnica(true);
+
+        Asignatura asignatura = spy(new Asignatura());
+        doReturn(asignaturaId).when(asignatura).getId();
+
+        asignatura.setArea(area);
+        asignatura.setEsMediaTecnica(false);
+        asignatura.setRequiereDocenteExclusivo(false);
+
+        CrearIdoneidadRequest request =
+                new CrearIdoneidadRequest();
+
+        request.setDocenteId(docenteId);
+        request.setAreaId(areaId);
+        request.setAsignaturaId(asignaturaId);
+        request.setTipo(
+                co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad.AUTORIZADA
+        );
+
+        when(docenteRepository.findById(docenteId))
+                .thenReturn(Optional.of(docente));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
+
+        when(asignaturaRepository.findById(asignaturaId))
+                .thenReturn(Optional.of(asignatura));
+
+        when(idoneidadRepository.save(any(Idoneidad.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        IdoneidadResponse response =
+                idoneidadService.registrarIdoneidad(request);
+
+        assertEquals(docenteId, response.getDocenteId());
+        assertEquals(areaId, response.getAreaId());
+        assertEquals(asignaturaId, response.getAsignaturaId());
+        assertEquals(request.getTipo(), response.getTipo());
+    }
+
+
 
 
     // Verifica que una idoneidad PRINCIPAL permita una asignatura

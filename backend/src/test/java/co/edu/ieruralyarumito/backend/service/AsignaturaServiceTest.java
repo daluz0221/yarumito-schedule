@@ -335,6 +335,57 @@ public class AsignaturaServiceTest {
     }
 
     @Test
+    void actualizarAsignatura_debeRechazarCambioSoloDeRequisitoExclusivoConIdoneidades() {
+
+        UUID asignaturaId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        Area area = spy(new Area());
+        doReturn(areaId).when(area).getId();
+
+        Asignatura asignaturaExistente = new Asignatura();
+        asignaturaExistente.setArea(area);
+        asignaturaExistente.setEsMediaTecnica(true);
+        asignaturaExistente.setRequiereDocenteExclusivo(false);
+
+        ActualizarAsignaturaRequest request =
+                new ActualizarAsignaturaRequest();
+
+        request.setAreaId(areaId);
+        request.setCodigo("MT-01");
+
+        // Mantiene Media Técnica y cambia únicamente
+        // el requisito especial del docente.
+        request.setEsMediaTecnica(true);
+        request.setRequiereDocenteExclusivo(true);
+
+        when(asignaturaRepository.findById(asignaturaId))
+                .thenReturn(Optional.of(asignaturaExistente));
+
+        when(asignaturaRepository.existsByCodigoAndIdNot(
+                "MT-01",
+                asignaturaId))
+                .thenReturn(false);
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
+
+        when(idoneidadRepository.existsByAsignatura_Id(asignaturaId))
+                .thenReturn(true);
+
+        assertThrows(
+                RelacionAcademicaInvalidaException.class,
+                () -> asignaturaService.actualizarAsignatura(
+                        asignaturaId,
+                        request
+                )
+        );
+
+        verify(asignaturaRepository, never())
+                .save(any(Asignatura.class));
+    }
+
+    @Test
     void actualizarAsignatura_debePermitirCambioMediaTecnicaSinIdoneidades() {
 
         UUID asignaturaId = UUID.randomUUID();
