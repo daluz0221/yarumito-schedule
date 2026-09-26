@@ -28,6 +28,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 
 // Pruebas unitarias de la lógica de negocio de AsignaturaService.
 @ExtendWith(MockitoExtension.class)
@@ -242,6 +245,51 @@ public class AsignaturaServiceTest {
     }
 
     @Test
+    void actualizarAsignatura_debeRechazarCambioDeArea() {
+
+        UUID asignaturaId = UUID.randomUUID();
+        UUID areaActualId = UUID.randomUUID();
+        UUID areaNuevaId = UUID.randomUUID();
+
+        Area areaActual = spy(new Area());
+        doReturn(areaActualId).when(areaActual).getId();
+
+        Area areaNueva = spy(new Area());
+        doReturn(areaNuevaId).when(areaNueva).getId();
+
+        Asignatura asignaturaExistente = new Asignatura();
+        asignaturaExistente.setArea(areaActual);
+
+        ActualizarAsignaturaRequest request =
+                new ActualizarAsignaturaRequest();
+
+        request.setAreaId(areaNuevaId);
+        request.setCodigo("CN-01");
+
+        when(asignaturaRepository.findById(asignaturaId))
+                .thenReturn(Optional.of(asignaturaExistente));
+
+        when(asignaturaRepository.existsByCodigoAndIdNot(
+                "CN-01",
+                asignaturaId))
+                .thenReturn(false);
+
+        when(areaRepository.findById(areaNuevaId))
+                .thenReturn(Optional.of(areaNueva));
+
+        assertThrows(
+                RelacionAcademicaInvalidaException.class,
+                () -> asignaturaService.actualizarAsignatura(
+                        asignaturaId,
+                        request
+                )
+        );
+
+        verify(asignaturaRepository, never())
+                .save(any(Asignatura.class));
+    }
+
+    @Test
     void actualizarAsignatura_debeRechazarCambioMediaTecnicaConIdoneidades() {
 
         UUID asignaturaId = UUID.randomUUID();
@@ -284,6 +332,62 @@ public class AsignaturaServiceTest {
                         request
                 )
         );
+    }
+
+    @Test
+    void actualizarAsignatura_debePermitirCambioMediaTecnicaSinIdoneidades() {
+
+        UUID asignaturaId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        Area area = spy(new Area());
+        doReturn(areaId).when(area).getId();
+
+        Asignatura asignaturaExistente = new Asignatura();
+        asignaturaExistente.setArea(area);
+        asignaturaExistente.setEsMediaTecnica(false);
+        asignaturaExistente.setRequiereDocenteExclusivo(false);
+
+        ActualizarAsignaturaRequest request =
+                new ActualizarAsignaturaRequest();
+
+        request.setAreaId(areaId);
+        request.setNombre("Media Técnica");
+        request.setCodigo("MT-01");
+        request.setAbreviatura("MT");
+        request.setColorUi("#336699");
+        request.setExigeIdoneidadEstricta(true);
+        request.setEsMediaTecnica(true);
+        request.setRequiereDocenteExclusivo(false);
+        request.setTipoAulaRequerida(TipoAulaRequerida.AULA);
+        request.setMaxClasesConsecutivas(2);
+        request.setActiva(true);
+
+        when(asignaturaRepository.findById(asignaturaId))
+                .thenReturn(Optional.of(asignaturaExistente));
+
+        when(asignaturaRepository.existsByCodigoAndIdNot(
+                "MT-01",
+                asignaturaId))
+                .thenReturn(false);
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
+
+        when(idoneidadRepository.existsByAsignatura_Id(asignaturaId))
+                .thenReturn(false);
+
+        when(asignaturaRepository.save(any(Asignatura.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        AsignaturaResponse response =
+                asignaturaService.actualizarAsignatura(
+                        asignaturaId,
+                        request
+                );
+
+        assertTrue(response.isEsMediaTecnica());
+        assertFalse(response.isRequiereDocenteExclusivo());
     }
 
     @Test
