@@ -121,8 +121,8 @@ public class IdoneidadService {
         }
     }
 
-    // Valida que una asignatura de Media Técnica que exige exclusividad
-// sea asociada únicamente a un docente exclusivo de Media Técnica.
+    // Valida que una asignatura de Media Técnica con requisito especial
+    // sea asociada a un docente que tenga habilitado ese perfil.
     private void validarDocenteMediaTecnica(
             Docente docente,
             Asignatura asignatura) {

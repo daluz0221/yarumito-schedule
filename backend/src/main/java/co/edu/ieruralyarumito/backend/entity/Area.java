@@ -13,6 +13,7 @@ import java.util.UUID; // Tipo del identificador
 // Representa el área académica definida en el Modelo ER
 @Entity   // Indica que Area es una entidad persistente
 public class Area {
+
     // Identificador único del área.
     @Id //clave primaria
     @GeneratedValue(strategy = GenerationType.UUID) // Genera automáticamente un UUID
