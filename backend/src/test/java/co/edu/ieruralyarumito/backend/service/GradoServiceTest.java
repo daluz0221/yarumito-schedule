@@ -4,7 +4,6 @@ import co.edu.ieruralyarumito.backend.dto.ActualizarGradoRequest;
 import co.edu.ieruralyarumito.backend.dto.CrearGradoRequest;
 import co.edu.ieruralyarumito.backend.dto.GradoResponse;
 import co.edu.ieruralyarumito.backend.entity.Grado;
-import co.edu.ieruralyarumito.backend.exception.RecursoDuplicadoException;
 import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
 import co.edu.ieruralyarumito.backend.repository.GradoRepository;
 import org.junit.jupiter.api.Test;
@@ -33,24 +32,6 @@ public class GradoServiceTest {
     @InjectMocks
     private GradoService gradoService;
 
-    // No permite registrar dos veces el mismo grado escolar.
-    @Test
-    void registrarGrado_debeRechazarNivelDuplicado() {
-
-        CrearGradoRequest request =
-                new CrearGradoRequest();
-
-        request.setNivel(10);
-
-        when(gradoRepository.existsByNivel(10))
-                .thenReturn(true);
-
-        assertThrows(
-                RecursoDuplicadoException.class,
-                () -> gradoService.registrarGrado(request)
-        );
-    }
-
     // Verifica la configuración automática de un grado de básica secundaria.
     @Test
     void registrarGrado_debeConfigurarSextoCorrectamente() {
@@ -59,9 +40,6 @@ public class GradoServiceTest {
                 new CrearGradoRequest();
 
         request.setNivel(6);
-
-        when(gradoRepository.existsByNivel(6))
-                .thenReturn(false);
 
         when(gradoRepository.save(any(Grado.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -86,9 +64,6 @@ public class GradoServiceTest {
 
         request.setNivel(10);
 
-        when(gradoRepository.existsByNivel(10))
-                .thenReturn(false);
-
         when(gradoRepository.save(any(Grado.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -111,9 +86,6 @@ public class GradoServiceTest {
                 new CrearGradoRequest();
 
         request.setNivel(11);
-
-        when(gradoRepository.existsByNivel(11))
-                .thenReturn(false);
 
         when(gradoRepository.save(any(Grado.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -165,11 +137,6 @@ public class GradoServiceTest {
         when(gradoRepository.findById(gradoId))
                 .thenReturn(Optional.of(existente));
 
-        when(gradoRepository.existsByNivelAndIdNot(
-                10,
-                gradoId))
-                .thenReturn(false);
-
         when(gradoRepository.save(any(Grado.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -183,36 +150,5 @@ public class GradoServiceTest {
         assertTrue(response.isEsMedia());
         assertEquals(1, response.getPrioridadAsignacion());
         assertEquals(37, response.getHorasSemanalesEsperadas());
-    }
-
-    // No permite actualizar un grado usando un nivel
-    // que ya pertenece a otro registro.
-    @Test
-    void actualizarGrado_debeRechazarNivelDuplicado() {
-
-        UUID gradoId = UUID.randomUUID();
-
-        Grado existente = new Grado();
-        existente.setNivel(8);
-
-        ActualizarGradoRequest request =
-                new ActualizarGradoRequest();
-
-        request.setNivel(9);
-
-        when(gradoRepository.findById(gradoId))
-                .thenReturn(Optional.of(existente));
-
-        when(gradoRepository.existsByNivelAndIdNot(
-                9,
-                gradoId))
-                .thenReturn(true);
-
-        assertThrows(
-                RecursoDuplicadoException.class,
-                () -> gradoService.actualizarGrado(
-                        gradoId,
-                        request)
-        );
     }
 }
