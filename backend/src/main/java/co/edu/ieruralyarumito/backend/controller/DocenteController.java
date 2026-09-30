@@ -20,6 +20,8 @@ import co.edu.ieruralyarumito.backend.entity.enums.TipoVinculacion;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.RequestParam;
+import co.edu.ieruralyarumito.backend.dto.CambiarEstadoDocenteRequest;
+import org.springframework.web.bind.annotation.PatchMapping;
 
 // Expone los endpoints REST para la gestión de docentes.
 
@@ -88,8 +90,15 @@ public class DocenteController {
         return ResponseEntity.ok(response);
     }
 
-    // TODO SCRUM-8:
-    // Habilitar PATCH /{id}/estado cuando esté implementada la validación de
-    // responsabilidades vigentes: asignaciones académicas, dirección de grupo
-    // y actividades institucionales.
+    // Cambia el estado administrativo de un docente.
+    @PatchMapping("/{id}/estado")
+    public ResponseEntity<DocenteResponse> cambiarEstado(
+            @PathVariable UUID id,
+            @Valid @RequestBody CambiarEstadoDocenteRequest request) {
+
+        DocenteResponse response =
+                docenteService.cambiarEstado(id, request);
+
+        return ResponseEntity.ok(response);
+    }
 }

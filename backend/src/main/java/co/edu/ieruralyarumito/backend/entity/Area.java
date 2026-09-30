@@ -13,6 +13,7 @@ import java.util.UUID; // Tipo del identificador
 // Representa el área académica definida en el Modelo ER
 @Entity   // Indica que Area es una entidad persistente
 public class Area {
+
     // Identificador único del área.
     @Id //clave primaria
     @GeneratedValue(strategy = GenerationType.UUID) // Genera automáticamente un UUID
@@ -38,5 +39,45 @@ public class Area {
     // Permite consultar el identificador del área.
     public UUID getId() {
         return id; // Retorna el UUID del área
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
+
+    public String getCodigo() {
+        return codigo;
+    }
+
+    public void setCodigo(String codigo) {
+        this.codigo = codigo;
+    }
+
+    public boolean isObligatoria() {
+        return obligatoria;
+    }
+
+    public void setObligatoria(boolean obligatoria) {
+        this.obligatoria = obligatoria;
+    }
+
+    public boolean isSoloMedia() {
+        return soloMedia;
+    }
+
+    public void setSoloMedia(boolean soloMedia) {
+        this.soloMedia = soloMedia;
+    }
+
+    public boolean isActiva() {
+        return activa;
+    }
+
+    public void setActiva(boolean activa) {
+        this.activa = activa;
     }
 }
