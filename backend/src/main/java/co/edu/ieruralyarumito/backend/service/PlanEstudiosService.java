@@ -7,12 +7,14 @@ import co.edu.ieruralyarumito.backend.entity.AnioEscolar;
 import co.edu.ieruralyarumito.backend.entity.Asignatura;
 import co.edu.ieruralyarumito.backend.entity.Grado;
 import co.edu.ieruralyarumito.backend.entity.PlanEstudios;
+import co.edu.ieruralyarumito.backend.entity.Turno;
 import co.edu.ieruralyarumito.backend.exception.RecursoDuplicadoException;
 import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
 import co.edu.ieruralyarumito.backend.repository.AnioEscolarRepository;
 import co.edu.ieruralyarumito.backend.repository.AsignaturaRepository;
 import co.edu.ieruralyarumito.backend.repository.GradoRepository;
 import co.edu.ieruralyarumito.backend.repository.PlanEstudiosRepository;
+import co.edu.ieruralyarumito.backend.repository.TurnoRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -28,58 +30,87 @@ public class PlanEstudiosService {
     private final AnioEscolarRepository anioEscolarRepository;
     private final GradoRepository gradoRepository;
     private final AsignaturaRepository asignaturaRepository;
+    private final TurnoRepository turnoRepository;
 
-    // Inyección de dependencias mediante constructor.
     public PlanEstudiosService(
             PlanEstudiosRepository planEstudiosRepository,
             AnioEscolarRepository anioEscolarRepository,
             GradoRepository gradoRepository,
-            AsignaturaRepository asignaturaRepository) {
+            AsignaturaRepository asignaturaRepository,
+            TurnoRepository turnoRepository) {
 
-        this.planEstudiosRepository = planEstudiosRepository;
-        this.anioEscolarRepository = anioEscolarRepository;
-        this.gradoRepository = gradoRepository;
-        this.asignaturaRepository = asignaturaRepository;
+        this.planEstudiosRepository =
+                planEstudiosRepository;
+
+        this.anioEscolarRepository =
+                anioEscolarRepository;
+
+        this.gradoRepository =
+                gradoRepository;
+
+        this.asignaturaRepository =
+                asignaturaRepository;
+
+        this.turnoRepository =
+                turnoRepository;
     }
 
-    // Obtiene un año escolar existente.
-    private AnioEscolar obtenerAnioEscolar(UUID anioEscolarId) {
+    private AnioEscolar obtenerAnioEscolar(
+            UUID anioEscolarId) {
 
-        return anioEscolarRepository.findById(anioEscolarId)
+        return anioEscolarRepository
+                .findById(anioEscolarId)
                 .orElseThrow(() ->
                         new RecursoNoEncontradoException(
                                 "El año escolar no existe"));
     }
 
-    // Obtiene un grado existente.
-    private Grado obtenerGrado(UUID gradoId) {
+    private Grado obtenerGrado(
+            UUID gradoId) {
 
-        return gradoRepository.findById(gradoId)
+        return gradoRepository
+                .findById(gradoId)
                 .orElseThrow(() ->
                         new RecursoNoEncontradoException(
                                 "El grado no existe"));
     }
 
-    // Obtiene una asignatura existente.
-    private Asignatura obtenerAsignatura(UUID asignaturaId) {
+    private Asignatura obtenerAsignatura(
+            UUID asignaturaId) {
 
-        return asignaturaRepository.findById(asignaturaId)
+        return asignaturaRepository
+                .findById(asignaturaId)
                 .orElseThrow(() ->
                         new RecursoNoEncontradoException(
                                 "La asignatura no existe"));
     }
 
-    // Obtiene un registro existente del plan de estudios.
-    private PlanEstudios obtenerPlanEstudios(UUID id) {
+    // El turno es opcional durante la preparación.
+    // Si se informa, debe existir.
+    private Turno obtenerTurno(
+            UUID turnoId) {
 
-        return planEstudiosRepository.findById(id)
+        if (turnoId == null) {
+            return null;
+        }
+
+        return turnoRepository
+                .findById(turnoId)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "El turno no existe"));
+    }
+
+    private PlanEstudios obtenerPlanEstudios(
+            UUID id) {
+
+        return planEstudiosRepository
+                .findById(id)
                 .orElseThrow(() ->
                         new RecursoNoEncontradoException(
                                 "El registro del plan de estudios no existe"));
     }
 
-    // Evita registrar dos veces la misma asignatura
-    // para el mismo grado dentro del mismo año escolar.
     private void validarRegistroDuplicado(
             UUID anioEscolarId,
             UUID gradoId,
@@ -97,7 +128,6 @@ public class PlanEstudiosService {
         }
     }
 
-    // Valida duplicidad al actualizar excluyendo el registro actual.
     private void validarRegistroDuplicadoAlActualizar(
             UUID anioEscolarId,
             UUID gradoId,
@@ -117,8 +147,8 @@ public class PlanEstudiosService {
         }
     }
 
-    // Normaliza una observación opcional.
-    private String normalizarObservacion(String observacion) {
+    private String normalizarObservacion(
+            String observacion) {
 
         if (observacion == null) {
             return null;
@@ -132,52 +162,74 @@ public class PlanEstudiosService {
                 : observacionNormalizada;
     }
 
-    // Convierte la entidad PlanEstudios en el DTO devuelto por la API.
     private PlanEstudiosResponse convertirAResponse(
             PlanEstudios planEstudios) {
 
         PlanEstudiosResponse response =
                 new PlanEstudiosResponse();
 
-        response.setId(planEstudios.getId());
+        response.setId(
+                planEstudios.getId());
 
         response.setAnioEscolarId(
-                planEstudios.getAnioEscolar().getId());
+                planEstudios
+                        .getAnioEscolar()
+                        .getId());
 
         response.setAnioEscolar(
-                planEstudios.getAnioEscolar().getAnio());
+                planEstudios
+                        .getAnioEscolar()
+                        .getAnio());
 
         response.setGradoId(
-                planEstudios.getGrado().getId());
+                planEstudios
+                        .getGrado()
+                        .getId());
 
         response.setGradoNivel(
-                planEstudios.getGrado().getNivel());
+                planEstudios
+                        .getGrado()
+                        .getNivel());
 
         response.setGradoNombre(
-                planEstudios.getGrado().getNombre());
+                planEstudios
+                        .getGrado()
+                        .getNombre());
 
         response.setAsignaturaId(
-                planEstudios.getAsignatura().getId());
+                planEstudios
+                        .getAsignatura()
+                        .getId());
 
         response.setAsignaturaNombre(
-                planEstudios.getAsignatura().getNombre());
+                planEstudios
+                        .getAsignatura()
+                        .getNombre());
 
         response.setAsignaturaCodigo(
-                planEstudios.getAsignatura().getCodigo());
+                planEstudios
+                        .getAsignatura()
+                        .getCodigo());
 
         response.setHorasSemanales(
-                planEstudios.getHorasSemanales());
+                planEstudios
+                        .getHorasSemanales());
 
-        response.setTurnoId(
-                planEstudios.getTurnoId());
+        if (planEstudios.getTurno() != null) {
+
+            response.setTurnoId(
+                    planEstudios
+                            .getTurno()
+                            .getId());
+        }
 
         response.setObservacion(
-                planEstudios.getObservacion());
+                planEstudios
+                        .getObservacion());
 
         return response;
     }
 
-    // Registra una asignatura dentro del plan de estudios.
     @Transactional
     public PlanEstudiosResponse registrarPlanEstudios(
             CrearPlanEstudiosRequest request) {
@@ -199,32 +251,40 @@ public class PlanEstudiosService {
                 obtenerAsignatura(
                         request.getAsignaturaId());
 
+        Turno turno =
+                obtenerTurno(
+                        request.getTurnoId());
+
         PlanEstudios planEstudios =
                 new PlanEstudios();
 
-        planEstudios.setAnioEscolar(anioEscolar);
-        planEstudios.setGrado(grado);
-        planEstudios.setAsignatura(asignatura);
+        planEstudios.setAnioEscolar(
+                anioEscolar);
 
-        // Corresponde a la intensidad semanal que recibe el grado
-        // para esta asignatura; no a la carga laboral del docente.
+        planEstudios.setGrado(
+                grado);
+
+        planEstudios.setAsignatura(
+                asignatura);
+
         planEstudios.setHorasSemanales(
                 request.getHorasSemanales());
 
-        planEstudios.setTurnoId(
-                request.getTurnoId());
+        planEstudios.setTurno(
+                turno);
 
         planEstudios.setObservacion(
                 normalizarObservacion(
                         request.getObservacion()));
 
         PlanEstudios planGuardado =
-                planEstudiosRepository.save(planEstudios);
+                planEstudiosRepository
+                        .save(planEstudios);
 
-        return convertirAResponse(planGuardado);
+        return convertirAResponse(
+                planGuardado);
     }
 
-    // Consulta un registro del plan de estudios.
     @Transactional(readOnly = true)
     public PlanEstudiosResponse consultarPlanEstudios(
             UUID id) {
@@ -233,16 +293,15 @@ public class PlanEstudiosService {
                 obtenerPlanEstudios(id));
     }
 
-    // Lista los registros del plan de estudios con paginación.
     @Transactional(readOnly = true)
     public Page<PlanEstudiosResponse> listarPlanEstudios(
             Pageable pageable) {
 
-        return planEstudiosRepository.findAll(pageable)
+        return planEstudiosRepository
+                .findAll(pageable)
                 .map(this::convertirAResponse);
     }
 
-    // Actualiza un registro existente del plan de estudios.
     @Transactional
     public PlanEstudiosResponse actualizarPlanEstudios(
             UUID id,
@@ -269,20 +328,34 @@ public class PlanEstudiosService {
                 obtenerAsignatura(
                         request.getAsignaturaId());
 
-        planEstudios.setAnioEscolar(anioEscolar);
-        planEstudios.setGrado(grado);
-        planEstudios.setAsignatura(asignatura);
+        Turno turno =
+                obtenerTurno(
+                        request.getTurnoId());
+
+        planEstudios.setAnioEscolar(
+                anioEscolar);
+
+        planEstudios.setGrado(
+                grado);
+
+        planEstudios.setAsignatura(
+                asignatura);
+
         planEstudios.setHorasSemanales(
                 request.getHorasSemanales());
-        planEstudios.setTurnoId(
-                request.getTurnoId());
+
+        planEstudios.setTurno(
+                turno);
+
         planEstudios.setObservacion(
                 normalizarObservacion(
                         request.getObservacion()));
 
         PlanEstudios planActualizado =
-                planEstudiosRepository.save(planEstudios);
+                planEstudiosRepository
+                        .save(planEstudios);
 
-        return convertirAResponse(planActualizado);
+        return convertirAResponse(
+                planActualizado);
     }
 }

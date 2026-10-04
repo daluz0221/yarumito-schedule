@@ -1,11 +1,11 @@
 package co.edu.ieruralyarumito.backend.exception;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.http.HttpStatus; // Códigos de estado HTTP
-import org.springframework.http.ResponseEntity; // Permite construir la respuesta HTTP
-import org.springframework.web.bind.annotation.ExceptionHandler; // Asocia una excepción con un método
-import java.util.Map; // Permite devolver una respuesta sencilla en formato clave-valor
 
+import java.util.Map;
 
 // Centraliza el manejo de excepciones generadas por la API.
 @RestControllerAdvice
@@ -16,10 +16,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> manejarRecursoNoEncontrado(
             RecursoNoEncontradoException exception) {
 
-        // Devuelve el mensaje de error con código HTTP 404.
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
-                .body(Map.of("mensaje", exception.getMessage()));
+                .body(Map.of(
+                        "mensaje",
+                        exception.getMessage()));
     }
 
     // Maneja los errores cuando se intenta registrar un recurso duplicado.
@@ -27,32 +28,37 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> manejarRecursoDuplicado(
             RecursoDuplicadoException exception) {
 
-        // Devuelve el mensaje de error con código HTTP 409.
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(Map.of("mensaje", exception.getMessage()));
+                .body(Map.of(
+                        "mensaje",
+                        exception.getMessage()));
     }
 
-    // Maneja los errores cuando se intenta realizar una transición de estado no permitida.
+    // Maneja los errores cuando se intenta realizar
+    // una transición de estado no permitida.
     @ExceptionHandler(TransicionEstadoNoPermitidaException.class)
     public ResponseEntity<Map<String, String>> manejarTransicionEstadoNoPermitida(
             TransicionEstadoNoPermitidaException exception) {
 
-        // Devuelve el mensaje de error con código HTTP 409.
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(Map.of("mensaje", exception.getMessage()));
+                .body(Map.of(
+                        "mensaje",
+                        exception.getMessage()));
     }
 
-    // Maneja los errores cuando un docente tiene responsabilidades activas incompatibles.
+    // Maneja los errores cuando un docente tiene
+    // responsabilidades activas incompatibles.
     @ExceptionHandler(ResponsabilidadActivaException.class)
     public ResponseEntity<Map<String, String>> manejarResponsabilidadActiva(
             ResponsabilidadActivaException exception) {
 
-        // Devuelve el mensaje de error con código HTTP 409.
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(Map.of("mensaje", exception.getMessage()));
+                .body(Map.of(
+                        "mensaje",
+                        exception.getMessage()));
     }
 
     // Maneja los errores cuando la fecha de vigencia no es válida.
@@ -60,21 +66,49 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> manejarFechaVigenciaInvalida(
             FechaVigenciaInvalidaException exception) {
 
-        // Devuelve el mensaje de error con código HTTP 400.
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("mensaje", exception.getMessage()));
+                .body(Map.of(
+                        "mensaje",
+                        exception.getMessage()));
     }
 
-    // Maneja los errores cuando una relación académica no es válida.
+    // Maneja los errores cuando una relación académica
+    // entre entidades no es válida.
     @ExceptionHandler(RelacionAcademicaInvalidaException.class)
     public ResponseEntity<Map<String, String>> manejarRelacionAcademicaInvalida(
             RelacionAcademicaInvalidaException exception) {
 
-        // Devuelve el mensaje de error con código HTTP 400.
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("mensaje", exception.getMessage()));
+                .body(Map.of(
+                        "mensaje",
+                        exception.getMessage()));
+    }
+
+    // Maneja operaciones de Aula que entran en conflicto
+    // con sus reglas de actualización, historial o eliminación.
+    @ExceptionHandler(CambioAulaInvalidoException.class)
+    public ResponseEntity<Map<String, String>> manejarCambioAulaInvalido(
+            CambioAulaInvalidoException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                        "mensaje",
+                        exception.getMessage()));
+    }
+
+    // Maneja validaciones funcionales inválidas
+    // detectadas por los servicios.
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> manejarArgumentoInvalido(
+            IllegalArgumentException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(Map.of(
+                        "mensaje",
+                        exception.getMessage()));
     }
 }
-
