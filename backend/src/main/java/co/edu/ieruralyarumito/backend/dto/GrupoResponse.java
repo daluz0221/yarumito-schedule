@@ -23,6 +23,11 @@ public class GrupoResponse {
 
     private Integer cantidadEstudiantes;
     private UUID aulaFijaId;
+
+    // Advertencia únicamente informativa.
+    // Nunca bloquea la asignación del aula.
+    private String advertenciaLogistica;
+
     private boolean activo;
 
     public UUID getId() {
@@ -127,6 +132,17 @@ public class GrupoResponse {
 
     public void setAulaFijaId(UUID aulaFijaId) {
         this.aulaFijaId = aulaFijaId;
+    }
+
+    public String getAdvertenciaLogistica() {
+        return advertenciaLogistica;
+    }
+
+    public void setAdvertenciaLogistica(
+            String advertenciaLogistica) {
+
+        this.advertenciaLogistica =
+                advertenciaLogistica;
     }
 
     public boolean isActivo() {

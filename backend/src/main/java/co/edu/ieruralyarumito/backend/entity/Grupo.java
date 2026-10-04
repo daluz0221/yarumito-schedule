@@ -64,9 +64,10 @@ public class Grupo {
     private Integer cantidadEstudiantes;
 
     // Aula habitual del grupo.
-    // Se conserva temporalmente como UUID hasta implementar la entidad Aula.
-    @Column(name = "aula_fija_id")
-    private UUID aulaFijaId;
+    // La relación es opcional: un grupo puede existir sin aula fija.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "aula_fija_id")
+    private Aula aulaFija;
 
     // Indica si el grupo se encuentra activo.
     @Column(nullable = false)
@@ -124,12 +125,12 @@ public class Grupo {
         this.cantidadEstudiantes = cantidadEstudiantes;
     }
 
-    public UUID getAulaFijaId() {
-        return aulaFijaId;
+    public Aula getAulaFija() {
+        return aulaFija;
     }
 
-    public void setAulaFijaId(UUID aulaFijaId) {
-        this.aulaFijaId = aulaFijaId;
+    public void setAulaFija(Aula aulaFija) {
+        this.aulaFija = aulaFija;
     }
 
     public boolean isActivo() {

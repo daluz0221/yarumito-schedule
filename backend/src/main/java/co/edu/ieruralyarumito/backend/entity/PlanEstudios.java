@@ -32,36 +32,33 @@ import java.util.UUID;
 )
 public class PlanEstudios {
 
-    // Identificador único del registro del plan de estudios.
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // Año escolar al que pertenece la planificación.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "anio_escolar_id")
     private AnioEscolar anioEscolar;
 
-    // Grado al que aplica la asignatura.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "grado_id")
     private Grado grado;
 
-    // Asignatura incluida en el plan.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "asignatura_id")
     private Asignatura asignatura;
 
-    // Intensidad semanal esperada de la asignatura.
-    @Column(name = "horas_semanales", nullable = false)
+    @Column(
+            name = "horas_semanales",
+            nullable = false)
     private int horasSemanales;
 
-    // Turno esperado para la asignatura.
-    // Se conserva temporalmente como UUID hasta implementar Turno.
-    @Column(name = "turno_id")
-    private UUID turnoId;
+    // El turno es opcional durante la preparación del plan.
+    // Si se asigna, debe corresponder a una entidad Turno existente.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "turno_id")
+    private Turno turno;
 
-    // Observaciones adicionales del plan de estudios.
     @Column(columnDefinition = "TEXT")
     private String observacion;
 
@@ -73,7 +70,9 @@ public class PlanEstudios {
         return anioEscolar;
     }
 
-    public void setAnioEscolar(AnioEscolar anioEscolar) {
+    public void setAnioEscolar(
+            AnioEscolar anioEscolar) {
+
         this.anioEscolar = anioEscolar;
     }
 
@@ -81,7 +80,9 @@ public class PlanEstudios {
         return grado;
     }
 
-    public void setGrado(Grado grado) {
+    public void setGrado(
+            Grado grado) {
+
         this.grado = grado;
     }
 
@@ -89,7 +90,9 @@ public class PlanEstudios {
         return asignatura;
     }
 
-    public void setAsignatura(Asignatura asignatura) {
+    public void setAsignatura(
+            Asignatura asignatura) {
+
         this.asignatura = asignatura;
     }
 
@@ -97,23 +100,29 @@ public class PlanEstudios {
         return horasSemanales;
     }
 
-    public void setHorasSemanales(int horasSemanales) {
+    public void setHorasSemanales(
+            int horasSemanales) {
+
         this.horasSemanales = horasSemanales;
     }
 
-    public UUID getTurnoId() {
-        return turnoId;
+    public Turno getTurno() {
+        return turno;
     }
 
-    public void setTurnoId(UUID turnoId) {
-        this.turnoId = turnoId;
+    public void setTurno(
+            Turno turno) {
+
+        this.turno = turno;
     }
 
     public String getObservacion() {
         return observacion;
     }
 
-    public void setObservacion(String observacion) {
+    public void setObservacion(
+            String observacion) {
+
         this.observacion = observacion;
     }
 }
