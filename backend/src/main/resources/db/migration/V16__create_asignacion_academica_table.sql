@@ -1,9 +1,9 @@
 create table asignacionyhorario.asignacionAcademica(
 	id uuid primary key default gen_random_uuid(),
-	anio_escolar_id uuid unique,
+	anio_escolar_id uuid,
 	docente_id uuid,
-	grupo_id uuid unique,
-	asignatura_id uuid unique,
+	grupo_id uuid,
+	asignatura_id uuid,
 	horas_semanales int not null,
 	horas_extras int not null default 0,
 	estado VARCHAR(20) not null check (estado in ('BORRADOR', 'CONFIRMADA')),

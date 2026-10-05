@@ -3,7 +3,7 @@ create table accesopersonas.idoneidad(
 	docente_id uuid,
 	area_id uuid,
 	asignatura_id uuid,
-	titulo_id uuid,
+	titulo_soporte_id uuid,
 	tipo varchar(20) not null check (tipo in ('PRINCIPAL', 'AUTORIZADA', 'EXCEPCIONAL')),
 	justificacion text,
 	vigente_desde date not null,

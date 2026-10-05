@@ -81,12 +81,6 @@
             <optional>true</optional>
         </dependency>
 
-        <!--Driver de postgresql-->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
-        </dependency>
 
         <!--Para manejo de getter y setters-->
         <dependency>
@@ -95,9 +89,23 @@
             <optional>true</optional>
         </dependency>
 
+
+        <!--Dependencias para migraciones de la base de datos-->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!--Driver de postgresql-->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
         </dependency>
 
         <dependency>
