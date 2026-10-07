@@ -12,6 +12,6 @@ create table accesopersonas.idoneidad(
 	foreign key (docente_id) references accesopersonas.docente (id),
 	foreign key (area_id) references catalogoacademico.area (id),
 	foreign key (asignatura_id) references catalogoacademico.asignatura (id),
-	foreign key (titulo_id) references accesopersonas.titulo_profesional (id),
+	foreign key (titulo_soporte_id) references accesopersonas.titulo_profesional (id),
 	foreign key (aprobada_por) references accesopersonas.usuario (id)
 );
