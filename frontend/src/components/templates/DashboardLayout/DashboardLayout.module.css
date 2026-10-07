@@ -1,0 +1,79 @@
+.shell {
+  display: flex;
+  min-height: 100svh;
+  background: var(--color-bg-page);
+}
+
+.sidebarSlot {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  width: var(--sidebar-width);
+  height: 100svh;
+  flex-shrink: 0;
+}
+
+.sidebarSlot > aside {
+  height: 100%;
+}
+
+.sidebarClose {
+  display: none;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 16px 32px 40px;
+}
+
+.backdrop {
+  display: none;
+}
+
+@media (max-width: 959px) {
+  .sidebarSlot {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: none;
+  }
+
+  .sidebarSlot.open {
+    transform: translateX(0);
+    box-shadow: 8px 0 24px rgb(0 0 0 / 12%);
+  }
+
+  .sidebarClose {
+    display: flex;
+    justify-content: flex-end;
+    position: absolute;
+    top: 10px;
+    right: 8px;
+    z-index: 1;
+  }
+
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    border: none;
+    background: rgb(17 17 17 / 35%);
+  }
+
+  .body {
+    gap: 22px;
+    padding: 12px 16px 32px;
+  }
+}

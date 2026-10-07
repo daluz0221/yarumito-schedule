@@ -57,3 +57,10 @@ Thumbs.db
 
 *.tmp
 *.temp
+
+# =========================
+alineacion-registro-docentes.md
+autenticacion-login.md
+alineacion-edicion-docentes.md
+alineacion-listado-docentes.md
+alineacion-perfil-docente.md

@@ -1,0 +1,74 @@
+.text {
+  margin: 0;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: var(--color-text);
+}
+
+.subtitle {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.display {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+  color: var(--color-text);
+  overflow-wrap: break-word;
+}
+
+.pageTitle {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--color-text);
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.body {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.55;
+  color: #6f6f6f;
+}
+
+.caption {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.stat {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--color-text);
+}
+
+.nav {
+  font-size: 14px;
+  font-weight: 500;
+  color: inherit;
+}
+
+.brand {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+}

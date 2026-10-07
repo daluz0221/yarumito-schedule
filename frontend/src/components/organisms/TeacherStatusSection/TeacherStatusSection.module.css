@@ -1,0 +1,13 @@
+.hint {
+  display: flex;
+  align-items: flex-end;
+  min-height: 68px;
+  padding-bottom: 6px;
+}
+
+@media (max-width: 800px) {
+  .hint {
+    min-height: 0;
+    padding-bottom: 0;
+  }
+}

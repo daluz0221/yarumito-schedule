@@ -1,0 +1,10 @@
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 6px 8px;
+}
+
+.campus {
+  margin-top: 2px;
+}

@@ -1,0 +1,1 @@
+export { EditTeacherPage } from './EditTeacherPage'
