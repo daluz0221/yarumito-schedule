@@ -1,6 +1,7 @@
 export { api, apiRequest, ApiError } from './client'
 export { getAuthenticatedUser, login, logout, verifySession } from './auth'
-export { listarAreas, toAreaSelectOptions } from './areas'
+export { listarAreas, listarCatalogoAreas, toAreaSelectOptions } from './areas'
+export { listarAsignaturas } from './asignaturas'
 export {
   actualizarDocente,
   consultarDocente,

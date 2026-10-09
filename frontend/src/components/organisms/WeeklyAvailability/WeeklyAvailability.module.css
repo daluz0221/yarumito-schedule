@@ -1,0 +1,150 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.action {
+  align-self: flex-start;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: #5a5a5a;
+  font-size: 13px;
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 108px repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  align-items: center;
+}
+
+.head {
+  color: #6f6f6f;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.head:first-child {
+  text-align: left;
+}
+
+.row {
+  display: contents;
+}
+
+.time {
+  color: #3a3a3a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.break {
+  grid-column: 1 / -1;
+  margin: 4px 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 8px;
+  border: none;
+  border-radius: 8px;
+  background: #e6e6e6;
+  color: #3f3f3f;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.day {
+  display: none;
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.DISPONIBLE {
+  background: #e4e4e4;
+  color: #3f3f3f;
+}
+
+.NO_DISPONIBLE {
+  background: #fde8ea;
+  color: #d15b6a;
+}
+
+.PREFERENCIA {
+  background: #fff4cc;
+  color: #b0891e;
+}
+
+@media (max-width: 980px) {
+  .grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .head {
+    display: none;
+  }
+
+  .row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 10px;
+  }
+
+  .cell {
+    justify-content: flex-start;
+    padding-inline: 12px;
+  }
+
+  .day {
+    display: inline;
+    min-width: 84px;
+    color: #6f6f6f;
+    font-weight: 600;
+  }
+}

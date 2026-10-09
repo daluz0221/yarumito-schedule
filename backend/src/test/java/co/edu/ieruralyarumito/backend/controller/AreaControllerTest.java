@@ -40,7 +40,7 @@ public class AreaControllerTest {
         response.setNombre("Matemáticas");
         response.setCodigo("MAT");
 
-        when(areaService.listarAreas()).thenReturn(List.of(response));
+        when(areaService.listarAreas(true)).thenReturn(List.of(response));
 
         mockMvc.perform(get("/api/v1/areas"))
                 .andExpect(status().isOk())

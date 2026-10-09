@@ -1,0 +1,1 @@
+export { RemoveScheduleClassModal } from './RemoveScheduleClassModal'

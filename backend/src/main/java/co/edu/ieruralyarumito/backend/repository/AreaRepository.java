@@ -13,4 +13,6 @@ public interface AreaRepository extends JpaRepository<Area, UUID> {
     Optional<Area> findByCodigo(String codigo);
 
     List<Area> findByActivaTrueOrderByNombreAsc();
+
+    List<Area> findAllByOrderByNombreAsc();
 }

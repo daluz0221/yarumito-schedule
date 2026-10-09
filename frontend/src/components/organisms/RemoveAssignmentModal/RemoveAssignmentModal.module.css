@@ -1,0 +1,12 @@
+.copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.copy p {
+  margin: 0;
+  color: #3a3a3a;
+  font-size: 14px;
+  line-height: 1.5;
+}

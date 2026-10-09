@@ -1,0 +1,1 @@
+export { RestrictionsWorkspace } from './RestrictionsWorkspace'

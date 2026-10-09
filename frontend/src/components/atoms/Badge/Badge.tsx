@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import styles from './Badge.module.css'
 
-export type BadgeTone = 'neutral' | 'warning' | 'outline'
+export type BadgeTone = 'neutral' | 'warning' | 'outline' | 'danger' | 'success'
 
 export type BadgeProps = {
   children: ReactNode

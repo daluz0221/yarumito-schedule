@@ -4,3 +4,15 @@
   gap: 6px;
   min-height: 88px;
 }
+
+.card .danger {
+  color: #c23b3b;
+}
+
+.card .success {
+  color: var(--color-success);
+}
+
+.card .warning {
+  color: #c47d12;
+}

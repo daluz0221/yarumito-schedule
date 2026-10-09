@@ -18,9 +18,12 @@ public class AreaService {
     }
 
     @Transactional(readOnly = true)
-    public List<AreaResponse> listarAreas() {
-        return areaRepository.findByActivaTrueOrderByNombreAsc()
-                .stream()
+    public List<AreaResponse> listarAreas(boolean soloActivas) {
+        List<Area> areas = soloActivas
+                ? areaRepository.findByActivaTrueOrderByNombreAsc()
+                : areaRepository.findAllByOrderByNombreAsc();
+
+        return areas.stream()
                 .map(this::convertirAResponse)
                 .toList();
     }
@@ -30,6 +33,9 @@ public class AreaService {
         response.setId(area.getId());
         response.setNombre(area.getNombre());
         response.setCodigo(area.getCodigo());
+        response.setObligatoria(area.isObligatoria());
+        response.setSoloMedia(area.isSoloMedia());
+        response.setActiva(area.isActiva());
         return response;
     }
 }

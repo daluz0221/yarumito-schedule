@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 // Expone el catálogo de áreas para selectores del frontend.
@@ -20,7 +21,8 @@ public class AreaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<AreaResponse>> listarAreas() {
-        return ResponseEntity.ok(areaService.listarAreas());
+    public ResponseEntity<List<AreaResponse>> listarAreas(
+            @RequestParam(defaultValue = "true") boolean soloActivas) {
+        return ResponseEntity.ok(areaService.listarAreas(soloActivas));
     }
 }

@@ -1,0 +1,47 @@
+.row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 88px;
+}
+
+.card .word {
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.card .success {
+  color: var(--color-success);
+}
+
+.card .warning {
+  color: #c47d12;
+}
+
+.card .danger {
+  color: #c23b3b;
+}
+
+@media (max-width: 1100px) {
+  .row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}

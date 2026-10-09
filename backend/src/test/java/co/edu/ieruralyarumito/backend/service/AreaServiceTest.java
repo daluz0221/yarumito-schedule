@@ -32,15 +32,21 @@ public class AreaServiceTest {
         doReturn(areaId).when(area).getId();
         area.setNombre("Matemáticas");
         area.setCodigo("MAT");
+        area.setObligatoria(true);
+        area.setSoloMedia(false);
+        area.setActiva(true);
 
         when(areaRepository.findByActivaTrueOrderByNombreAsc())
                 .thenReturn(List.of(area));
 
-        List<AreaResponse> response = areaService.listarAreas();
+        List<AreaResponse> response = areaService.listarAreas(true);
 
         assertEquals(1, response.size());
         assertEquals(areaId, response.get(0).getId());
         assertEquals("Matemáticas", response.get(0).getNombre());
         assertEquals("MAT", response.get(0).getCodigo());
+        assertEquals(true, response.get(0).isObligatoria());
+        assertEquals(false, response.get(0).isSoloMedia());
+        assertEquals(true, response.get(0).isActiva());
     }
 }

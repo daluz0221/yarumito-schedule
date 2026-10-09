@@ -19,6 +19,16 @@
   background: #f7ead2;
 }
 
+.danger {
+  color: #b42318;
+  background: #fde8e8;
+}
+
+.success {
+  color: #1f6b45;
+  background: #e4f6ec;
+}
+
 .outline {
   height: 28px;
   padding: 0 12px;

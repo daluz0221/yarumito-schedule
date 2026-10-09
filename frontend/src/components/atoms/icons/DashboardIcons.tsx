@@ -158,6 +158,15 @@ export function PlusIcon() {
   )
 }
 
+export function PublishIcon() {
+  return (
+    <IconFrame>
+      <path d="M12 15.5V5.5M8.2 9.2 12 5.5l3.8 3.7" {...stroke} />
+      <path d="M5 15v3.2A1.3 1.3 0 0 0 6.3 19.5h11.4a1.3 1.3 0 0 0 1.3-1.3V15" {...stroke} />
+    </IconFrame>
+  )
+}
+
 export function LayersIcon() {
   return (
     <IconFrame>
