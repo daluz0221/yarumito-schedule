@@ -12,9 +12,14 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Table;
 
 
-@Entity 
+@Entity
+@Table (
+    name = "horario",
+    schema = "asignacionyhorario"
+)
 public class Horario {
     @Id 
     @GeneratedValue (strategy = GenerationType.UUID)
