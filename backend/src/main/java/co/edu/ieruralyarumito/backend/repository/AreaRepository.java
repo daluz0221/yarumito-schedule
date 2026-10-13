@@ -1,18 +1,19 @@
 package co.edu.ieruralyarumito.backend.repository;
 
 // Importa la entidad Area y las herramientas necesarias de Spring Data JPA.
-import co.edu.ieruralyarumito.backend.entity.Area; // Entidad Area
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID; // Tipo del identificador
-import org.springframework.data.jpa.repository.JpaRepository; // Repositorio base de Spring Data JPA
+import co.edu.ieruralyarumito.backend.entity.Area;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-// Permite consultar y verificar registros de Area en la base de datos.
-public interface AreaRepository extends JpaRepository<Area, UUID> {
+import java.util.UUID;
 
-    Optional<Area> findByCodigo(String codigo);
+// Permite realizar operaciones de persistencia y consultas dinámicas sobre Area.
+public interface AreaRepository extends JpaRepository<Area, UUID>,
+        JpaSpecificationExecutor<Area> {
 
-    List<Area> findByActivaTrueOrderByNombreAsc();
+    // Verifica si ya existe un área con el código indicado.
+    boolean existsByCodigo(String codigo);
 
-    List<Area> findAllByOrderByNombreAsc();
+    // Verifica duplicidad de código excluyendo el área que se está actualizando.
+    boolean existsByCodigoAndIdNot(String codigo, UUID id);
 }

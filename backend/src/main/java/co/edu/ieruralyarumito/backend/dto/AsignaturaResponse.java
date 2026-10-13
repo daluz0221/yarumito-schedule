@@ -1,8 +1,9 @@
 package co.edu.ieruralyarumito.backend.dto;
 
+import co.edu.ieruralyarumito.backend.entity.enums.TipoAulaRequerida;
+
 import java.util.UUID;
 
-// Datos públicos de una asignatura para el catálogo del área.
 public class AsignaturaResponse {
 
     private UUID id;
@@ -14,7 +15,7 @@ public class AsignaturaResponse {
     private boolean exigeIdoneidadEstricta;
     private boolean esMediaTecnica;
     private boolean requiereDocenteExclusivo;
-    private String tipoAulaRequerida;
+    private TipoAulaRequerida tipoAulaRequerida;
     private int maxClasesConsecutivas;
     private boolean activa;
 
@@ -90,11 +91,11 @@ public class AsignaturaResponse {
         this.requiereDocenteExclusivo = requiereDocenteExclusivo;
     }
 
-    public String getTipoAulaRequerida() {
+    public TipoAulaRequerida getTipoAulaRequerida() {
         return tipoAulaRequerida;
     }
 
-    public void setTipoAulaRequerida(String tipoAulaRequerida) {
+    public void setTipoAulaRequerida(TipoAulaRequerida tipoAulaRequerida) {
         this.tipoAulaRequerida = tipoAulaRequerida;
     }
 

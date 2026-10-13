@@ -2,7 +2,7 @@ package co.edu.ieruralyarumito.backend.dto;
 
 import java.util.UUID;
 
-// Datos públicos de un área para catálogos y selectores.
+// Datos que la API devuelve al consultar un área.
 public class AreaResponse {
 
     private UUID id;
