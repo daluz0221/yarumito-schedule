@@ -1,0 +1,12 @@
+.gate {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background: var(--color-bg-page);
+}
+
+.copy {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 15px;
+}

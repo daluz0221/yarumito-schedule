@@ -1,0 +1,80 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgb(17 17 17 / 40%);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(520px, 100%);
+  max-height: min(90vh, 840px);
+  overflow: auto;
+  padding: 28px 28px 24px;
+  border-radius: 16px;
+  background: var(--color-surface);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 16%);
+}
+
+.sm {
+  width: min(380px, 100%);
+  max-height: none;
+  padding: 20px 20px 16px;
+  border-radius: 14px;
+}
+
+.sm .header {
+  margin-bottom: 8px;
+}
+
+.sm .title {
+  font-size: 18px;
+}
+
+.sm .footer {
+  margin-top: 18px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 22px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+@media (max-width: 640px) {
+  .dialog {
+    padding: 20px 16px 16px;
+    border-radius: 14px;
+  }
+
+  .footer {
+    flex-direction: column-reverse;
+  }
+
+  .footer button {
+    width: 100%;
+  }
+}

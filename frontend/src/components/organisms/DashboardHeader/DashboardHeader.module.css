@@ -1,0 +1,29 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 32px 8px;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+}
+
+.menuButton {
+  display: none;
+}
+
+@media (max-width: 959px) {
+  .header {
+    padding: 16px 16px 4px;
+  }
+
+  .menuButton {
+    display: inline-flex;
+  }
+}
