@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import {
   actualizarDocente,
   ApiError,
+  cambiarEstadoDocente,
   listarAreas,
   registrarDocente,
   toAreaSelectOptions,
 } from '../../../api'
 import {
   emptyCrearDocenteForm,
-  PENDING_BACKEND_LABEL,
+  hintCambioEstado,
+  opcionesEstadoDocente,
   sanitizeDocumentNumber,
   toActualizarDocenteRequest,
   toCrearDocenteRequest,
@@ -17,6 +19,7 @@ import {
   validateCrearDocenteForm,
   type CrearDocenteForm,
   type CrearDocenteFormErrors,
+  type TeacherStatus,
 } from '../../../content/teachers'
 import type { SelectOption } from '../../atoms/Select'
 import { Button } from '../../atoms/Button'
@@ -33,6 +36,40 @@ const placeholderAreaOptions: SelectOption[] = [
 
 function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === 'AbortError'
+}
+
+const MENSAJE_GENERICO = 'No se pudo completar la solicitud'
+
+function mensajeErrorEstado(cause: unknown) {
+  if (!(cause instanceof ApiError)) {
+    return 'No se pudo cambiar el estado del docente. Inténtalo de nuevo.'
+  }
+
+  if (cause.status === 409) {
+    return cause.message === MENSAJE_GENERICO
+      ? 'No se permite ese cambio de estado.'
+      : cause.message
+  }
+
+  if (cause.status === 404) {
+    return cause.message === MENSAJE_GENERICO
+      ? 'El docente no existe.'
+      : cause.message
+  }
+
+  if (cause.status === 400) {
+    return 'El estado indicado no es válido.'
+  }
+
+  return cause.message
+}
+
+function mensajeErrorActualizacion(cause: unknown) {
+  if (cause instanceof ApiError) {
+    return cause.message
+  }
+
+  return 'No se pudo actualizar el docente. Inténtalo de nuevo.'
 }
 
 export type TeacherFormMode = 'create' | 'edit'
@@ -61,6 +98,9 @@ export function RegisterTeacherForm({
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<CrearDocenteFormErrors>({})
   const [submitting, setSubmitting] = useState(false)
+  const [estadoGuardado, setEstadoGuardado] = useState<TeacherStatus>(
+    initialValues?.estado ?? 'ACTIVO',
+  )
 
   useEffect(() => {
     const controller = new AbortController()
@@ -133,6 +173,8 @@ export function RegisterTeacherForm({
 
     setError('')
 
+    const estadoCambio = isEdit && values.estado !== estadoGuardado
+
     try {
       if (isEdit) {
         if (!teacherId) {
@@ -142,7 +184,28 @@ export function RegisterTeacherForm({
 
         const payload = toActualizarDocenteRequest(values)
         setSubmitting(true)
-        await actualizarDocente(teacherId, payload)
+
+        if (estadoCambio) {
+          try {
+            await cambiarEstadoDocente(teacherId, values.estado)
+            setEstadoGuardado(values.estado)
+          } catch (cause) {
+            setError(mensajeErrorEstado(cause))
+            return
+          }
+        }
+
+        try {
+          await actualizarDocente(teacherId, payload)
+        } catch (cause) {
+          const detalle = mensajeErrorActualizacion(cause)
+          setError(
+            estadoCambio
+              ? `El estado se actualizó, pero no se pudieron guardar los demás datos. ${detalle}`
+              : detalle,
+          )
+          return
+        }
       } else {
         const payload = toCrearDocenteRequest(values)
         setSubmitting(true)
@@ -154,9 +217,7 @@ export function RegisterTeacherForm({
       setError(
         cause instanceof ApiError
           ? cause.message
-          : isEdit
-            ? 'No se pudo actualizar el docente. Inténtalo de nuevo.'
-            : 'No se pudo registrar el docente. Inténtalo de nuevo.',
+          : 'No se pudo registrar el docente. Inténtalo de nuevo.',
       )
     } finally {
       setSubmitting(false)
@@ -185,8 +246,10 @@ export function RegisterTeacherForm({
         />
         <TeacherStatusSection
           value={values.estado}
-          hint={isEdit ? PENDING_BACKEND_LABEL : undefined}
-          disabled={isEdit}
+          options={isEdit ? opcionesEstadoDocente(estadoGuardado) : undefined}
+          hint={isEdit ? hintCambioEstado(estadoGuardado) : undefined}
+          error={fieldErrors.estado}
+          disabled={submitting || (isEdit && estadoGuardado === 'RETIRADO')}
           onChange={(estado) => updateField('estado', estado)}
         />
 

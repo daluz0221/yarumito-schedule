@@ -25,6 +25,7 @@ export type GradeSubjectsSectionProps = {
   query: string
   rows: StudyPlanEntry[]
   planEntries: StudyPlanEntry[]
+  emptyPlanMessage?: string
   onAreaChange: (area: string) => void
   onQueryChange: (query: string) => void
 }
@@ -37,6 +38,7 @@ export function GradeSubjectsSection({
   query,
   rows,
   planEntries,
+  emptyPlanMessage = 'Este grado todavía no tiene asignaturas en el plan.',
   onAreaChange,
   onQueryChange,
 }: GradeSubjectsSectionProps) {
@@ -86,7 +88,7 @@ export function GradeSubjectsSection({
           emptyMessage={
             query || area
               ? 'No se encontraron asignaturas con esos filtros.'
-              : 'Este grado todavía no tiene asignaturas en el plan.'
+              : emptyPlanMessage
           }
           onEdit={(entry) => setDialog({ name: 'edit', entry })}
           onRemove={(entry) => setDialog({ name: 'remove', entry })}

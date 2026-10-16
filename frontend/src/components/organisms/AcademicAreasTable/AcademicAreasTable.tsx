@@ -73,6 +73,7 @@ export function AcademicAreasTable({
                   <td>{renderFlag(labelEstadoArea(area.activa), area.activa === true)}</td>
                   <td>
                     <AreaActions
+                      activa={area.activa}
                       onEdit={() => onEdit(area)}
                       onDeactivate={() => onDeactivate(area)}
                     />
@@ -112,6 +113,7 @@ export function AcademicAreasTable({
               </button>
               <div className={styles.mobileActions}>
                 <AreaActions
+                  activa={area.activa}
                   onEdit={() => onEdit(area)}
                   onDeactivate={() => onDeactivate(area)}
                 />
@@ -136,16 +138,20 @@ function AreaName({ nombre, selected }: { nombre: string; selected: boolean }) {
 }
 
 function AreaActions({
+  activa,
   onEdit,
   onDeactivate,
 }: {
+  activa?: boolean
   onEdit: () => void
   onDeactivate: () => void
 }) {
   return (
     <span className={styles.actions}>
       <TextLink onClick={onEdit}>Editar</TextLink>
-      <TextLink onClick={onDeactivate}>Inactivar</TextLink>
+      <TextLink onClick={onDeactivate}>
+        {activa === false ? 'Activar' : 'Inactivar'}
+      </TextLink>
     </span>
   )
 }

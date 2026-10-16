@@ -24,6 +24,13 @@
   font-size: 14px;
 }
 
+.alert {
+  margin: 0;
+  color: #c0392b;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
 @media (max-width: 1100px) {
   .board {
     grid-template-columns: 1fr;

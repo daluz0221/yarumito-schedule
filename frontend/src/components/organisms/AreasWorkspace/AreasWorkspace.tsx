@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ApiError, listarAsignaturas, listarCatalogoAreas } from '../../../api'
 import type { AreaResponse } from '../../../api/areas'
 import type { AsignaturaResponse } from '../../../api/asignaturas'
@@ -29,6 +29,8 @@ export function AreasWorkspace() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [subjectLoad, setSubjectLoad] = useState<SubjectLoad | null>(null)
+  const [subjectsNonce, setSubjectsNonce] = useState(0)
+  const subjectLoadGeneration = useRef(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -69,28 +71,118 @@ export function AreasWorkspace() {
 
     const controller = new AbortController()
     const areaId = selectedId
+    const generation = subjectLoadGeneration.current + 1
+    subjectLoadGeneration.current = generation
 
     listarAsignaturas(areaId, controller.signal)
       .then((subjects) => {
-        setSubjectLoad({ areaId, subjects, error: '' })
-      })
-      .catch((cause) => {
-        if (isAbortError(cause)) {
+        if (generation !== subjectLoadGeneration.current) {
           return
         }
 
-        setSubjectLoad({
-          areaId,
-          subjects: [],
-          error:
-            cause instanceof ApiError
-              ? cause.message
-              : 'No se pudo cargar las asignaturas.',
+        setSubjectLoad({ areaId, subjects, error: '' })
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || generation !== subjectLoadGeneration.current) {
+          return
+        }
+
+        const message =
+          cause instanceof ApiError
+            ? cause.message
+            : 'No se pudo cargar las asignaturas.'
+
+        setSubjectLoad((current) => {
+          const kept = current?.areaId === areaId ? current.subjects : []
+
+          return {
+            areaId,
+            subjects: kept,
+            error: kept.length > 0 ? '' : message,
+          }
         })
       })
 
     return () => controller.abort()
-  }, [selectedId])
+  }, [selectedId, subjectsNonce])
+
+  const handleAreaCreated = (area: AreaResponse) => {
+    setAreas((current) =>
+      current.some((item) => item.id === area.id) ? current : [...current, area],
+    )
+    setSelectedId(area.id)
+    setQuery('')
+    setStatus('')
+    setError('')
+  }
+
+  const handleSubjectCreated = (subject: AsignaturaResponse) => {
+    if (subject.areaId !== selectedId) {
+      setSelectedId(subject.areaId)
+      return
+    }
+
+    setSubjectLoad((current) => {
+      const existing = current?.areaId === subject.areaId ? current.subjects : []
+
+      if (existing.some((item) => item.id === subject.id)) {
+        return { areaId: subject.areaId, subjects: existing, error: '' }
+      }
+
+      return {
+        areaId: subject.areaId,
+        subjects: [...existing, subject],
+        error: '',
+      }
+    })
+    setSubjectsNonce((current) => current + 1)
+  }
+
+  const handleSubjectUpdated = (subject: AsignaturaResponse) => {
+    if (subject.areaId !== selectedId) {
+      setSelectedId(subject.areaId)
+      setSubjectsNonce((current) => current + 1)
+      return
+    }
+
+    setSubjectLoad((current) => {
+      const existing = current?.areaId === subject.areaId ? current.subjects : []
+      const subjects = existing.some((item) => item.id === subject.id)
+        ? existing.map((item) => (item.id === subject.id ? subject : item))
+        : [...existing, subject]
+
+      return { areaId: subject.areaId, subjects, error: '' }
+    })
+    setSubjectsNonce((current) => current + 1)
+  }
+
+  const handleSubjectMissing = (subjectId: string) => {
+    setSubjectLoad((current) => {
+      if (!current) {
+        return current
+      }
+
+      return {
+        ...current,
+        subjects: current.subjects.filter((item) => item.id !== subjectId),
+      }
+    })
+  }
+
+  const handleAreaMissing = (areaId: string) => {
+    setAreas((current) => current.filter((area) => area.id !== areaId))
+    setSelectedId((current) => (current === areaId ? '' : current))
+  }
+
+  const handleAreaUpdated = (area: AreaResponse) => {
+    setAreas((current) =>
+      current.some((item) => item.id === area.id)
+        ? current.map((item) => (item.id === area.id ? area : item))
+        : [...current, area],
+    )
+    setSelectedId(area.id)
+    setError('')
+  }
 
   const selected = areas.find((area) => area.id === selectedId) ?? null
   const rows = filterAreas(areas, { query, status })
@@ -126,6 +218,9 @@ export function AreasWorkspace() {
         onQueryChange={setQuery}
         onStatusChange={setStatus}
         onSelect={setSelectedId}
+        onAreaCreated={handleAreaCreated}
+        onAreaUpdated={handleAreaUpdated}
+        onAreaMissing={handleAreaMissing}
       />
 
       <SubjectsSection
@@ -135,6 +230,9 @@ export function AreasWorkspace() {
         subjects={subjects}
         subjectsLoading={Boolean(selectedId) && !subjectsReady}
         subjectsError={subjectLoad?.areaId === selectedId ? subjectLoad.error : ''}
+        onSubjectCreated={handleSubjectCreated}
+        onSubjectUpdated={handleSubjectUpdated}
+        onSubjectMissing={handleSubjectMissing}
       />
     </section>
   )

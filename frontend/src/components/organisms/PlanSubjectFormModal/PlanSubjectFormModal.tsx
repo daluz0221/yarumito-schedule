@@ -118,10 +118,9 @@ export function PlanSubjectFormModal({
       .then(async (areas) => {
         const groups = await Promise.all(
           areas.map((area) =>
-            listarAsignaturas(area.id, controller.signal).then((subjects) =>
-              subjects
-                .filter((subject) => subject.activa)
-                .map((subject) => ({
+            listarAsignaturas(area.id, controller.signal, { activa: true }).then(
+              (subjects) =>
+                subjects.map((subject) => ({
                   id: subject.id,
                   nombre: subject.nombre,
                   areaNombre: area.nombre,

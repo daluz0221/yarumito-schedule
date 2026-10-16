@@ -64,14 +64,54 @@ export type FinalizarVigenciaIdoneidadRequest = {
   vigenteHasta: string
 }
 
+export type CrearTituloForm = {
+  level: string
+  name: string
+  institution: string
+  year: string
+  supportFile: string
+}
+
+export const emptyCrearTituloForm: CrearTituloForm = {
+  level: '',
+  name: '',
+  institution: '',
+  year: '',
+  supportFile: '',
+}
+
+export type CrearTituloProfesionalRequest = {
+  docenteId: string
+  nivel: string
+  nombreTitulo: string
+  institucion?: string
+  anioGraduacion?: number
+  archivoSoporte?: string
+}
+
+export type ActualizarTituloProfesionalRequest = {
+  nivel: string
+  nombreTitulo: string
+  institucion?: string
+  anioGraduacion?: number
+  archivoSoporte?: string
+}
+
+const NIVEL_TITULO_LABELS: Record<string, string> = {
+  NORMALISTA: 'Normalista',
+  LICENCIATURA: 'Licenciatura',
+  PROFESIONAL: 'Profesional',
+  ESPECIALIZACION: 'Especialización',
+  MAESTRIA: 'Maestría',
+  DOCTORADO: 'Doctorado',
+}
+
 export const titleLevelOptions = [
   { value: '', label: 'Seleccione un nivel' },
-  { value: 'Normalista', label: 'Normalista' },
-  { value: 'Licenciatura', label: 'Licenciatura' },
-  { value: 'Profesional', label: 'Profesional' },
-  { value: 'Especialización', label: 'Especialización' },
-  { value: 'Maestría', label: 'Maestría' },
-  { value: 'Doctorado', label: 'Doctorado' },
+  ...Object.entries(NIVEL_TITULO_LABELS).map(([value, label]) => ({
+    value,
+    label,
+  })),
 ]
 
 export const suitabilityTypeOptions = [
@@ -146,6 +186,65 @@ export function toFinalizarVigenciaRequest(
   return { vigenteHasta }
 }
 
+function toTituloProfesionalPayload(
+  form: CrearTituloForm,
+): ActualizarTituloProfesionalRequest {
+  const nombreTitulo = form.name.trim()
+
+  if (!form.level || !(form.level in NIVEL_TITULO_LABELS)) {
+    throw new Error('El nivel del título es obligatorio')
+  }
+
+  if (!nombreTitulo) {
+    throw new Error('El nombre del título es obligatorio')
+  }
+
+  return {
+    nivel: form.level,
+    nombreTitulo,
+    institucion: optionalText(form.institution),
+    anioGraduacion: parseAnioGraduacion(form.year),
+    archivoSoporte: optionalText(form.supportFile),
+  }
+}
+
+export function toCrearTituloProfesionalRequest(
+  docenteId: string,
+  form: CrearTituloForm,
+): CrearTituloProfesionalRequest {
+  return {
+    docenteId,
+    ...toTituloProfesionalPayload(form),
+  }
+}
+
+export function toActualizarTituloProfesionalRequest(
+  form: CrearTituloForm,
+): ActualizarTituloProfesionalRequest {
+  return toTituloProfesionalPayload(form)
+}
+
+function parseAnioGraduacion(value: string) {
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return undefined
+  }
+
+  if (!/^\d{4}$/.test(trimmed)) {
+    throw new Error('El año de graduación debe tener 4 dígitos')
+  }
+
+  const year = Number(trimmed)
+  const maxYear = new Date().getFullYear() + 1
+
+  if (year < 1900 || year > maxYear) {
+    throw new Error(`El año de graduación debe estar entre 1900 y ${maxYear}`)
+  }
+
+  return year
+}
+
 export function idoneidadToForm(item: Idoneidad): CrearIdoneidadForm {
   return {
     areaId: item.areaId,
@@ -156,6 +255,27 @@ export function idoneidadToForm(item: Idoneidad): CrearIdoneidadForm {
     vigenteDesde: item.vigenteDesde.slice(0, 10),
     vigenteHasta: item.vigenteHasta.slice(0, 10),
   }
+}
+
+export function labelNivelTitulo(nivel: string) {
+  return NIVEL_TITULO_LABELS[nivel] ?? (nivel || 'Sin nivel')
+}
+
+export function formatTituloSoporte(title: ProfessionalTitle) {
+  const year = title.year ? ` (${title.year})` : ''
+  return `${labelNivelTitulo(title.level)} · ${title.name}${year}`
+}
+
+export function resolveTituloSoporte(
+  tituloId: string,
+  titles: ProfessionalTitle[],
+) {
+  if (!tituloId) {
+    return 'Sin título'
+  }
+
+  const title = titles.find((item) => item.id === tituloId)
+  return title ? formatTituloSoporte(title) : 'Título no disponible'
 }
 
 export function resolveAreaName(

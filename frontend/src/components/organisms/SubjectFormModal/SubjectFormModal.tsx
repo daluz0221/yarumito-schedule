@@ -1,14 +1,21 @@
 import { useState, type FormEvent } from 'react'
+import { actualizarAsignatura, ApiError, registrarAsignatura } from '../../../api'
 import type { AreaResponse } from '../../../api/areas'
+import type { AsignaturaResponse } from '../../../api/asignaturas'
 import {
   areaSelectOptions,
+  SIN_REQUISITO_AULA,
   subjectClassroomOptions,
   subjectColorOptions,
   subjectFormHint,
+  subjectClassroomFormValue,
   subjectStatusOptions,
   subjectYesNoOptions,
+  type SubjectClassroomFormValue,
+  type TipoAulaRequerida,
 } from '../../../content/subjects'
 import { Modal } from '../../atoms/Modal'
+import { TextLink } from '../../atoms/TextLink'
 import { ModalActions } from '../../molecules/ModalActions'
 import { SelectField } from '../../molecules/SelectField'
 import { TextField } from '../../molecules/TextField'
@@ -29,7 +36,7 @@ export type SubjectFormSource = {
   exigeIdoneidadEstricta?: boolean
   esMediaTecnica?: boolean
   requiereDocenteExclusivo?: boolean
-  tipoAulaRequerida?: string | null
+  tipoAulaRequerida?: TipoAulaRequerida | null
   maxClasesConsecutivas?: number
   activa?: boolean
 }
@@ -40,7 +47,12 @@ export type SubjectFormModalProps = {
   areas: AreaResponse[]
   selectedAreaId?: string
   subject?: SubjectFormSource
+  loading?: boolean
+  loadError?: string
+  onRetry?: () => void
   onClose: () => void
+  onCreated?: (subject: AsignaturaResponse) => void
+  onUpdated?: (subject: AsignaturaResponse) => void
 }
 
 type FormValues = {
@@ -52,7 +64,7 @@ type FormValues = {
   idoneidad: YesNo
   media: YesNo
   exclusivo: YesNo
-  aula: string
+  aula: SubjectClassroomFormValue
   maxConsecutivas: string
   activa: SubjectStatus
 }
@@ -101,20 +113,46 @@ function valuesFromSubject(subject: SubjectFormSource): FormValues {
     idoneidad: yesNoValue(subject.exigeIdoneidadEstricta),
     media: yesNoValue(subject.esMediaTecnica),
     exclusivo: yesNoValue(subject.requiereDocenteExclusivo),
-    aula: subject.tipoAulaRequerida ?? '',
+    aula: subject.tipoAulaRequerida ?? SIN_REQUISITO_AULA,
     maxConsecutivas: String(subject.maxClasesConsecutivas ?? 2),
     activa: statusValue(subject.activa),
   }
 }
 
-export function SubjectFormModal({
-  open,
+function optionalText(value: string) {
+  const trimmed = value.trim()
+  return trimmed ? trimmed : null
+}
+
+function classroomPayload(value: SubjectClassroomFormValue): TipoAulaRequerida | null {
+  if (!value || value === SIN_REQUISITO_AULA) {
+    return null
+  }
+
+  return value
+}
+
+type SubjectFormFieldsProps = {
+  mode: SubjectFormMode
+  areas: AreaResponse[]
+  selectedAreaId: string
+  subject?: SubjectFormSource
+  onClose: () => void
+  onCreated?: (subject: AsignaturaResponse) => void
+  onUpdated?: (subject: AsignaturaResponse) => void
+  onSubmittingChange: (submitting: boolean) => void
+}
+
+function SubjectFormFields({
   mode,
   areas,
-  selectedAreaId = '',
+  selectedAreaId,
   subject,
   onClose,
-}: SubjectFormModalProps) {
+  onCreated,
+  onUpdated,
+  onSubmittingChange,
+}: SubjectFormFieldsProps) {
   const initialAreaId = areas.some((area) => area.id === selectedAreaId)
     ? selectedAreaId
     : ''
@@ -122,7 +160,10 @@ export function SubjectFormModal({
     mode === 'edit' && subject ? valuesFromSubject(subject) : createValues(initialAreaId),
   )
   const [attempted, setAttempted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const formId = `subject-${mode}-form`
+  const creating = mode === 'create'
   const maxValue = Number(values.maxConsecutivas)
   const maxInvalid = !values.maxConsecutivas || !Number.isInteger(maxValue) || maxValue < 1
   const missingChoice =
@@ -133,15 +174,66 @@ export function SubjectFormModal({
     !values.aula ||
     !values.activa
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const setBusy = (next: boolean) => {
+    setSubmitting(next)
+    onSubmittingChange(next)
+  }
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setAttempted(true)
+    setSubmitError('')
+
+    if (submitting) {
+      return
+    }
 
     if (!values.nombre.trim() || !values.codigo.trim() || missingChoice || maxInvalid) {
       return
     }
 
-    onClose()
+    if (!creating && !subject?.id) {
+      setSubmitError('No se encontró la asignatura a actualizar.')
+      return
+    }
+
+    const payload = {
+      areaId: values.areaId,
+      nombre: values.nombre.trim(),
+      codigo: values.codigo.trim(),
+      abreviatura: optionalText(values.abreviatura),
+      colorUi: optionalText(values.color),
+      exigeIdoneidadEstricta: values.idoneidad === 'si',
+      esMediaTecnica: values.media === 'si',
+      requiereDocenteExclusivo: values.exclusivo === 'si',
+      tipoAulaRequerida: classroomPayload(values.aula),
+      maxClasesConsecutivas: maxValue,
+      activa: values.activa === 'activa',
+    }
+
+    setBusy(true)
+
+    try {
+      if (creating) {
+        const created = await registrarAsignatura(payload)
+        onCreated?.(created)
+      } else if (subject) {
+        const updated = await actualizarAsignatura(subject.id, payload)
+        onUpdated?.(updated)
+      }
+
+      onClose()
+    } catch (cause) {
+      setSubmitError(
+        cause instanceof ApiError
+          ? cause.message
+          : creating
+            ? 'No se pudo registrar la asignatura. Inténtalo de nuevo.'
+            : 'No se pudo actualizar la asignatura. Inténtalo de nuevo.',
+      )
+    } finally {
+      setBusy(false)
+    }
   }
 
   const patch = (partial: Partial<FormValues>) => {
@@ -149,32 +241,14 @@ export function SubjectFormModal({
   }
 
   return (
-    <Modal
-      open={open}
-      size="lg"
-      title={mode === 'create' ? 'Nueva asignatura' : 'Editar asignatura'}
-      description={
-        mode === 'create'
-          ? 'Agrega una asignatura al área seleccionada del catálogo académico.'
-          : `Actualiza las propiedades académicas de ${subject?.nombre ?? values.nombre}.`
-      }
-      onClose={onClose}
-      footer={
-        <ModalActions
-          formId={formId}
-          confirmLabel={mode === 'create' ? 'Guardar asignatura' : 'Guardar cambios'}
-          confirmType="submit"
-          onCancel={onClose}
-        />
-      }
-    >
-      <form id={formId} className={styles.form} onSubmit={handleSubmit}>
+    <form id={formId} className={styles.form} onSubmit={handleSubmit}>
         <div className={styles.grid}>
           <SelectField
             id={`${formId}-area`}
             label="Área"
             name="areaId"
             required
+            disabled={submitting || !creating}
             value={values.areaId}
             options={areaSelectOptions(areas)}
             error={attempted && !values.areaId ? requiredChoiceMessage : undefined}
@@ -185,6 +259,7 @@ export function SubjectFormModal({
             label="Nombre"
             name="nombre"
             required
+            disabled={submitting}
             placeholder="Ingresa el nombre"
             value={values.nombre}
             onChange={(event) => patch({ nombre: event.target.value })}
@@ -194,6 +269,7 @@ export function SubjectFormModal({
             label="Código"
             name="codigo"
             required
+            disabled={submitting}
             placeholder="Ingresa el código"
             value={values.codigo}
             onChange={(event) => patch({ codigo: event.target.value.toUpperCase() })}
@@ -202,6 +278,7 @@ export function SubjectFormModal({
             id={`${formId}-abbreviation`}
             label="Abreviatura"
             name="abreviatura"
+            disabled={submitting}
             placeholder="Ingresa la abreviatura"
             value={values.abreviatura}
             onChange={(event) => patch({ abreviatura: event.target.value.toUpperCase() })}
@@ -210,6 +287,7 @@ export function SubjectFormModal({
             id={`${formId}-color`}
             label="Color de identificación (opcional)"
             name="color"
+            disabled={submitting}
             value={values.color}
             options={subjectColorOptions}
             onChange={(color) => patch({ color })}
@@ -218,6 +296,7 @@ export function SubjectFormModal({
             id={`${formId}-suitability`}
             label="Exige idoneidad estricta"
             name="idoneidad"
+            disabled={submitting}
             value={values.idoneidad}
             options={subjectYesNoOptions}
             error={attempted && !values.idoneidad ? requiredChoiceMessage : undefined}
@@ -227,6 +306,7 @@ export function SubjectFormModal({
             id={`${formId}-media`}
             label="Asignatura de Media Técnica"
             name="media"
+            disabled={submitting}
             value={values.media}
             options={subjectYesNoOptions}
             error={attempted && !values.media ? requiredChoiceMessage : undefined}
@@ -236,6 +316,7 @@ export function SubjectFormModal({
             id={`${formId}-exclusive`}
             label="Requiere docente exclusivo"
             name="exclusivo"
+            disabled={submitting}
             value={values.exclusivo}
             options={subjectYesNoOptions}
             error={attempted && !values.exclusivo ? requiredChoiceMessage : undefined}
@@ -245,16 +326,18 @@ export function SubjectFormModal({
             id={`${formId}-classroom`}
             label="Tipo de aula requerida"
             name="aula"
+            disabled={submitting}
             value={values.aula}
             options={subjectClassroomOptions}
             error={attempted && !values.aula ? requiredChoiceMessage : undefined}
-            onChange={(aula) => patch({ aula })}
+            onChange={(aula) => patch({ aula: subjectClassroomFormValue(aula) })}
           />
           <TextField
             id={`${formId}-max`}
             label="Máximo de clases consecutivas"
             name="maxConsecutivas"
             required
+            disabled={submitting}
             inputMode="numeric"
             value={values.maxConsecutivas}
             error={
@@ -271,13 +354,105 @@ export function SubjectFormModal({
           id={`${formId}-status`}
           label="Estado"
           name="activa"
+          disabled={submitting}
           value={values.activa}
           options={subjectStatusOptions}
           error={attempted && !values.activa ? requiredChoiceMessage : undefined}
           onChange={(activa) => patch({ activa: activa as SubjectStatus })}
         />
+        {submitError ? (
+          <p className={styles.error} role="alert">
+            {submitError}
+          </p>
+        ) : null}
         <p className={styles.hint}>{subjectFormHint}</p>
       </form>
+  )
+}
+
+export function SubjectFormModal({
+  open,
+  mode,
+  areas,
+  selectedAreaId = '',
+  subject,
+  loading = false,
+  loadError = '',
+  onRetry,
+  onClose,
+  onCreated,
+  onUpdated,
+}: SubjectFormModalProps) {
+  const [submitting, setSubmitting] = useState(false)
+  const creating = mode === 'create'
+  const showForm = !loading && !loadError && (creating || Boolean(subject))
+  const formId = `subject-${mode}-form`
+
+  const handleClose = () => {
+    if (submitting) {
+      return
+    }
+
+    onClose()
+  }
+
+  return (
+    <Modal
+      open={open}
+      size="lg"
+      title={mode === 'create' ? 'Nueva asignatura' : 'Editar asignatura'}
+      description={
+        mode === 'create'
+          ? 'Agrega una asignatura al área seleccionada del catálogo académico.'
+          : subject?.nombre
+            ? `Actualiza las propiedades académicas de ${subject.nombre}.`
+            : 'Actualiza las propiedades académicas de la asignatura seleccionada.'
+      }
+      onClose={handleClose}
+      footer={
+        <ModalActions
+          formId={formId}
+          confirmLabel={
+            loadError
+              ? undefined
+              : loading
+                ? 'Cargando...'
+                : submitting
+                  ? 'Guardando...'
+                  : creating
+                    ? 'Guardar asignatura'
+                    : 'Guardar cambios'
+          }
+          confirmType="submit"
+          disabled={submitting || loading}
+          onCancel={handleClose}
+        />
+      }
+    >
+      {loading ? (
+        <p className={styles.status}>Cargando asignatura...</p>
+      ) : loadError ? (
+        <div className={styles.feedback}>
+          <p className={styles.error} role="alert">
+            {loadError}
+          </p>
+          {onRetry ? <TextLink onClick={onRetry}>Reintentar</TextLink> : null}
+        </div>
+      ) : showForm ? (
+        <SubjectFormFields
+          key={mode === 'edit' ? subject?.id : 'create'}
+          mode={mode}
+          areas={areas}
+          selectedAreaId={selectedAreaId}
+          subject={subject}
+          onClose={onClose}
+          onCreated={onCreated}
+          onUpdated={onUpdated}
+          onSubmittingChange={setSubmitting}
+        />
+      ) : (
+        <p className={styles.status}>Cargando asignatura...</p>
+      )}
     </Modal>
   )
 }

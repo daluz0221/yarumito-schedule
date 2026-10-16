@@ -125,3 +125,26 @@ Después de `down -v`, el rector se vuelve a crear al arrancar. Si quieres otra 
 ## Puertos ocupados
 
 Si `5173`, `8080` o `5432` ya están en uso, detén el otro proceso o cambia el mapeo en `docker-compose.yml`.
+
+
+implementa el siguiente endpoint expuesto por el backend
+
+"GET /api/v1/idoneidades/{id}"
+
+teniendo en cuenta lo siguiente
+1. modificar SOLO el frontend
+2. si es necesario modificar el backend, no lo hagas, explícame qué hay que modificar, donde y por qué y espera mi aprobación
+3. en caso de tener que crear algo nuevo del frontend, dimelo antes de proceder (con nuevo me refiero a una pantalla o modal completo)
+4. válida que funcione la integración tanto en el caso de éxito, como en los casos de posibles errores, es decir, en caso de un error, esté controlado y no degrade la experiencia de usuario
+5. dime donde puedo validar, en el navegador, que haya quedado implementada la integración
+
+
+pendientes en el mock, 
+las sedes (API 11-13)
+la de gestión académica
+no hay relación catalogoacademico.sede
+tengo error 500 en GET /api/v1/grados responde 500: relation "catalogoacademico.grado" does not exist
+mock up del modal de crear grados
+ La entidad AnioEscolar apunta a catalogoacademico.anio_escolar, y ese esquema no existe.
+ Hoy esa consulta responde 500 porque no existe la tabla catalogoacademico.plan_estudio
+ Sí. El PUT /api/v1/idoneidades/{id} solo acepta dos campos: tituloSoporteId y justificacion. El cuerpo está definido en ActualizarIdoneidadRequest, y el servicio solo aplica esos dos valores cuando vienen en la petición.

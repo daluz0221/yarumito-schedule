@@ -31,12 +31,8 @@ export const studyPlanGrades: StudyPlanGrade[] = [
   { id: '11', label: '11°', level: 'Media Técnica', weeklyHours: 37 },
 ]
 
-export const studyPlanGradeOptions = studyPlanGrades.map((grade) => ({
-  value: grade.id,
-  label: grade.label,
-}))
-
-// El backend aún no expone el plan. Estas filas reproducen el diseño de 2026 · 6°.
+// Filas de referencia para pantallas que aún no consultan el plan.
+// La pantalla de plan de estudios lee GET /api/v1/planes-estudio.
 export const studyPlanEntries: StudyPlanEntry[] = [
   {
     id: '2026-6-mat',

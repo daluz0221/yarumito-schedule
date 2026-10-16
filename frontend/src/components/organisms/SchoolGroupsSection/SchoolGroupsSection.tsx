@@ -21,6 +21,7 @@ export type SchoolGroupsSectionProps = {
   onGradeChange: (value: string) => void
   onStatusChange: (value: string) => void
   onQueryChange: (value: string) => void
+  onGroupCreated?: () => void
 }
 
 type GroupModal =
@@ -40,6 +41,7 @@ export function SchoolGroupsSection({
   onGradeChange,
   onStatusChange,
   onQueryChange,
+  onGroupCreated,
 }: SchoolGroupsSectionProps) {
   const [modal, setModal] = useState<GroupModal>({ name: 'closed' })
   const closeModal = () => setModal({ name: 'closed' })
@@ -83,6 +85,10 @@ export function SchoolGroupsSection({
         year={year}
         groups={groups}
         onClose={closeModal}
+        onCreated={() => {
+          closeModal()
+          onGroupCreated?.()
+        }}
       />
       <GroupFormModal
         open={modal.name === 'edit'}

@@ -27,6 +27,7 @@ export function SchoolGroupsTable({
             <tr>
               <th>Grupo</th>
               <th>Grado</th>
+              <th>Sede</th>
               <th>Tipo</th>
               <th>Intensidad semanal</th>
               <th>Estudiantes</th>
@@ -40,8 +41,9 @@ export function SchoolGroupsTable({
               <tr key={item.id}>
                 <td className={styles.code}>{item.code}</td>
                 <td>{item.grade}</td>
+                <td>{item.sedeNombre?.trim() || '—'}</td>
                 <td className={styles.positive}>{labelSchoolLevel(item.level)}</td>
-                <td>{item.weeklyHours} h</td>
+                <td>{item.weeklyHours == null ? '—' : `${item.weeklyHours} h`}</td>
                 <td>{item.students}</td>
                 <td>
                   {item.director ?? (
@@ -70,11 +72,12 @@ export function SchoolGroupsTable({
               </span>
             </div>
             <p>
-              {item.grade} ·{' '}
+              {item.grade} · {item.sedeNombre?.trim() || 'Sin sede'} ·{' '}
               <span className={styles.positive}>{labelSchoolLevel(item.level)}</span>
             </p>
             <p>
-              {item.weeklyHours} h · {item.students} estudiantes
+              {item.weeklyHours == null ? '—' : `${item.weeklyHours} h`} · {item.students}{' '}
+              estudiantes
             </p>
             <p>
               Director:{' '}

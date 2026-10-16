@@ -2,14 +2,17 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { PENDING_BACKEND_LABEL } from '../../../content/teachers'
 import {
   emptyCrearIdoneidadForm,
+  formatTituloSoporte,
   idoneidadToForm,
   suitabilityTypeOptions,
   type CrearIdoneidadForm,
   type Idoneidad,
+  type ProfessionalTitle,
 } from '../../../content/teacherProfile'
 import type { SelectOption } from '../../atoms/Select'
 import { Modal } from '../../atoms/Modal'
 import { Text } from '../../atoms/Text'
+import { TextLink } from '../../atoms/TextLink'
 import { ModalActions } from '../../molecules/ModalActions'
 import { SelectField } from '../../molecules/SelectField'
 import { TextField } from '../../molecules/TextField'
@@ -20,9 +23,14 @@ export type SuitabilityFormModalProps = {
   mode: 'add' | 'edit'
   item?: Idoneidad
   areaOptions: SelectOption[]
+  titles?: ProfessionalTitle[]
+  titlesError?: string
+  loading?: boolean
+  loadError?: string
   submitting?: boolean
   error?: string
   onClose: () => void
+  onRetry?: () => void
   onSubmit: (values: CrearIdoneidadForm) => void
 }
 
@@ -30,14 +38,45 @@ const pendingOptions: SelectOption[] = [
   { value: '', label: PENDING_BACKEND_LABEL },
 ]
 
+function titleOptions(
+  titles: ProfessionalTitle[],
+  selectedId: string,
+  titlesError: string,
+): SelectOption[] {
+  const options: SelectOption[] = [
+    {
+      value: '',
+      label: 'Sin título de soporte',
+    },
+    ...titles.map((title) => ({
+      value: title.id,
+      label: formatTituloSoporte(title),
+    })),
+  ]
+
+  if (selectedId && !options.some((option) => option.value === selectedId)) {
+    options.push({
+      value: selectedId,
+      label: titlesError ? 'Título actual' : 'Título no disponible',
+    })
+  }
+
+  return options
+}
+
 export function SuitabilityFormModal({
   open,
   mode,
   item,
   areaOptions,
+  titles = [],
+  titlesError = '',
+  loading = false,
+  loadError = '',
   submitting = false,
   error = '',
   onClose,
+  onRetry,
   onSubmit,
 }: SuitabilityFormModalProps) {
   const [values, setValues] = useState<CrearIdoneidadForm>(emptyCrearIdoneidadForm)
@@ -59,7 +98,7 @@ export function SuitabilityFormModal({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (submitting) {
+    if (submitting || loading || loadError) {
       return
     }
 
@@ -93,25 +132,39 @@ export function SuitabilityFormModal({
       description={
         isEdit
           ? 'El PUT solo permite cambiar justificación y título de soporte.'
-          : 'Define el área y el tipo de idoneidad. Asignatura y título quedan pendientes.'
+          : 'Define el área, el tipo de idoneidad y, si existe, el título de soporte.'
       }
       onClose={onClose}
       footer={
         <ModalActions
           formId="suitability-form"
           confirmLabel={
-            submitting
-              ? 'Guardando...'
-              : mode === 'add'
-                ? 'Guardar idoneidad'
-                : 'Guardar cambios'
+            loadError
+              ? undefined
+              : loading
+                ? 'Cargando...'
+                : submitting
+                  ? 'Guardando...'
+                  : mode === 'add'
+                    ? 'Guardar idoneidad'
+                    : 'Guardar cambios'
           }
           confirmType="submit"
-          disabled={submitting}
+          disabled={submitting || loading}
           onCancel={onClose}
         />
       }
     >
+      {loading ? (
+        <p className={styles.status}>Cargando idoneidad...</p>
+      ) : loadError ? (
+        <div className={styles.feedback}>
+          <p className={styles.error} role="alert">
+            {loadError}
+          </p>
+          {onRetry ? <TextLink onClick={onRetry}>Reintentar</TextLink> : null}
+        </div>
+      ) : (
       <form
         id="suitability-form"
         className={styles.form}
@@ -161,11 +214,19 @@ export function SuitabilityFormModal({
         <SelectField
           id="suitability-title"
           label="Título profesional de soporte"
-          value=""
-          options={pendingOptions}
-          hint={PENDING_BACKEND_LABEL}
-          disabled
-          onChange={() => undefined}
+          value={values.tituloSoporteId}
+          options={titleOptions(titles, values.tituloSoporteId, titlesError)}
+          hint={
+            titlesError
+              ? `${titlesError} Puedes guardar la idoneidad sin cambiar el título.`
+              : titles.length === 0
+                ? 'Este docente no tiene títulos profesionales. La idoneidad se puede guardar sin título de soporte.'
+                : undefined
+          }
+          disabled={Boolean(titlesError)}
+          onChange={(tituloSoporteId) =>
+            setValues((current) => ({ ...current, tituloSoporteId }))
+          }
         />
         <div className={styles.dates}>
           <TextField
@@ -216,11 +277,12 @@ export function SuitabilityFormModal({
         ) : null}
         {isEdit ? (
           <Text variant="caption" className={styles.note}>
-            Área, tipo y fechas no se pueden cambiar en el PUT. El título de
-            soporte queda pendiente hasta que exista API de títulos.
+            Área, tipo y fechas no se pueden cambiar al editar. El título de
+            soporte sí se puede actualizar.
           </Text>
         ) : null}
       </form>
+      )}
     </Modal>
   )
 }

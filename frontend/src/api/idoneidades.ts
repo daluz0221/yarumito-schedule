@@ -50,6 +50,12 @@ export function listarIdoneidadesPorDocente(
     .then((items) => (items ?? []).map(toIdoneidad))
 }
 
+export function consultarIdoneidad(id: string, signal?: AbortSignal) {
+  return api
+    .get<IdoneidadResponse>(`/api/v1/idoneidades/${id}`, { signal })
+    .then(toIdoneidad)
+}
+
 export function registrarIdoneidad(payload: CrearIdoneidadRequest) {
   return api
     .post<IdoneidadResponse, CrearIdoneidadRequest>(

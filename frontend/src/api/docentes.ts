@@ -114,6 +114,19 @@ export function actualizarDocente(
   )
 }
 
+export type CambiarEstadoDocenteRequest = {
+  nuevoEstado: TeacherStatus
+}
+
+export function cambiarEstadoDocente(id: string, nuevoEstado: TeacherStatus) {
+  return api
+    .patch<DocenteResponse, CambiarEstadoDocenteRequest>(
+      `/api/v1/docentes/${id}/estado`,
+      { nuevoEstado },
+    )
+    .then(toTeacher)
+}
+
 export function listarDocentes(
   query: ListarDocentesQuery,
   signal?: AbortSignal,

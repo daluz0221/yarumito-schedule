@@ -3,7 +3,9 @@ import {
   formatVigencia,
   isIdoneidadVigente,
   labelTipoIdoneidad,
+  resolveTituloSoporte,
   type Idoneidad,
+  type ProfessionalTitle,
 } from '../../../content/teacherProfile'
 import { Button } from '../../atoms/Button'
 import { Card } from '../../atoms/Card'
@@ -18,6 +20,8 @@ import styles from './TeacherSuitabilitySection.module.css'
 
 export type TeacherSuitabilitySectionProps = {
   items: Idoneidad[]
+  titles: ProfessionalTitle[]
+  titlesUnavailable?: boolean
   areaNameById: (areaId: string) => string
   onAdd: () => void
   onEdit: (item: Idoneidad) => void
@@ -26,11 +30,20 @@ export type TeacherSuitabilitySectionProps = {
 
 export function TeacherSuitabilitySection({
   items,
+  titles,
+  titlesUnavailable = false,
   areaNameById,
   onAdd,
   onEdit,
   onEnd,
 }: TeacherSuitabilitySectionProps) {
+  const titleLabel = (tituloId: string) => {
+    if (titlesUnavailable && tituloId) {
+      return 'No se pudieron cargar los títulos'
+    }
+
+    return resolveTituloSoporte(tituloId, titles)
+  }
   return (
     <section className={styles.section}>
       <SectionHeader
@@ -63,9 +76,7 @@ export function TeacherSuitabilitySection({
                   <span className={styles.pending}>{PENDING_BACKEND_LABEL}</span>
                 </td>
                 <td>{labelTipoIdoneidad(item.tipo)}</td>
-                <td>
-                  <span className={styles.pending}>{PENDING_BACKEND_LABEL}</span>
-                </td>
+                <td>{titleLabel(item.tituloSoporteId)}</td>
                 <td>
                   <ValidityStatus
                     current={isIdoneidadVigente(item)}
@@ -93,7 +104,7 @@ export function TeacherSuitabilitySection({
               <strong>
                 {areaNameById(item.areaId)} · {labelTipoIdoneidad(item.tipo)}
               </strong>
-              <p>{PENDING_BACKEND_LABEL}</p>
+              <p>{titleLabel(item.tituloSoporteId)}</p>
               <ValidityStatus
                 current={isIdoneidadVigente(item)}
                 since={formatVigencia(item)}
@@ -118,8 +129,9 @@ export function TeacherSuitabilitySection({
 
         <div className={styles.note}>
           <Text variant="body">
-            Asignatura y título de soporte aparecen como “Próximamente”:
-            no hay catálogo de asignaturas ni de títulos profesionales.
+            La asignatura aparece como “Próximamente”: ese catálogo aún no
+            está disponible en esta pantalla. El título de soporte se toma de
+            los títulos profesionales del docente.
           </Text>
         </div>
       </Card>

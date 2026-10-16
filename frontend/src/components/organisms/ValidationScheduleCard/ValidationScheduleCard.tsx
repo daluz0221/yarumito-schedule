@@ -1,7 +1,6 @@
 import { academicYearOptions, academicYears, type AcademicYear } from '../../../content/academicYear'
 import {
   scheduleNameForYear,
-  validationCampusLabel,
   validationScheduleStatus,
 } from '../../../content/validations'
 import { Badge } from '../../atoms/Badge'
@@ -13,12 +12,14 @@ import styles from './ValidationScheduleCard.module.css'
 export type ValidationScheduleCardProps = {
   year: AcademicYear
   version: number
+  campusLabel: string
   onYearChange: (yearId: string) => void
 }
 
 export function ValidationScheduleCard({
   year,
   version,
+  campusLabel,
   onYearChange,
 }: ValidationScheduleCardProps) {
   return (
@@ -48,7 +49,7 @@ export function ValidationScheduleCard({
 
       <dl className={styles.facts}>
         <Fact label="Año lectivo" value={String(year.year)} />
-        <Fact label="Sede" value={validationCampusLabel.replace(/^Sede\s+/i, '')} />
+        <Fact label="Sede" value={campusLabel.replace(/^Sede\s+/i, '')} />
         <Fact label="Horario" value={scheduleNameForYear(year)} />
         <Fact label="Versión" value={String(version)} />
         <div className={styles.fact}>

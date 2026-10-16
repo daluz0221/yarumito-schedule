@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
-import { ApiError, listarDocentes } from '../../../api'
+import {
+  ApiError,
+  listarDocentes,
+  opcionesCatalogoSedes,
+  sedeVisible,
+  useCatalogoSedes,
+} from '../../../api'
 import {
   buildAssignmentRows,
   gradeLabelFromGroup,
@@ -14,7 +20,6 @@ import {
   defaultClassroom,
   inspectScheduleChange,
   pendingPlacements,
-  scheduleCampusOptions,
   scheduleMetrics,
   scheduleSubject,
   scheduleShiftLabel,
@@ -49,7 +54,8 @@ type ClassDialog =
 
 export function ScheduleWorkspace() {
   const [yearId, setYearId] = useState(currentStudyPlanYear().id)
-  const [campusId, setCampusId] = useState(scheduleCampusOptions[0].value)
+  const [campusId, setCampusId] = useState('')
+  const { sedes, error: sedesError } = useCatalogoSedes()
   const [shiftId, setShiftId] = useState(scheduleShiftOptions[0].value)
   const [groupId, setGroupId] = useState(() => groupsForYear(currentStudyPlanYear().id)[0]?.id ?? '')
   const [placements, setPlacements] = useState<SchedulePlacement[]>(seedPlacements)
@@ -86,6 +92,10 @@ export function ScheduleWorkspace() {
 
     return () => controller.abort()
   }, [])
+
+  const campusSeleccionada = sedes?.some((sede) => sede.id === campusId)
+    ? campusId
+    : (sedeVisible(sedes ?? [])?.id ?? '')
 
   const year = academicYears.find((item) => item.id === yearId) ?? academicYears[0]
   const yearGroups = groupsForYear(year.id)
@@ -235,13 +245,15 @@ export function ScheduleWorkspace() {
 
       <ScheduleSelector
         yearId={year.id}
-        campusId={campusId}
+        campusId={campusSeleccionada}
         shiftId={shiftId}
         groupId={group?.id ?? ''}
         gradeLabel={gradeLabel}
         year={year.year}
         groupCode={group?.code ?? ''}
         groupOptions={yearGroups.map((item) => ({ value: item.id, label: item.code }))}
+        campusOptions={opcionesCatalogoSedes(sedes, sedesError)}
+        campusDisabled={Boolean(sedesError) || !sedes?.length}
         onYearChange={selectYear}
         onCampusChange={setCampusId}
         onShiftChange={setShiftId}
@@ -249,6 +261,11 @@ export function ScheduleWorkspace() {
       />
 
       {catalogError ? <p className={styles.notice}>{catalogError}</p> : null}
+      {sedesError ? (
+        <p className={styles.alert} role="alert">
+          {sedesError} El horario sigue disponible con los grupos locales.
+        </p>
+      ) : null}
 
       {group ? (
         <>

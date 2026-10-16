@@ -1,6 +1,5 @@
 import { academicYearOptions, academicYears } from '../../../content/academicYear'
 import {
-  scheduleCampusOptions,
   scheduleShiftOptions,
   scheduleStatusLabel,
   scheduleViewOptions,
@@ -20,6 +19,8 @@ export type ScheduleSelectorProps = {
   year: number
   groupCode: string
   groupOptions: { value: string; label: string }[]
+  campusOptions: { value: string; label: string }[]
+  campusDisabled?: boolean
   onYearChange: (yearId: string) => void
   onCampusChange: (campusId: string) => void
   onShiftChange: (shiftId: string) => void
@@ -35,6 +36,8 @@ export function ScheduleSelector({
   year,
   groupCode,
   groupOptions,
+  campusOptions,
+  campusDisabled = false,
   onYearChange,
   onCampusChange,
   onShiftChange,
@@ -58,7 +61,8 @@ export function ScheduleSelector({
           label="Sede"
           name="campus"
           value={campusId}
-          options={scheduleCampusOptions}
+          options={campusOptions}
+          disabled={campusDisabled}
           onChange={onCampusChange}
         />
         <SelectField

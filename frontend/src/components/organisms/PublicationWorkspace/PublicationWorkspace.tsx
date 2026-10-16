@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../auth'
-import { ApiError, listarDocentes } from '../../../api'
+import { ApiError, etiquetaCatalogoSedes, listarDocentes, useCatalogoSedes } from '../../../api'
 import { academicYears } from '../../../content/academicYear'
 import {
   buildPublicationView,
@@ -43,6 +43,7 @@ export function PublicationWorkspace() {
   const [yearId, setYearId] = useState(defaultValidationYearId)
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [catalogError, setCatalogError] = useState('')
+  const { sedes, error: sedesError } = useCatalogoSedes()
   const [record, setRecord] = useState<PublicationRecord | null>(null)
   const [modal, setModal] = useState<PublicationModal>('none')
 
@@ -87,6 +88,7 @@ export function PublicationWorkspace() {
     conflicts: reviewed,
     author,
     published: Boolean(record),
+    campusName: etiquetaCatalogoSedes(sedes, sedesError),
   })
 
   const closeModal = () => setModal('none')
@@ -153,6 +155,11 @@ export function PublicationWorkspace() {
         onSeeBlocked={() => setModal('blocked')}
       />
       {catalogError ? <p className={styles.notice}>{catalogError}</p> : null}
+      {sedesError ? (
+        <p className={styles.alert} role="alert">
+          {sedesError} El resumen de publicación sigue disponible.
+        </p>
+      ) : null}
       <PublicationChecks checks={view.checks} />
       <PublicationVersions view={view} />
       <PublicationLog record={record} onPublish={startPublish} />

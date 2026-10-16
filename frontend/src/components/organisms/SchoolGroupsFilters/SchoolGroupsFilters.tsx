@@ -1,7 +1,5 @@
-import {
-  gradeFilterOptions,
-  groupStatusFilterOptions,
-} from '../../../content/academicYear'
+import { opcionesFiltroGrados, useCatalogoGrados } from '../../../api'
+import { groupStatusFilterOptions } from '../../../content/academicYear'
 import { TextInput } from '../../atoms/TextInput'
 import { FormField } from '../../molecules/FormField'
 import { SelectField } from '../../molecules/SelectField'
@@ -24,14 +22,21 @@ export function SchoolGroupsFilters({
   onStatusChange,
   onQueryChange,
 }: SchoolGroupsFiltersProps) {
+  const { grados, error, loading } = useCatalogoGrados()
+  const gradeOptions = opcionesFiltroGrados(grados, error)
+  const gradeLista = !loading && !error
+
   return (
     <form className={styles.filters} onSubmit={(event) => event.preventDefault()}>
       <SelectField
         id="group-grade"
         label="Grado"
         name="grade"
-        value={grade}
-        options={gradeFilterOptions}
+        value={gradeLista ? grade : ''}
+        options={gradeOptions}
+        disabled={!gradeLista}
+        error={error || undefined}
+        hint={!error && grados?.length === 0 ? 'Sin grados registrados' : undefined}
         onChange={onGradeChange}
       />
       <SelectField

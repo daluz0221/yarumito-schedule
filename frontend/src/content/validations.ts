@@ -8,7 +8,6 @@ import {
   assessPlacement,
   curricularRowsSource,
   pendingPlacements,
-  scheduleCampusOptions,
   scheduleClassrooms,
   scheduleStatusLabel,
   scheduleSubject,
@@ -82,7 +81,6 @@ export const validationReadyCopy = {
   warnings: 'Pueden existir advertencias. Revísalas antes de continuar.',
 }
 
-export const validationCampusLabel = scheduleCampusOptions[0]?.label ?? 'Sede Principal'
 export const validationScheduleStatus = scheduleStatusLabel
 
 export const severityFilterOptions = [

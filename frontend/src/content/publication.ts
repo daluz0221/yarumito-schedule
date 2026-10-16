@@ -4,7 +4,6 @@ import { seedPlacements, type SchedulePlacement } from './scheduleConstruction'
 import {
   publishReadiness,
   scheduleNameForYear,
-  validationCampusLabel,
   type ConflictKind,
   type PublishReadiness,
   type ReviewedConflict,
@@ -110,34 +109,33 @@ export function publicationAuthor(user: AuthUser | null) {
   return 'Rector / Administrador'
 }
 
-export function publicationCampusLabel() {
-  return validationCampusLabel.replace(/^Sede\s+/i, '')
-}
-
 export function buildPublicationView({
   year,
   placements = seedPlacements,
   conflicts,
   author,
   published,
+  campusName,
 }: {
   year: AcademicYear
   placements?: SchedulePlacement[]
   conflicts: ReviewedConflict[]
   author: string
   published: boolean
+  campusName: string
 }): PublicationView {
   const yearPlacements = placements.filter((item) => item.yearId === year.id)
   const pending = conflicts.filter((item) => item.status === 'PENDIENTE')
   const errors = pending.filter((item) => item.severity === 'ERROR').length
   const warnings = pending.filter((item) => item.severity === 'ADVERTENCIA').length
   const scheduleName = scheduleNameForYear(year)
+  const campusFull = campusName.trim() || 'Sede no disponible'
 
   return {
     scheduleName,
     yearLabel: String(year.year),
-    campus: publicationCampusLabel(),
-    campusFull: validationCampusLabel,
+    campus: campusFull.replace(/^Sede\s+/i, ''),
+    campusFull,
     version: publicationVersion,
     status: published ? 'PUBLICADO' : 'BORRADOR',
     groups: new Set(yearPlacements.map((item) => item.groupId)).size,

@@ -18,13 +18,16 @@ export type SchoolGroupStatus = 'ACTIVO' | 'INACTIVO'
 export type SchoolGroup = {
   id: string
   yearId: string
+  schoolYear?: number
   code: string
   grade: string
   level: SchoolLevel
-  weeklyHours: number
+  weeklyHours: number | null
   students: number
   director: string | null
   status: SchoolGroupStatus
+  sedeId?: string
+  sedeNombre?: string
 }
 
 export type SchoolGroupFilters = {
@@ -73,29 +76,15 @@ export const schoolGroups: SchoolGroup[] = [
   group('1101', 'Undécimo', 'MEDIA', 22),
 ]
 
-export const gradeFilterOptions = [
-  { value: '', label: 'Todos' },
-  { value: 'Sexto', label: 'Sexto' },
-  { value: 'Séptimo', label: 'Séptimo' },
-  { value: 'Octavo', label: 'Octavo' },
-  { value: 'Noveno', label: 'Noveno' },
-  { value: 'Décimo', label: 'Décimo' },
-  { value: 'Undécimo', label: 'Undécimo' },
-]
-
 export const groupStatusFilterOptions = [
   { value: '', label: 'Todos' },
   { value: 'ACTIVO', label: 'Activo' },
   { value: 'INACTIVO', label: 'Inactivo' },
 ]
 
-export const groupGradeOptions = gradeFilterOptions.filter((option) => option.value)
-
 export const groupStatusOptions = groupStatusFilterOptions.filter(
   (option) => option.value,
 )
-
-export const CAMPUS_LABEL = 'I.E. Rural Yarumito — Sede Principal'
 
 export const classroomOptions = [
   { value: '', label: 'Sin asignar' },
@@ -103,16 +92,6 @@ export const classroomOptions = [
   { value: 'A-102', label: 'A-102' },
   { value: 'B-201', label: 'B-201' },
 ]
-
-const mediaGrades = new Set(['Décimo', 'Undécimo'])
-
-export function derivedGroupPlan(grade: string) {
-  if (mediaGrades.has(grade)) {
-    return { typeLabel: 'Media Técnica', weeklyHours: 37 }
-  }
-
-  return { typeLabel: 'Bachillerato', weeklyHours: 30 }
-}
 
 export function isGroupCodeTaken(
   groups: SchoolGroup[],
@@ -131,6 +110,14 @@ export function isGroupCodeTaken(
       item.yearId === yearId &&
       item.id !== ignoreId &&
       item.code.trim().toLowerCase() === normalized,
+  )
+}
+
+export function matchesAcademicYear(group: SchoolGroup, year: AcademicYear) {
+  return (
+    group.yearId === year.id ||
+    group.yearId === String(year.year) ||
+    group.schoolYear === year.year
   )
 }
 

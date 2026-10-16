@@ -1,5 +1,32 @@
 import type { AreaResponse } from '../api/areas'
 
+// Alineado con TipoAulaRequerida del backend. Jackson lo serializa con el nombre del enum.
+export const TIPO_AULA_REQUERIDA = [
+  'AULA',
+  'LABORATORIO',
+  'SALA_SISTEMAS',
+  'CANCHA',
+] as const
+
+export type TipoAulaRequerida = (typeof TIPO_AULA_REQUERIDA)[number]
+
+// El campo es opcional en el API: null significa sin requisito. Este valor solo existe en el formulario.
+export const SIN_REQUISITO_AULA = 'SIN_REQUISITO'
+
+export type SubjectClassroomFormValue = '' | TipoAulaRequerida | typeof SIN_REQUISITO_AULA
+
+export function subjectClassroomFormValue(value: string): SubjectClassroomFormValue {
+  if (
+    value === '' ||
+    value === SIN_REQUISITO_AULA ||
+    (TIPO_AULA_REQUERIDA as readonly string[]).includes(value)
+  ) {
+    return value as SubjectClassroomFormValue
+  }
+
+  return ''
+}
+
 export const subjectYesNoOptions = [
   { value: '', label: 'Seleccione' },
   { value: 'si', label: 'Sí' },
@@ -22,13 +49,16 @@ export const subjectColorOptions = [
   { value: 'morado', label: 'Morado' },
 ]
 
-export const subjectClassroomOptions = [
+export const subjectClassroomOptions: {
+  value: SubjectClassroomFormValue
+  label: string
+}[] = [
   { value: '', label: 'Seleccione' },
   { value: 'AULA', label: 'Aula' },
   { value: 'LABORATORIO', label: 'Laboratorio' },
   { value: 'SALA_SISTEMAS', label: 'Sala de sistemas' },
   { value: 'CANCHA', label: 'Cancha' },
-  { value: 'SIN_REQUISITO', label: 'Sin requisito específico' },
+  { value: SIN_REQUISITO_AULA, label: 'Sin requisito específico' },
 ]
 
 export const subjectFormHint =

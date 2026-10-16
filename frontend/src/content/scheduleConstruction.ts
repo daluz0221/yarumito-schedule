@@ -67,10 +67,6 @@ export type ScheduleDraft = {
   classroom: string
 }
 
-export const scheduleCampusOptions = [
-  { value: 'principal', label: 'Sede Principal' },
-]
-
 export const scheduleShiftOptions = [{ value: 'principal', label: 'Principal' }]
 
 export const scheduleViewOptions = [{ value: 'grupo', label: 'Por grupo' }]

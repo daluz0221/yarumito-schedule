@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ApiError, listarDocentes } from '../../../api'
+import { ApiError, etiquetaCatalogoSedes, listarDocentes, useCatalogoSedes } from '../../../api'
 import { academicYears } from '../../../content/academicYear'
 import { seedPlacements } from '../../../content/scheduleConstruction'
 import {
@@ -36,6 +36,7 @@ export function ValidationsWorkspace() {
   const [yearId, setYearId] = useState(defaultValidationYearId)
   const [teachers, setTeachers] = useState<Teacher[]>([])
   const [catalogError, setCatalogError] = useState('')
+  const { sedes, error: sedesError } = useCatalogoSedes()
   const [version, setVersion] = useState(1)
   const [validating, setValidating] = useState(false)
   const [resolvedIds, setResolvedIds] = useState<string[]>([])
@@ -126,7 +127,12 @@ export function ValidationsWorkspace() {
         </Text>
       </div>
 
-      <ValidationScheduleCard year={year} version={version} onYearChange={selectYear} />
+      <ValidationScheduleCard
+        year={year}
+        version={version}
+        campusLabel={etiquetaCatalogoSedes(sedes, sedesError)}
+        onYearChange={selectYear}
+      />
       <ValidationMetrics {...summary} />
       <PublishBanner
         readiness={summary.readiness}
@@ -134,6 +140,11 @@ export function ValidationsWorkspace() {
       />
 
       {catalogError ? <p className={styles.notice}>{catalogError}</p> : null}
+      {sedesError ? (
+        <p className={styles.alert} role="alert">
+          {sedesError} La validación del horario local sigue disponible.
+        </p>
+      ) : null}
 
       <ValidationFilters
         values={filters}
