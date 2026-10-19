@@ -20,4 +20,9 @@ public interface GrupoRepository extends JpaRepository<Grupo, UUID> {
             UUID anioEscolarId,
             String codigo,
             UUID id);
+
+    // Verifica si un aula está o ha quedado referenciada
+    // actualmente como aula fija de algún grupo.
+    boolean existsByAulaFija_Id(
+            UUID aulaId);
 }
