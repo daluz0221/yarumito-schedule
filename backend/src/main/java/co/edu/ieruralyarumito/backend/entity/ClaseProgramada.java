@@ -34,5 +34,80 @@ public class ClaseProgramada {
     @Column (name = "dia", nullable = false)
     private DiasSemana dia;
 
-    
+    @ManyToOne (optional = false, fetch = FetchType.LAZY)
+    @JoinColumn (name = "franja_horaria_id")
+    private FranjaHoraria franjaHorariaId;
+
+    @ManyToOne (optional = false, fetch = FetchType.LAZY)
+    @JoinColumn (name = "aula_id")
+    private Aula aulaId;
+
+    @Column (name = "es_hora_extra", nullable = false)
+    private boolean esHoraExtra;
+
+    @Column (name = "bloqueada", nullable = false)
+    private boolean bloqueada;
+
+    public ClaseProgramada(){}
+
+    public UUID getId() {
+        return id;
+    }
+
+    public Horario getHorarioId() {
+        return this.horarioId;
+    }
+
+    public void setHorarioId(Horario horarioId) {
+        this.horarioId = horarioId;
+    }
+
+    public AsignacionAcademica getAsignacionAcademicaId() {
+        return this.asignacionAcademicaId;
+    }
+
+    public void setAsignacionAcademicaId(AsignacionAcademica asignacionAcademicaId) {
+        this.asignacionAcademicaId = asignacionAcademicaId;
+    }
+
+    public DiasSemana getDia() {
+        return this.dia;
+    }
+
+    public void setDia(DiasSemana dia) {
+        this.dia = dia;
+    }
+
+    public FranjaHoraria getFranjaHorariaId() {
+        return this.franjaHorariaId;
+    }
+
+    public void setFranjaHorariaId(FranjaHoraria franjaHorariaId) {
+        this.franjaHorariaId = franjaHorariaId;
+    }
+
+    public Aula getAulaId() {
+        return this.aulaId;
+    }
+
+    public void setAulaId(Aula aulaId) {
+        this.aulaId = aulaId;
+    }
+
+    public boolean isEsHoraExtra() {
+        return this.esHoraExtra;
+    }
+
+    public void setEsHoraExtra(boolean esHoraExtra) {
+        this.esHoraExtra = esHoraExtra;
+    }
+
+    public boolean isBloqueada() {
+        return this.bloqueada;
+    }
+
+    public void setBloqueada(boolean bloqueada) {
+        this.bloqueada = bloqueada;
+    }
+
 }

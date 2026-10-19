@@ -44,7 +44,7 @@ public class AsignacionAcademica {
     private int horasSemanales;
 
     @Column (name = "horas_extras", nullable = false)
-    private int horasExtras = 0;
+    private int horasExtras;
 
     @Column (name = "estado", nullable = false)
     private EstadoAsignacionAcademica estado;
