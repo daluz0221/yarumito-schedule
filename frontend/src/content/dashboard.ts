@@ -63,7 +63,6 @@ export type AlertItemData = {
 export const sidebarPrimaryNav: NavItemData[] = [
   { id: 'home', label: 'Inicio', icon: 'home', to: '/dashboard', end: true },
   { id: 'teachers', label: 'Docentes', icon: 'users', to: '/dashboard/docentes' },
-  { id: 'academic', label: 'Gestión académica', icon: 'bookOpen' },
   {
     id: 'year',
     label: 'Año lectivo y grupos',

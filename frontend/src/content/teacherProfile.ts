@@ -56,8 +56,13 @@ export type CrearIdoneidadRequest = {
 }
 
 export type ActualizarIdoneidadRequest = {
+  areaId: string
+  asignaturaId?: string
+  tipo: TipoIdoneidad
   tituloSoporteId?: string
   justificacion?: string
+  vigenteDesde: string
+  vigenteHasta?: string
 }
 
 export type FinalizarVigenciaIdoneidadRequest = {
@@ -130,8 +135,106 @@ export function labelTipoIdoneidad(tipo: TipoIdoneidad) {
   return labels[tipo]
 }
 
-export function isIdoneidadVigente(item: Idoneidad) {
-  return !item.vigenteHasta
+function fechaLocalISO(date = new Date()) {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
+// Vigente desde el día de inicio hasta el día de cierre, ambos inclusive.
+// Sin fecha de fin, sigue vigente.
+export function isIdoneidadVigente(item: Idoneidad, hoy = fechaLocalISO()) {
+  const desde = item.vigenteDesde.slice(0, 10)
+  const hasta = item.vigenteHasta.slice(0, 10)
+
+  if (desde && hoy < desde) {
+    return false
+  }
+
+  if (!hasta) {
+    return true
+  }
+
+  return hoy <= hasta
+}
+
+export type ResumenCampoCantidad =
+  | { estado: 'listo'; cantidad: number }
+  | { estado: 'error' }
+
+export type ResumenIdoneidadLista =
+  | { estado: 'listo'; tipo: 'pendiente' }
+  | { estado: 'listo'; tipo: 'areas'; cantidad: number }
+  | { estado: 'listo'; tipo: 'asignaturas'; cantidad: number }
+  | { estado: 'listo'; tipo: 'mixto'; areas: number; asignaturas: number }
+
+export type ResumenCampoIdoneidad = ResumenIdoneidadLista | { estado: 'error' }
+
+export type ResumenAcademicoDocente = {
+  titulos: ResumenCampoCantidad
+  idoneidad: ResumenCampoIdoneidad
+}
+
+function resumenIdoneidades(idoneidades: Idoneidad[]): ResumenIdoneidadLista {
+  const porArea = idoneidades.filter((item) => !item.asignaturaId.trim()).length
+  const porAsignatura = idoneidades.filter((item) => item.asignaturaId.trim()).length
+
+  if (porArea > 0 && porAsignatura > 0) {
+    return {
+      estado: 'listo',
+      tipo: 'mixto',
+      areas: porArea,
+      asignaturas: porAsignatura,
+    }
+  }
+
+  if (porAsignatura > 0) {
+    return { estado: 'listo', tipo: 'asignaturas', cantidad: porAsignatura }
+  }
+
+  if (porArea > 0) {
+    return { estado: 'listo', tipo: 'areas', cantidad: porArea }
+  }
+
+  return { estado: 'listo', tipo: 'pendiente' }
+}
+
+export function resumenAcademicoDocente(
+  titulos: ProfessionalTitle[] | null,
+  idoneidades: Idoneidad[] | null,
+): ResumenAcademicoDocente {
+  return {
+    titulos:
+      titulos === null
+        ? { estado: 'error' }
+        : { estado: 'listo', cantidad: titulos.length },
+    idoneidad:
+      idoneidades === null ? { estado: 'error' } : resumenIdoneidades(idoneidades),
+  }
+}
+
+export function labelConteoTitulos(cantidad: number) {
+  return cantidad === 1 ? '1 registrado' : `${cantidad} registrados`
+}
+
+function labelCantidad(cantidad: number, singular: string, plural: string) {
+  return `${cantidad} ${cantidad === 1 ? singular : plural}`
+}
+
+export function labelResumenIdoneidad(resumen: ResumenIdoneidadLista) {
+  if (resumen.tipo === 'pendiente') {
+    return 'Pendiente'
+  }
+
+  if (resumen.tipo === 'asignaturas') {
+    return labelCantidad(resumen.cantidad, 'asignatura', 'asignaturas')
+  }
+
+  if (resumen.tipo === 'mixto') {
+    return `${labelCantidad(resumen.areas, 'área', 'áreas')}, ${labelCantidad(resumen.asignaturas, 'asignatura', 'asignaturas')}`
+  }
+
+  return labelCantidad(resumen.cantidad, 'área', 'áreas')
 }
 
 export function formatVigencia(item: Idoneidad) {
@@ -174,9 +277,22 @@ export function toCrearIdoneidadRequest(
 export function toActualizarIdoneidadRequest(
   form: CrearIdoneidadForm,
 ): ActualizarIdoneidadRequest {
+  if (!form.areaId) {
+    throw new Error('El área es obligatoria')
+  }
+
+  if (!form.vigenteDesde) {
+    throw new Error('La fecha de inicio de vigencia es obligatoria')
+  }
+
   return {
+    areaId: form.areaId,
+    asignaturaId: optionalText(form.asignaturaId),
+    tipo: form.tipo,
     tituloSoporteId: optionalText(form.tituloSoporteId),
     justificacion: optionalText(form.justificacion),
+    vigenteDesde: form.vigenteDesde,
+    vigenteHasta: optionalText(form.vigenteHasta),
   }
 }
 

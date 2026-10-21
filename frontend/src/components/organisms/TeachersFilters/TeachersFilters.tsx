@@ -1,9 +1,8 @@
 import {
-  PENDING_BACKEND_LABEL,
-  teacherAreaOptions,
   teacherContractOptions,
   teacherStatusOptions,
 } from '../../../content/teachers'
+import type { SelectOption } from '../../atoms/Select'
 import { TextInput } from '../../atoms/TextInput'
 import { TextLink } from '../../atoms/TextLink'
 import { FormField } from '../../molecules/FormField'
@@ -12,9 +11,14 @@ import styles from './TeachersFilters.module.css'
 
 export type TeachersFiltersProps = {
   query: string
+  area: string
   status: string
   contract: string
+  areaOptions: SelectOption[]
+  areasLoading?: boolean
+  areasError?: string
   onQueryChange: (value: string) => void
+  onAreaChange: (value: string) => void
   onStatusChange: (value: string) => void
   onContractChange: (value: string) => void
   onClear: () => void
@@ -22,9 +26,14 @@ export type TeachersFiltersProps = {
 
 export function TeachersFilters({
   query,
+  area,
   status,
   contract,
+  areaOptions,
+  areasLoading = false,
+  areasError,
   onQueryChange,
+  onAreaChange,
   onStatusChange,
   onContractChange,
   onClear,
@@ -41,16 +50,15 @@ export function TeachersFilters({
           onChange={(event) => onQueryChange(event.target.value)}
         />
       </FormField>
-      {/* Próximamente: el backend filtra por areaId y no expone catálogo ni nombre de área. */}
       <SelectField
         id="teacher-area"
         label="Área"
         name="area"
-        value=""
-        options={teacherAreaOptions}
-        hint={PENDING_BACKEND_LABEL}
-        disabled
-        onChange={() => undefined}
+        value={area}
+        options={areaOptions}
+        hint={areasError || (areasLoading ? 'Cargando áreas...' : undefined)}
+        disabled={areasLoading || Boolean(areasError)}
+        onChange={onAreaChange}
       />
       <SelectField
         id="teacher-status"

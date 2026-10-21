@@ -1,5 +1,17 @@
 import { useEffect, useState } from 'react'
-import { ApiError, consultarResumenDocentes, listarDocentes } from '../../../api'
+import {
+  ApiError,
+  consultarResumenDocentes,
+  listarCatalogoAreas,
+  listarDocentes,
+  listarIdoneidadesPorDocente,
+  listarTitulosPorDocente,
+} from '../../../api'
+import type { CatalogoAreasTabla } from '../TeachersTable'
+import {
+  resumenAcademicoDocente,
+  type ResumenAcademicoDocente,
+} from '../../../content/teacherProfile'
 import { teacherStatsFromCounts, type Teacher } from '../../../content/teachers'
 import type { StatItemData } from '../../../content/dashboard'
 import { StatsSection } from '../StatsSection'
@@ -10,6 +22,7 @@ import styles from './TeachersWorkspace.module.css'
 
 const defaultFilters = {
   query: '',
+  area: '',
   status: '',
   contract: '',
 }
@@ -31,6 +44,10 @@ export function TeachersWorkspace() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(6)
   const [rows, setRows] = useState<Teacher[]>([])
+  const [summaries, setSummaries] = useState<
+    Record<string, ResumenAcademicoDocente>
+  >({})
+  const [areas, setAreas] = useState<CatalogoAreasTabla>({ estado: 'cargando' })
   const [total, setTotal] = useState(0)
   const [stats, setStats] = useState<StatItemData[]>(emptyStats)
   const [loading, setLoading] = useState(true)
@@ -56,6 +73,7 @@ export function TeachersWorkspace() {
         texto: debouncedQuery,
         estado: filters.status,
         tipoVinculacion: filters.contract,
+        areaId: filters.area,
         page: page - 1,
         size: pageSize,
       },
@@ -91,7 +109,97 @@ export function TeachersWorkspace() {
       })
 
     return () => controller.abort()
-  }, [debouncedQuery, filters.status, filters.contract, page, pageSize, reloadKey])
+  }, [
+    debouncedQuery,
+    filters.status,
+    filters.contract,
+    filters.area,
+    page,
+    pageSize,
+    reloadKey,
+  ])
+
+  useEffect(() => {
+    if (rows.length === 0) {
+      setSummaries({})
+      return
+    }
+
+    const controller = new AbortController()
+    let active = true
+    setSummaries({})
+
+    void Promise.all(
+      rows.map(async (teacher) => {
+        const [titlesResult, suitabilityResult] = await Promise.allSettled([
+          listarTitulosPorDocente(teacher.id, controller.signal),
+          listarIdoneidadesPorDocente(teacher.id, controller.signal),
+        ])
+
+        return { id: teacher.id, titlesResult, suitabilityResult }
+      }),
+    ).then((results) => {
+      if (!active || controller.signal.aborted) {
+        return
+      }
+
+      const next: Record<string, ResumenAcademicoDocente> = {}
+
+      for (const result of results) {
+        if (
+          (result.titlesResult.status === 'rejected' &&
+            isAbortError(result.titlesResult.reason)) ||
+          (result.suitabilityResult.status === 'rejected' &&
+            isAbortError(result.suitabilityResult.reason))
+        ) {
+          return
+        }
+
+        next[result.id] = resumenAcademicoDocente(
+          result.titlesResult.status === 'fulfilled'
+            ? result.titlesResult.value
+            : null,
+          result.suitabilityResult.status === 'fulfilled'
+            ? result.suitabilityResult.value
+            : null,
+        )
+      }
+
+      setSummaries(next)
+    })
+
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [rows])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setAreas({ estado: 'cargando' })
+
+    listarCatalogoAreas(controller.signal)
+      .then((catalog) => {
+        const porId: Record<string, string> = {}
+
+        for (const area of catalog) {
+          const nombre = area.nombre?.trim()
+
+          if (area.id && nombre) {
+            porId[area.id] = nombre
+          }
+        }
+
+        setAreas({ estado: 'listo', porId })
+      })
+      .catch((cause) => {
+        if (!isAbortError(cause)) {
+          setAreas({ estado: 'error' })
+        }
+      })
+
+    return () => controller.abort()
+  }, [reloadKey])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -113,6 +221,15 @@ export function TeachersWorkspace() {
     setPage(1)
   }
 
+  const areaOptions = [
+    { value: '', label: 'Todas' },
+    ...(areas.estado === 'listo'
+      ? Object.entries(areas.porId)
+          .map(([id, nombre]) => ({ value: id, label: nombre }))
+          .sort((left, right) => left.label.localeCompare(right.label, 'es'))
+      : []),
+  ]
+
   return (
     <section className={styles.workspace}>
       <TeachersToolbar
@@ -123,10 +240,20 @@ export function TeachersWorkspace() {
       <StatsSection items={stats} label="Resumen de docentes" />
       <TeachersFilters
         query={filters.query}
+        area={filters.area}
         status={filters.status}
         contract={filters.contract}
+        areaOptions={areaOptions}
+        areasLoading={areas.estado === 'cargando'}
+        areasError={
+          areas.estado === 'error' ? 'No se pudo cargar el catálogo de áreas.' : ''
+        }
         onQueryChange={(query) => {
           setFilters((current) => ({ ...current, query }))
+          setPage(1)
+        }}
+        onAreaChange={(area) => {
+          setFilters((current) => ({ ...current, area }))
           setPage(1)
         }}
         onStatusChange={(status) => {
@@ -146,6 +273,8 @@ export function TeachersWorkspace() {
       ) : null}
       <TeachersTable
         rows={rows}
+        summaries={summaries}
+        areas={areas}
         page={page}
         pageSize={pageSize}
         total={total}

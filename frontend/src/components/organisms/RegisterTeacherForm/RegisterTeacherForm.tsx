@@ -11,7 +11,6 @@ import {
 import {
   emptyCrearDocenteForm,
   hintCambioEstado,
-  opcionesEstadoDocente,
   sanitizeDocumentNumber,
   toActualizarDocenteRequest,
   toCrearDocenteRequest,
@@ -246,10 +245,9 @@ export function RegisterTeacherForm({
         />
         <TeacherStatusSection
           value={values.estado}
-          options={isEdit ? opcionesEstadoDocente(estadoGuardado) : undefined}
-          hint={isEdit ? hintCambioEstado(estadoGuardado) : undefined}
+          hint={isEdit ? hintCambioEstado() : undefined}
           error={fieldErrors.estado}
-          disabled={submitting || (isEdit && estadoGuardado === 'RETIRADO')}
+          disabled={submitting}
           onChange={(estado) => updateField('estado', estado)}
         />
 

@@ -340,7 +340,7 @@ public class DocenteServiceTest {
     }
 
     @Test
-    void cambiarEstado_debeRechazarRetiradoAActivo() {
+    void cambiarEstado_debePermitirRetiradoAActivo() {
 
         UUID docenteId = UUID.randomUUID();
 
@@ -356,17 +356,17 @@ public class DocenteServiceTest {
         when(docenteRepository.findById(docenteId))
                 .thenReturn(Optional.of(docente));
 
-        assertThrows(
-                TransicionEstadoNoPermitidaException.class,
-                () -> docenteService.cambiarEstado(
-                        docenteId,
-                        request
-                )
-        );
+        when(docenteRepository.save(any(Docente.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        DocenteResponse response =
+                docenteService.cambiarEstado(docenteId, request);
+
+        assertEquals(EstadoDocente.ACTIVO, response.getEstado());
     }
 
     @Test
-    void cambiarEstado_debeRechazarRetiradoALicencia() {
+    void cambiarEstado_debePermitirRetiradoALicencia() {
 
         UUID docenteId = UUID.randomUUID();
 
@@ -382,13 +382,13 @@ public class DocenteServiceTest {
         when(docenteRepository.findById(docenteId))
                 .thenReturn(Optional.of(docente));
 
-        assertThrows(
-                TransicionEstadoNoPermitidaException.class,
-                () -> docenteService.cambiarEstado(
-                        docenteId,
-                        request
-                )
-        );
+        when(docenteRepository.save(any(Docente.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        DocenteResponse response =
+                docenteService.cambiarEstado(docenteId, request);
+
+        assertEquals(EstadoDocente.LICENCIA, response.getEstado());
     }
 
     @Test

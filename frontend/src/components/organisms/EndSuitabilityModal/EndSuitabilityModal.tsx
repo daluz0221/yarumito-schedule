@@ -96,8 +96,8 @@ export function EndSuitabilityModal({
           </p>
         ) : null}
         <Text variant="body">
-          La idoneidad dejará de estar vigente a partir de la fecha indicada. El
-          registro se conservará como histórico.
+          La idoneidad permanece vigente hasta la fecha indicada, inclusive. Al
+          día siguiente queda como histórico.
         </Text>
       </form>
     </Modal>

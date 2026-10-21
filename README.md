@@ -144,7 +144,8 @@ las sedes (API 11-13)
 la de gestión académica
 no hay relación catalogoacademico.sede
 tengo error 500 en GET /api/v1/grados responde 500: relation "catalogoacademico.grado" does not exist
-mock up del modal de crear grados
- La entidad AnioEscolar apunta a catalogoacademico.anio_escolar, y ese esquema no existe.
- Hoy esa consulta responde 500 porque no existe la tabla catalogoacademico.plan_estudio
- Sí. El PUT /api/v1/idoneidades/{id} solo acepta dos campos: tituloSoporteId y justificacion. El cuerpo está definido en ActualizarIdoneidadRequest, y el servicio solo aplica esos dos valores cuando vienen en la petición.
+mock up del modal de crear grados -> 
+el mock up del sidebar gestion academica es la misma para areas y asignaturas
+La entidad AnioEscolar apunta a catalogoacademico.anio_escolar, y ese esquema no existe.
+Hoy esa consulta responde 500 porque no existe la tabla catalogoacademico.plan_estudio
+El PUT /api/v1/idoneidades/{id} permite actualizar `areaId`, `asignaturaId`, `tipo`, `tituloSoporteId`, `justificacion`, `vigenteDesde` y `vigenteHasta`. El docente, el identificador y el usuario aprobador no se reasignan desde este endpoint.

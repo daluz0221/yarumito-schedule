@@ -94,11 +94,6 @@ export const teacherContractOptions = [
   { value: 'CONTRATO', label: 'Contrato' },
 ]
 
-// El backend filtra por areaId, pero no hay GET /areas ni nombre en DocenteResponse.
-export const teacherAreaOptions = [
-  { value: '', label: PENDING_BACKEND_LABEL },
-]
-
 export const documentTypeOptions = [
   { value: '', label: 'Seleccione un tipo' },
   { value: 'CC', label: 'Cédula de ciudadanía' },
@@ -130,29 +125,8 @@ export const registerStatusOptions = [
   { value: 'RETIRADO', label: 'Retirado' },
 ]
 
-const transicionesEstado: Record<TeacherStatus, TeacherStatus[]> = {
-  ACTIVO: ['ACTIVO', 'LICENCIA', 'RETIRADO'],
-  LICENCIA: ['ACTIVO', 'LICENCIA', 'RETIRADO'],
-  RETIRADO: ['RETIRADO'],
-}
-
-export function opcionesEstadoDocente(estadoActual: TeacherStatus) {
-  const permitidos = transicionesEstado[estadoActual]
-  return registerStatusOptions.filter((option) =>
-    permitidos.includes(option.value as TeacherStatus),
-  )
-}
-
-export function hintCambioEstado(estadoActual: TeacherStatus) {
-  if (estadoActual === 'RETIRADO') {
-    return 'Un docente retirado no puede cambiar de estado. Para volver a vincularlo se requiere un nuevo nombramiento.'
-  }
-
-  if (estadoActual === 'LICENCIA') {
-    return 'Puede volver a activo o pasar a retirado. Después de retirado no se puede reactivar.'
-  }
-
-  return 'Puede pasar a licencia o a retirado. Después de retirado no se puede reactivar.'
+export function hintCambioEstado() {
+  return 'El cambio se aplica al guardar. Puede pasar entre activo, licencia y retirado.'
 }
 
 // Forma del formulario de registro, alineada con CrearDocenteRequest.

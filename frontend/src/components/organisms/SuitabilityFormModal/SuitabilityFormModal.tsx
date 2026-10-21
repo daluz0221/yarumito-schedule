@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { ApiError, listarAsignaturas } from '../../../api'
+import type { AsignaturaResponse } from '../../../api/asignaturas'
 import { PENDING_BACKEND_LABEL } from '../../../content/teachers'
 import {
   emptyCrearIdoneidadForm,
@@ -11,7 +13,6 @@ import {
 } from '../../../content/teacherProfile'
 import type { SelectOption } from '../../atoms/Select'
 import { Modal } from '../../atoms/Modal'
-import { Text } from '../../atoms/Text'
 import { TextLink } from '../../atoms/TextLink'
 import { ModalActions } from '../../molecules/ModalActions'
 import { SelectField } from '../../molecules/SelectField'
@@ -37,6 +38,16 @@ export type SuitabilityFormModalProps = {
 const pendingOptions: SelectOption[] = [
   { value: '', label: PENDING_BACKEND_LABEL },
 ]
+
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
+function subjectLoadError(cause: unknown) {
+  return cause instanceof ApiError
+    ? cause.message
+    : 'No se pudieron cargar las asignaturas.'
+}
 
 function titleOptions(
   titles: ProfessionalTitle[],
@@ -79,21 +90,70 @@ export function SuitabilityFormModal({
   onRetry,
   onSubmit,
 }: SuitabilityFormModalProps) {
-  const [values, setValues] = useState<CrearIdoneidadForm>(emptyCrearIdoneidadForm)
+  const formStateKey = `${open ? 'open' : 'closed'}:${mode}:${item?.id ?? ''}`
+  const initialValues =
+    mode === 'edit' && item
+      ? idoneidadToForm(item)
+      : emptyCrearIdoneidadForm
+  const [activeFormStateKey, setActiveFormStateKey] = useState(formStateKey)
+  const [values, setValues] = useState<CrearIdoneidadForm>(initialValues)
+  const [subjectCatalog, setSubjectCatalog] = useState<{
+    areaId: string
+    subjects: AsignaturaResponse[]
+    error: string
+  } | null>(null)
   const [localError, setLocalError] = useState('')
   const isEdit = mode === 'edit'
   const isExceptional = values.tipo === 'EXCEPCIONAL'
 
+  if (activeFormStateKey !== formStateKey) {
+    setActiveFormStateKey(formStateKey)
+    setLocalError('')
+    setValues(initialValues)
+  }
+
   useEffect(() => {
-    if (!open) {
+    if (!open || !values.areaId) {
       return
     }
 
-    setLocalError('')
-    setValues(
-      mode === 'edit' && item ? idoneidadToForm(item) : emptyCrearIdoneidadForm,
-    )
-  }, [item, mode, open])
+    const controller = new AbortController()
+    const areaId = values.areaId
+
+    listarAsignaturas(areaId, controller.signal)
+      .then((loaded) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        setSubjectCatalog({
+          areaId,
+          subjects: [...loaded].sort((left, right) =>
+            left.nombre.localeCompare(right.nombre, 'es'),
+          ),
+          error: '',
+        })
+      })
+      .catch((cause: unknown) => {
+        if (isAbortError(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setSubjectCatalog({
+          areaId,
+          subjects: [],
+          error: subjectLoadError(cause),
+        })
+      })
+
+    return () => controller.abort()
+  }, [open, values.areaId])
+
+  const subjectCatalogForArea =
+    open && subjectCatalog?.areaId === values.areaId ? subjectCatalog : null
+  const subjects = subjectCatalogForArea?.subjects ?? []
+  const subjectsError = subjectCatalogForArea?.error ?? ''
+  const subjectsLoading = Boolean(values.areaId) && subjectCatalogForArea === null
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -102,13 +162,23 @@ export function SuitabilityFormModal({
       return
     }
 
-    if (!isEdit && !values.areaId) {
+    if (!values.areaId) {
       setLocalError('El área es obligatoria')
       return
     }
 
-    if (!isEdit && !values.vigenteDesde) {
+    if (!values.vigenteDesde) {
       setLocalError('La fecha de inicio de vigencia es obligatoria')
+      return
+    }
+
+    if (
+      values.vigenteHasta &&
+      values.vigenteHasta < values.vigenteDesde
+    ) {
+      setLocalError(
+        'La fecha de finalización no puede ser anterior al inicio de vigencia',
+      )
       return
     }
 
@@ -121,6 +191,40 @@ export function SuitabilityFormModal({
     onSubmit(values)
   }
 
+  const visibleSubjects = subjects.filter(
+    (subject) => subject.activa || subject.id === values.asignaturaId,
+  )
+  const subjectOptions: SelectOption[] = [
+    {
+      value: '',
+      label: values.areaId ? 'Sin asignatura específica' : 'Seleccione un área',
+    },
+    ...visibleSubjects.map((subject) => ({
+      value: subject.id,
+      label: subject.activa ? subject.nombre : `${subject.nombre} (inactiva)`,
+    })),
+  ]
+
+  if (
+    values.asignaturaId &&
+    !subjectOptions.some((option) => option.value === values.asignaturaId)
+  ) {
+    subjectOptions.push({
+      value: values.asignaturaId,
+      label: subjectsLoading ? 'Cargando asignatura...' : 'Asignatura no disponible',
+    })
+  }
+
+  const subjectHint = !values.areaId
+    ? 'Seleccione un área para listar sus asignaturas.'
+    : subjectsLoading
+      ? 'Cargando asignaturas...'
+      : subjectsError
+        ? undefined
+        : visibleSubjects.length === 0
+          ? 'Esta área no tiene asignaturas activas. La idoneidad puede guardarse para toda el área.'
+          : 'Opcional. Sin asignatura, la idoneidad cubre toda el área.'
+
   return (
     <Modal
       open={open}
@@ -131,8 +235,8 @@ export function SuitabilityFormModal({
       }
       description={
         isEdit
-          ? 'El PUT solo permite cambiar justificación y título de soporte.'
-          : 'Define el área, el tipo de idoneidad y, si existe, el título de soporte.'
+          ? 'Actualiza los datos académicos y el periodo de vigencia de la idoneidad.'
+          : 'Define el área, la asignatura si aplica, el tipo de idoneidad y, si existe, el título de soporte.'
       }
       onClose={onClose}
       footer={
@@ -168,6 +272,7 @@ export function SuitabilityFormModal({
       <form
         id="suitability-form"
         className={styles.form}
+        noValidate
         onSubmit={handleSubmit}
       >
         <SelectField
@@ -180,20 +285,27 @@ export function SuitabilityFormModal({
               ? [{ value: '', label: 'Seleccione un área' }, ...areaOptions]
               : pendingOptions
           }
-          disabled={isEdit || areaOptions.length === 0}
+          disabled={areaOptions.length === 0}
           hint={areaOptions.length === 0 ? PENDING_BACKEND_LABEL : undefined}
           onChange={(areaId) =>
-            setValues((current) => ({ ...current, areaId, asignaturaId: '' }))
+            setValues((current) => ({
+              ...current,
+              areaId,
+              asignaturaId: '',
+            }))
           }
         />
         <SelectField
           id="suitability-subject"
           label="Asignatura"
-          value=""
-          options={pendingOptions}
-          hint={PENDING_BACKEND_LABEL}
-          disabled
-          onChange={() => undefined}
+          value={values.asignaturaId}
+          options={subjectOptions}
+          hint={subjectHint}
+          error={subjectsError || undefined}
+          disabled={!values.areaId || subjectsLoading}
+          onChange={(asignaturaId) =>
+            setValues((current) => ({ ...current, asignaturaId }))
+          }
         />
         <SelectField
           id="suitability-type"
@@ -201,7 +313,6 @@ export function SuitabilityFormModal({
           required
           value={values.tipo}
           options={suitabilityTypeOptions}
-          disabled={isEdit}
           onChange={(tipo) =>
             setValues((current) => ({
               ...current,
@@ -235,7 +346,6 @@ export function SuitabilityFormModal({
             type="date"
             required
             value={values.vigenteDesde}
-            disabled={isEdit}
             onChange={(event) =>
               setValues((current) => ({
                 ...current,
@@ -248,7 +358,6 @@ export function SuitabilityFormModal({
             label="Vigente hasta"
             type="date"
             value={values.vigenteHasta}
-            disabled={isEdit}
             onChange={(event) =>
               setValues((current) => ({
                 ...current,
@@ -274,12 +383,6 @@ export function SuitabilityFormModal({
           <p className={styles.error} role="alert">
             {error || localError}
           </p>
-        ) : null}
-        {isEdit ? (
-          <Text variant="caption" className={styles.note}>
-            Área, tipo y fechas no se pueden cambiar al editar. El título de
-            soporte sí se puede actualizar.
-          </Text>
         ) : null}
       </form>
       )}

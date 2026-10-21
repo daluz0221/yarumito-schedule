@@ -77,7 +77,7 @@ public class IdoneidadController {
         return ResponseEntity.ok(response);
     }
 
-    // Actualiza los datos permitidos de una idoneidad existente.
+    // Actualiza todos los datos editables de una idoneidad existente.
     @PutMapping("/{id}")
     public ResponseEntity<IdoneidadResponse> actualizarIdoneidad(
             @PathVariable UUID id,

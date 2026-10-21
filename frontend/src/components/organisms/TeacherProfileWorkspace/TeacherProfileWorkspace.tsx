@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import {
   actualizarIdoneidad,
   ApiError,
+  consultarAsignatura,
   consultarDocente,
   consultarIdoneidad,
   finalizarVigenciaIdoneidad,
@@ -142,6 +143,7 @@ export function TeacherProfileWorkspace() {
   const [titlesError, setTitlesError] = useState('')
   const [titlesLoading, setTitlesLoading] = useState(false)
   const [areas, setAreas] = useState<AreaResponse[]>([])
+  const [subjectNames, setSubjectNames] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [modal, setModal] = useState<ProfileModal>({ name: 'closed' })
@@ -245,6 +247,55 @@ export function TeacherProfileWorkspace() {
 
     return () => controller.abort()
   }, [loadProfile, teacherId])
+
+  useEffect(() => {
+    const ids = [
+      ...new Set(items.map((item) => item.asignaturaId).filter(Boolean)),
+    ]
+
+    if (ids.length === 0) {
+      return
+    }
+
+    const controller = new AbortController()
+
+    void Promise.all(
+      ids.map(async (id) => {
+        try {
+          const subject = await consultarAsignatura(id, controller.signal)
+          return [id, subject.nombre.trim() || 'Asignatura sin nombre'] as const
+        } catch (cause) {
+          if (isAbortError(cause)) {
+            throw cause
+          }
+
+          return [id, 'Asignatura no disponible'] as const
+        }
+      }),
+    )
+      .then((entries) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        setSubjectNames((current) => {
+          const next = { ...current }
+
+          for (const [id, name] of entries) {
+            next[id] = name
+          }
+
+          return next
+        })
+      })
+      .catch((cause: unknown) => {
+        if (isAbortError(cause)) {
+          return
+        }
+      })
+
+    return () => controller.abort()
+  }, [items])
 
   const loadTitleDetail = useCallback(
     async (id: string) => {
@@ -583,6 +634,7 @@ export function TeacherProfileWorkspace() {
             titles={titles}
             titlesUnavailable={Boolean(titlesError)}
             areaNameById={(areaId) => resolveAreaName(areaId, areas)}
+            subjectNameById={(asignaturaId) => subjectNames[asignaturaId] ?? ''}
             onAdd={() => {
               setModalError('')
               setModal({ name: 'addSuitability' })
