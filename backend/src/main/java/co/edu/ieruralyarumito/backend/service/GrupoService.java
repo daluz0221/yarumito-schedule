@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.List;
 
 // Contiene la lógica de negocio para la gestión de grupos escolares.
 @Service
@@ -351,6 +352,64 @@ public class GrupoService {
 
         return convertirAResponse(
                 grupoGuardado);
+    }
+
+    // Sugiere el siguiente código disponible para un grado y año escolar.
+    @Transactional(readOnly = true)
+    public String sugerirCodigoGrupo(
+            UUID gradoId,
+            UUID anioEscolarId) {
+
+        Grado grado = obtenerGrado(gradoId);
+        obtenerAnioEscolar(anioEscolarId);
+
+        int nivel = grado.getNivel();
+
+        if (nivel < 1 || nivel > 11) {
+            throw new IllegalArgumentException(
+                    "El nivel del grado debe estar entre 1 y 11");
+        }
+
+        int base = nivel * 100;
+
+        List<Grupo> grupos =
+                grupoRepository.findByGrado_IdAndAnioEscolar_Id(
+                        gradoId,
+                        anioEscolarId);
+
+        int consecutivoMayor = 0;
+
+        for (Grupo grupo : grupos) {
+            String codigo = grupo.getCodigo();
+
+            if (codigo == null || !codigo.matches("\\d+")) {
+                continue;
+            }
+
+            int numero = Integer.parseInt(codigo);
+            int consecutivo = numero - base;
+
+            if (consecutivo >= 1 && consecutivo <= 99) {
+                consecutivoMayor = Math.max(
+                        consecutivoMayor,
+                        consecutivo);
+            }
+        }
+
+        for (int consecutivo = consecutivoMayor + 1;
+             consecutivo <= 99;
+             consecutivo++) {
+
+            String codigo = String.valueOf(base + consecutivo);
+
+            if (!grupoRepository.existsByAnioEscolar_IdAndCodigo(
+                    anioEscolarId, codigo)) {
+                return codigo;
+            }
+        }
+
+        throw new IllegalStateException(
+                "No hay más consecutivos disponibles para este grado");
     }
 
     // Consulta un grupo por su identificador.
