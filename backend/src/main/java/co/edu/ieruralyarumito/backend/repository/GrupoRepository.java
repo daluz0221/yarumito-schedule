@@ -4,6 +4,7 @@ import co.edu.ieruralyarumito.backend.entity.Grupo;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.UUID;
+import java.util.List;
 
 // Gestiona la persistencia de los grupos escolares.
 public interface GrupoRepository extends JpaRepository<Grupo, UUID> {
@@ -20,6 +21,11 @@ public interface GrupoRepository extends JpaRepository<Grupo, UUID> {
             UUID anioEscolarId,
             String codigo,
             UUID id);
+
+    // Consulta los grupos existentes del mismo grado y año escolar.
+    List<Grupo> findByGrado_IdAndAnioEscolar_Id(
+            UUID gradoId,
+            UUID anioEscolarId);
 
     // Verifica si un aula está o ha quedado referenciada
     // actualmente como aula fija de algún grupo.

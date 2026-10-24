@@ -38,6 +38,21 @@ public class GrupoController {
                 .body(response);
     }
 
+    // Sugiere el siguiente código para el grado y año escolar seleccionados.
+    @GetMapping("/siguiente-codigo")
+    public ResponseEntity<String> sugerirCodigoGrupo(
+            @RequestParam UUID gradoId,
+            @RequestParam UUID anioEscolarId) {
+
+        String codigo = grupoService.sugerirCodigoGrupo(
+                gradoId,
+                anioEscolarId);
+
+        return ResponseEntity.ok(codigo);
+    }
+
+
+
     // Lista los grupos registrados con paginación.
     @GetMapping
     public ResponseEntity<Page<GrupoResponse>> listarGrupos(

@@ -1416,4 +1416,155 @@ class GrupoServiceTest {
         assertNull(
                 response.getAdvertenciaLogistica());
     }
+
+    @Test
+    void sugerirCodigoGrupo_debeIniciarEn801ParaOctavo() {
+        UUID gradoId = UUID.randomUUID();
+        UUID anioId = UUID.randomUUID();
+
+        Grado grado = new Grado();
+        grado.setNivel(8);
+
+        when(gradoRepository.findById(gradoId))
+                .thenReturn(Optional.of(grado));
+        when(anioEscolarRepository.findById(anioId))
+                .thenReturn(Optional.of(new AnioEscolar()));
+        when(grupoRepository.findByGrado_IdAndAnioEscolar_Id(gradoId, anioId))
+                .thenReturn(java.util.List.of());
+
+        assertEquals("801", grupoService.sugerirCodigoGrupo(gradoId, anioId));
+    }
+
+    @Test
+    void sugerirCodigoGrupo_debeIncrementarAlSiguiente() {
+        UUID gradoId = UUID.randomUUID();
+        UUID anioId = UUID.randomUUID();
+
+        Grado grado = new Grado();
+        grado.setNivel(8);
+
+        Grupo grupo801 = new Grupo();
+        grupo801.setCodigo("801");
+
+        Grupo grupo802 = new Grupo();
+        grupo802.setCodigo("802");
+
+        when(gradoRepository.findById(gradoId))
+                .thenReturn(Optional.of(grado));
+        when(anioEscolarRepository.findById(anioId))
+                .thenReturn(Optional.of(new AnioEscolar()));
+        when(grupoRepository.findByGrado_IdAndAnioEscolar_Id(gradoId, anioId))
+                .thenReturn(java.util.List.of(grupo801, grupo802));
+
+        assertEquals("803", grupoService.sugerirCodigoGrupo(gradoId, anioId));
+    }
+
+    @Test
+    void sugerirCodigoGrupo_debeContinuarDespuesDelMayorConsecutivo() {
+        UUID gradoId = UUID.randomUUID();
+        UUID anioId = UUID.randomUUID();
+
+        Grado grado = new Grado();
+        grado.setNivel(8);
+
+        Grupo grupo801 = new Grupo();
+        grupo801.setCodigo("801");
+
+        Grupo grupo803 = new Grupo();
+        grupo803.setCodigo("803");
+
+        when(gradoRepository.findById(gradoId))
+                .thenReturn(Optional.of(grado));
+        when(anioEscolarRepository.findById(anioId))
+                .thenReturn(Optional.of(new AnioEscolar()));
+        when(grupoRepository.findByGrado_IdAndAnioEscolar_Id(gradoId, anioId))
+                .thenReturn(java.util.List.of(grupo801, grupo803));
+
+        assertEquals("804", grupoService.sugerirCodigoGrupo(gradoId, anioId));
+    }
+
+    @Test
+    void sugerirCodigoGrupo_debeReiniciarEnOtroAnioEscolar() {
+        UUID gradoId = UUID.randomUUID();
+        UUID anioNuevoId = UUID.randomUUID();
+
+        Grado grado = new Grado();
+        grado.setNivel(8);
+
+        when(gradoRepository.findById(gradoId))
+                .thenReturn(Optional.of(grado));
+        when(anioEscolarRepository.findById(anioNuevoId))
+                .thenReturn(Optional.of(new AnioEscolar()));
+        when(grupoRepository.findByGrado_IdAndAnioEscolar_Id(
+                gradoId, anioNuevoId))
+                .thenReturn(java.util.List.of());
+
+        assertEquals("801",
+                grupoService.sugerirCodigoGrupo(gradoId, anioNuevoId));
+    }
+
+    @Test
+    void sugerirCodigoGrupo_debeSaltarCodigoOcupadoPorOtroGrado() {
+        UUID gradoId = UUID.randomUUID();
+        UUID anioId = UUID.randomUUID();
+
+        Grado grado = new Grado();
+        grado.setNivel(8);
+
+        Grupo grupo801 = new Grupo();
+        grupo801.setCodigo("801");
+
+        Grupo grupo802 = new Grupo();
+        grupo802.setCodigo("802");
+
+        when(gradoRepository.findById(gradoId))
+                .thenReturn(Optional.of(grado));
+
+        when(anioEscolarRepository.findById(anioId))
+                .thenReturn(Optional.of(new AnioEscolar()));
+
+        when(grupoRepository.findByGrado_IdAndAnioEscolar_Id(
+                gradoId, anioId))
+                .thenReturn(java.util.List.of(grupo801, grupo802));
+
+        // El código 803 ya está ocupado en el mismo año escolar.
+        when(grupoRepository.existsByAnioEscolar_IdAndCodigo(
+                anioId, "803"))
+                .thenReturn(true);
+
+        // El siguiente código está disponible.
+        when(grupoRepository.existsByAnioEscolar_IdAndCodigo(
+                anioId, "804"))
+                .thenReturn(false);
+
+        assertEquals(
+                "804",
+                grupoService.sugerirCodigoGrupo(gradoId, anioId));
+    }
+
+    @Test
+    void sugerirCodigoGrupo_debeRechazarConsecutivoAgotado() {
+        UUID gradoId = UUID.randomUUID();
+        UUID anioId = UUID.randomUUID();
+
+        Grado grado = new Grado();
+        grado.setNivel(8);
+
+        Grupo grupo899 = new Grupo();
+        grupo899.setCodigo("899");
+
+        when(gradoRepository.findById(gradoId))
+                .thenReturn(Optional.of(grado));
+
+        when(anioEscolarRepository.findById(anioId))
+                .thenReturn(Optional.of(new AnioEscolar()));
+
+        when(grupoRepository.findByGrado_IdAndAnioEscolar_Id(
+                gradoId, anioId))
+                .thenReturn(java.util.List.of(grupo899));
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> grupoService.sugerirCodigoGrupo(gradoId, anioId));
+    }
 }
