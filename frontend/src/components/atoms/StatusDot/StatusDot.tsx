@@ -1,6 +1,6 @@
 import styles from './StatusDot.module.css'
 
-export type StatusDotTone = 'warning' | 'alert' | 'success'
+export type StatusDotTone = 'warning' | 'alert' | 'success' | 'neutral'
 
 export type StatusDotProps = {
   tone: StatusDotTone

@@ -1,0 +1,45 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lead,
+.hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.lead {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.hint {
+  color: #5a5a5a;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .actions {
+    flex-direction: column;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}

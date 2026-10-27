@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../../auth'
 import {
   sidebarAccountNav,
   sidebarPrimaryNav,
@@ -12,6 +14,21 @@ export type SidebarProps = {
 }
 
 export function Sidebar({ onNavigate }: SidebarProps) {
+  const { logout } = useAuth()
+  const navigate = useNavigate()
+
+  const accountItems = sidebarAccountNav.map((item) =>
+    item.id === 'logout'
+      ? {
+          ...item,
+          onClick: () => {
+            logout()
+            navigate('/admin', { replace: true })
+          },
+        }
+      : item,
+  )
+
   return (
     <aside className={styles.sidebar}>
       <SidebarBrand
@@ -37,7 +54,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       <div className={styles.account}>
         <SidebarNavGroup
           label="Cuenta"
-          items={sidebarAccountNav}
+          items={accountItems}
           onNavigate={onNavigate}
         />
       </div>

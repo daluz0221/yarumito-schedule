@@ -1,0 +1,107 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.top,
+.row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+
+.row {
+  align-items: center;
+}
+
+.copy,
+.note {
+  min-width: 0;
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 420px;
+}
+
+.note {
+  flex: 1;
+}
+
+.yearControls,
+.actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.yearSelect {
+  width: 180px;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px 20px;
+  margin: 0;
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.value {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.success {
+  color: var(--color-success);
+}
+
+.warning {
+  color: #c47d12;
+}
+
+@media (max-width: 980px) {
+  .facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .top,
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .yearControls,
+  .actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .yearSelect,
+  .yearControls button,
+  .actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

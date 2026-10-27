@@ -1,3 +1,4 @@
+import { dashboardStats } from '../../content/dashboard'
 import { DashboardHeader } from '../../components/organisms/DashboardHeader'
 import { InsightsSection } from '../../components/organisms/InsightsSection'
 import { ModulesSection } from '../../components/organisms/ModulesSection'
@@ -10,10 +11,16 @@ export function DashboardPage() {
   return (
     <DashboardLayout
       sidebar={({ onNavigate }) => <Sidebar onNavigate={onNavigate} />}
-      header={({ onMenuClick }) => <DashboardHeader onMenuClick={onMenuClick} />}
+      header={({ onMenuClick }) => (
+        <DashboardHeader
+          title="Panel principal"
+          subtitle="Gestión académica y planificación de horarios"
+          onMenuClick={onMenuClick}
+        />
+      )}
     >
       <WelcomeSection />
-      <StatsSection />
+      <StatsSection items={dashboardStats} />
       <ModulesSection />
       <InsightsSection />
     </DashboardLayout>

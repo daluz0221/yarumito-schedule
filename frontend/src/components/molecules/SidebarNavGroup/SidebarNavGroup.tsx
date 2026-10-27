@@ -10,6 +10,7 @@ import {
   HomeIcon,
   ListIcon,
   LogoutIcon,
+  PublishIcon,
   SearchIcon,
   ShieldIcon,
   UserIcon,
@@ -29,6 +30,7 @@ const navIcons: Record<NavIconName, ReactNode> = {
   clipboard: <ClipboardIcon />,
   grid: <GridIcon />,
   shield: <ShieldIcon />,
+  publish: <PublishIcon />,
   search: <SearchIcon />,
   user: <UserIcon />,
   logout: <LogoutIcon />,
@@ -53,8 +55,10 @@ export function SidebarNavGroup({
           icon={navIcons[item.icon]}
           label={item.label}
           to={item.to}
+          end={item.end}
           disabled={item.disabled}
           indented={item.indented}
+          onClick={item.onClick}
           onNavigate={onNavigate}
         />
       ))}

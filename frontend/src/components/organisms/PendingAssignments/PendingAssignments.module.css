@@ -1,0 +1,71 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item,
+.itemSelected {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+}
+
+.itemSelected {
+  border-color: var(--color-primary);
+  background: #f5f7ff;
+}
+
+.subject,
+.teacher,
+.hours,
+.empty {
+  margin: 0;
+}
+
+.subject {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.teacher {
+  color: #6f6f6f;
+  font-size: 13px;
+}
+
+.hours {
+  margin-bottom: 8px;
+  color: #c47d12;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.empty {
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+@media (max-width: 1100px) {
+  .list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}

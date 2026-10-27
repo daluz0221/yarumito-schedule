@@ -1,0 +1,29 @@
+.card {
+  display: flex;
+  flex-direction: column;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 16px;
+  align-items: end;
+}
+
+.derived {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-input);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+@media (max-width: 860px) {
+  .filters {
+    grid-template-columns: 1fr;
+  }
+}

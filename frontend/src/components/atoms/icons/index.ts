@@ -15,6 +15,8 @@ export {
   ListIcon,
   LogoutIcon,
   MenuIcon,
+  PlusIcon,
+  PublishIcon,
   SearchIcon,
   ShieldIcon,
   UserIcon,

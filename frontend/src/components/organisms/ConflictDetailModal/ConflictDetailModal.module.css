@@ -1,0 +1,88 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.error,
+.warning {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #3a3a3a;
+}
+
+.error {
+  background: #fdecec;
+  border: 1px solid #f3c4c4;
+}
+
+.warning {
+  background: #fff6e5;
+  border: 1px solid #f3d7a3;
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+}
+
+.fact {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: start;
+}
+
+.fact dt,
+.fact dd {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.fact dt {
+  color: #6f6f6f;
+}
+
+.fact dt::after {
+  content: ':';
+}
+
+.fact dd {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .fact {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}

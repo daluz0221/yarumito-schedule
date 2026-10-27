@@ -144,9 +144,9 @@ public class DocenteService {
                     nuevoEstado == EstadoDocente.ACTIVO
                             || nuevoEstado == EstadoDocente.RETIRADO;
 
-            // Un docente retirado requiere un nuevo nombramiento
-            // para volver a estar activo.
-            case RETIRADO -> false;
+            case RETIRADO ->
+                    nuevoEstado == EstadoDocente.ACTIVO
+                            || nuevoEstado == EstadoDocente.LICENCIA;
         };
 
         if (!transicionPermitida) {

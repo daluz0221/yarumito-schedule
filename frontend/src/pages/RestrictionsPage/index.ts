@@ -1,0 +1,1 @@
+export { RestrictionsPage } from './RestrictionsPage'

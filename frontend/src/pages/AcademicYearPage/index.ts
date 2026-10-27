@@ -1,0 +1,1 @@
+export { AcademicYearPage } from './AcademicYearPage'

@@ -18,3 +18,22 @@
   color: #8a5a12;
   background: #f7ead2;
 }
+
+.danger {
+  color: #b42318;
+  background: #fde8e8;
+}
+
+.success {
+  color: #1f6b45;
+  background: #e4f6ec;
+}
+
+.outline {
+  height: 28px;
+  padding: 0 12px;
+  color: #3f3f3f;
+  background: var(--color-surface);
+  border: 1px solid #d7d7d7;
+  font-weight: 500;
+}

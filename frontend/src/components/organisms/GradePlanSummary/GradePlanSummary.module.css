@@ -1,0 +1,99 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f7f7f7;
+}
+
+.fact dt {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.fact dd {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.progressCopy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.progressCopy p {
+  margin: 0;
+  color: #5a5a5a;
+  font-size: 13px;
+}
+
+.pending {
+  color: #d4880f;
+  font-weight: 600;
+}
+
+.warning,
+.complete {
+  font-weight: 600;
+}
+
+.warning {
+  color: #c0392b;
+}
+
+.complete {
+  color: var(--color-success);
+}
+
+.track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6e6e6;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+}
+
+@media (max-width: 980px) {
+  .facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .facts,
+  .progressCopy {
+    grid-template-columns: 1fr;
+  }
+
+  .progressCopy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

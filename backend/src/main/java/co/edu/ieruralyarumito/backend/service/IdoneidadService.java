@@ -160,6 +160,12 @@ public class IdoneidadService {
 
         for (Idoneidad existente : existentes) {
 
+            // Al editar, la propia idoneidad no debe compararse consigo misma.
+            if (nuevaIdoneidad.getId() != null
+                    && nuevaIdoneidad.getId().equals(existente.getId())) {
+                continue;
+            }
+
             boolean mismaArea =
                     existente.getArea().getId()
                             .equals(nuevaIdoneidad.getArea().getId());
@@ -389,7 +395,7 @@ public class IdoneidadService {
                 .toList();
     }
 
-    // Actualiza únicamente los datos permitidos de una idoneidad existente.
+    // Actualiza todos los datos editables de una idoneidad existente.
     @Transactional
     public IdoneidadResponse actualizarIdoneidad(
             UUID id,
@@ -398,30 +404,57 @@ public class IdoneidadService {
         // Valida que la idoneidad exista.
         Idoneidad idoneidad = obtenerIdoneidad(id);
 
-        // Actualiza el título profesional de soporte cuando fue enviado.
-        if (request.getTituloSoporteId() != null) {
+        Docente docente = idoneidad.getDocente();
+        Area area = obtenerArea(request.getAreaId());
 
-            TituloProfesional tituloSoporte =
+        // Una idoneidad PRINCIPAL debe conservar la relación con el área
+        // de nombramiento, incluso cuando se cambia el tipo o el área.
+        validarAreaPrincipal(
+                docente,
+                area,
+                request.getTipo()
+        );
+
+        // null elimina la asignatura específica y extiende la idoneidad
+        // a toda el área.
+        Asignatura asignatura = null;
+        if (request.getAsignaturaId() != null) {
+            asignatura = obtenerAsignatura(request.getAsignaturaId());
+            validarAsignaturaPerteneceArea(asignatura, area);
+            validarDocenteMediaTecnica(docente, asignatura);
+        }
+
+        // null elimina el título de soporte.
+        TituloProfesional tituloSoporte = null;
+        if (request.getTituloSoporteId() != null) {
+            tituloSoporte =
                     obtenerTituloProfesional(request.getTituloSoporteId());
 
             validarTituloPerteneceDocente(
                     tituloSoporte,
-                    idoneidad.getDocente()
+                    docente
             );
-
-            idoneidad.setTituloSoporte(tituloSoporte);
         }
 
-        // Actualiza la justificación cuando fue enviada.
-        if (request.getJustificacion() != null) {
-            idoneidad.setJustificacion(request.getJustificacion());
-        }
-
-        // Una idoneidad EXCEPCIONAL siempre debe conservar justificación.
-        validarJustificacionExcepcional(
-                idoneidad.getTipo(),
-                idoneidad.getJustificacion()
+        validarRangoVigencia(
+                request.getVigenteDesde(),
+                request.getVigenteHasta()
         );
+        validarJustificacionExcepcional(
+                request.getTipo(),
+                request.getJustificacion()
+        );
+
+        idoneidad.setArea(area);
+        idoneidad.setAsignatura(asignatura);
+        idoneidad.setTipo(request.getTipo());
+        idoneidad.setTituloSoporte(tituloSoporte);
+        idoneidad.setJustificacion(request.getJustificacion());
+        idoneidad.setVigenteDesde(request.getVigenteDesde());
+        idoneidad.setVigenteHasta(request.getVigenteHasta());
+
+        // Revalida posibles cruces después de cambiar área, asignatura o fechas.
+        validarSolapamientoIdoneidad(idoneidad);
 
         Idoneidad idoneidadActualizada =
                 idoneidadRepository.save(idoneidad);
