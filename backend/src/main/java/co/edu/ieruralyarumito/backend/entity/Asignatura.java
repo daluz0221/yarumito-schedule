@@ -14,11 +14,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 import java.util.UUID;
 
 // Representa una asignatura perteneciente a un área académica.
 @Entity
+@Table(name = "asignatura", schema = "catalogoacademico")
 public class Asignatura {
 
     // Identificador único de la asignatura.
@@ -47,7 +49,7 @@ public class Asignatura {
     private String colorUi;
 
     // Indica si la asignatura exige validación estricta de idoneidad docente.
-    @Column(name = "exige_idoneidad_estricta", nullable = false)
+    @Column(name = "exige_idoniedad_estricta", nullable = false)
     private boolean exigeIdoneidadEstricta;
 
     // Indica si la asignatura pertenece a la Media Técnica.
@@ -60,7 +62,7 @@ public class Asignatura {
 
     // Tipo de espacio físico requerido para impartir la asignatura.
     @Enumerated(EnumType.STRING)
-    @Column(name = "tipo_aula_requerida")
+    @Column(name = "tipo_aula_requ")
     private TipoAulaRequerida tipoAulaRequerida;
 
     // Número máximo de clases consecutivas permitidas para la asignatura.

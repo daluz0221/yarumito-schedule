@@ -13,6 +13,8 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Table;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 
 
 @Entity
@@ -39,6 +41,7 @@ public class Horario {
     @Column (name = "nombre", nullable = false)
     private String nombre;
     
+    @Enumerated(EnumType.STRING)
     @Column (name = "estado", nullable = false)
     private EstadoHorario estado;
 

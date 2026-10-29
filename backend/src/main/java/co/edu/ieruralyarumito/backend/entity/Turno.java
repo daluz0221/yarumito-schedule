@@ -12,7 +12,7 @@ import java.util.UUID;
 
 // Representa una jornada institucional para la organización del horario académico.
 @Entity
-@Table(name = "turno", schema = "catalogoacademico")
+@Table(name = "turno", schema = "tiempoyespacio")
 public class Turno {
 
     // Identificador único del turno.

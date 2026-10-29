@@ -8,9 +8,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Column;
+import jakarta.persistence.Table;
 
-@Entity (name = "asignacionActividad",
-    schema = "asignacionyhorario")
+@Entity
+@Table (name = "asignacionactividad", schema = "asignacionyhorario")
 public class AsignacionActividad {
 
     @Id

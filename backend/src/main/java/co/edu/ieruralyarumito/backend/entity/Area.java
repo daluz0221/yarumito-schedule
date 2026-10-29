@@ -6,12 +6,14 @@ import jakarta.persistence.Id; // Define la clave primaria
 import jakarta.persistence.Column; // Configura las columnas de la tabla
 import jakarta.persistence.GeneratedValue; // Permite generar automáticamente el identificador
 import jakarta.persistence.GenerationType; // Define la estrategia de generación
+import jakarta.persistence.Table;
 
 // Importa UUID para utilizar identificadores únicos.
 import java.util.UUID; // Tipo del identificador
 
 // Representa el área académica definida en el Modelo ER
 @Entity   // Indica que Area es una entidad persistente
+@Table(name = "area", schema = "catalogoacademico")
 public class Area {
 
     // Identificador único del área.

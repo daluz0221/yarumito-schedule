@@ -17,7 +17,7 @@ import java.util.UUID;
 // para un grado dentro de un año escolar.
 @Entity
 @Table(
-        name = "plan_estudios",
+        name = "planestudios",
         schema = "catalogoacademico",
         uniqueConstraints = {
                 @UniqueConstraint(

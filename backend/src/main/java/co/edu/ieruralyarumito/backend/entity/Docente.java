@@ -14,12 +14,14 @@ import jakarta.persistence.JoinColumn; // Define la columna FK
 import jakarta.persistence.ManyToOne; // Relación muchos Docentes a un Area
 import java.time.LocalDate; // Tipo de fecha sin hora
 import co.edu.ieruralyarumito.backend.entity.enums.EstadoDocente; // Enum de estado del docente
+import jakarta.persistence.Table;
 
 // Importa UUID para utilizar identificadores únicos.
 import java.util.UUID; // Tipo del identificador
 
 // Representa el perfil laboral y académico del docente.
 @Entity // Indica que Docente es una entidad persistente
+@Table(name = "docente", schema = "accesopersonas")
 public class Docente {
 
     // Identificador único del docente.
@@ -70,7 +72,7 @@ public class Docente {
     @Column(name = "max_horas_extra", nullable = false) // Campo obligatorio
     private int maxHorasExtra = 10; // Máximo de horas extra permitidas por defecto
 
-    @Column(name = "es_exclusivo_media_tecnica", nullable = false) // Campo obligatorio
+    @Column(name = "es_exclusivo_med_tecnica", nullable = false) // Campo obligatorio
     private boolean esExclusivoMediaTecnica = false; // Indica si el docente es exclusivo de media técnica
 
     // Estado administrativo actual del docente.

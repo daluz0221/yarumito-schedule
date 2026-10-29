@@ -3,14 +3,20 @@ package co.edu.ieruralyarumito.backend.entity;
 
 import java.util.UUID;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Column;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
+import co.edu.ieruralyarumito.backend.entity.enums.TipoActividadInstitucional;
 
-@Entity (name = "actividadInstitucional",
-    schema = "asignacionyhorario")
+@Entity 
+@Table(name = "actividadinstitucional", schema = "asignacionyhorario")
 public class ActividadInstitucional {
     
     @Id 
@@ -25,6 +31,7 @@ public class ActividadInstitucional {
     private String nombre;
 
     @Column (name = "tipo", nullable = false)
+    @Enumerated(EnumType.STRING)
     private TipoActividadInstitucional tipo;
 
     @Column (name = "descripcion")

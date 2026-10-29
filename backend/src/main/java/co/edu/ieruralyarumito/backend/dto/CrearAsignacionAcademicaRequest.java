@@ -1,6 +1,6 @@
 package co.edu.ieruralyarumito.backend.dto;
 
-import co.edu.ieruralyarumito.entity.enums.TipoIdoneidad;
+import co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.constraints.NotNull;
@@ -25,7 +25,6 @@ public class CrearAsignacionAcademicaRequest {
     @NotNull (message = "El tipo de idoneidad es obligatorio")
     private TipoIdoneidad tipoIdoneidad;
 
-    @NotNull (message = "Debes asignar la cantidad de horas semanales")
     @Positive (message = "La cantidad de horas semanales debe ser un número positivo")
     private int horasSemanales;
 

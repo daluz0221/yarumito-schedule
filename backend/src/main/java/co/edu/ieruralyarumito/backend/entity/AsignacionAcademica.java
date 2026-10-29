@@ -13,6 +13,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 
 
 @Entity

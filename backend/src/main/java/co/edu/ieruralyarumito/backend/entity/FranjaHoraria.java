@@ -16,7 +16,7 @@ import java.util.UUID;
 
 // Representa una franja horaria perteneciente a un turno institucional.
 @Entity
-@Table(name = "franja_horaria", schema = "catalogoacademico")
+@Table(name = "franjahoraria", schema = "tiempoyespacio")
 public class FranjaHoraria {
 
     // Identificador único de la franja horaria.

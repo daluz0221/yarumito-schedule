@@ -11,10 +11,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.util.UUID;
 
 // Representa un título académico asociado a un docente.
 @Entity
+@Table(name = "titulo_profesional", schema="accesopersonas")
 public class TituloProfesional {
 
     // Identificador único del título profesional.
@@ -46,6 +48,7 @@ public class TituloProfesional {
     // Ruta o referencia al archivo que soporta el título.
     @Column(name = "archivo_soporte")
     private String archivoSoporte;
+
 
     // Retorna el identificador único del título profesional.
     public UUID getId() {

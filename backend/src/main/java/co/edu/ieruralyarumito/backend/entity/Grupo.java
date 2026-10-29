@@ -66,7 +66,7 @@ public class Grupo {
     // Aula habitual del grupo.
     // La relación es opcional: un grupo puede existir sin aula fija.
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "aula_fija_id")
+    @JoinColumn(name = "aula_fija")
     private Aula aulaFija;
 
     // Indica si el grupo se encuentra activo.

@@ -17,7 +17,7 @@ import java.util.UUID;
 
 // Representa un espacio físico disponible para la programación académica.
 @Entity
-@Table(name = "aula", schema = "catalogoacademico")
+@Table(name = "aula", schema = "tiempoyespacio")
 public class Aula {
 
     // Identificador único del aula.

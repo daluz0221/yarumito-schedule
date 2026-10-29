@@ -12,10 +12,12 @@ import jakarta.persistence.Table;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 
 @Entity
 @Table (
-    name = "claseProgramada",
+    name = "claseprogramada",
     schema = "asignacionyhorario"    
 )
 public class ClaseProgramada {
@@ -32,6 +34,7 @@ public class ClaseProgramada {
     private AsignacionAcademica asignacionAcademicaId;
     
     @Column (name = "dia", nullable = false)
+    @Enumerated(EnumType.STRING)
     private DiasSemana dia;
 
     @ManyToOne (optional = false, fetch = FetchType.LAZY)

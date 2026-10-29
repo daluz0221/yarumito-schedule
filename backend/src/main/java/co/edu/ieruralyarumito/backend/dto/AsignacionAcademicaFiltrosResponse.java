@@ -1,5 +1,7 @@
 package co.edu.ieruralyarumito.backend.dto;
 
+import java.util.UUID;
+
 public class AsignacionAcademicaFiltrosResponse {
 
     private UUID anioLectivoId;

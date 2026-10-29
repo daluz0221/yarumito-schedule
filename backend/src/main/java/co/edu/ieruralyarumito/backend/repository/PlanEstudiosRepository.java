@@ -4,6 +4,8 @@ import co.edu.ieruralyarumito.backend.entity.PlanEstudios;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.UUID;
+import java.util.List;
+import java.util.Optional;
 
 // Gestiona la persistencia de los registros del plan de estudios.
 public interface PlanEstudiosRepository
@@ -23,4 +25,7 @@ public interface PlanEstudiosRepository
             UUID gradoId,
             UUID asignaturaId,
             UUID id);
+
+    Optional<List<PlanEstudios>> findByAnioEscolarAndGrado(UUID anioEscolar, UUID grado);
+
 }

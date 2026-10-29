@@ -1,5 +1,7 @@
 package co.edu.ieruralyarumito.backend.dto;
 
+import co.edu.ieruralyarumito.backend.entity.enums.EstadoAsignacionAcademica;
+
 public class ResumenAsignacionAcademicaResponse {
     private String grupo;
     private String grado;
