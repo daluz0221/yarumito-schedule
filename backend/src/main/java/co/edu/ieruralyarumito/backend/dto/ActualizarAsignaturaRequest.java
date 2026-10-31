@@ -3,6 +3,7 @@ package co.edu.ieruralyarumito.backend.dto;
 import co.edu.ieruralyarumito.backend.entity.enums.TipoAulaRequerida;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 import java.util.UUID;
 
@@ -19,6 +20,7 @@ public class ActualizarAsignaturaRequest {
 
     private String abreviatura;
 
+    @Pattern(regexp = "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", message = "El color debe ser hexadecimal: #RGB, #RRGGBB o #RRGGBBAA")
     private String colorUi;
 
     @NotNull

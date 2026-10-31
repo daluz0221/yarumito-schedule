@@ -45,7 +45,7 @@ public class Asignatura {
     private String abreviatura;
 
     // Color opcional utilizado para representar la asignatura en la interfaz.
-    @Column(name = "color_ui")
+    @Column(name = "color_ui", length = 10)
     private String colorUi;
 
     // Indica si la asignatura exige validación estricta de idoneidad docente.
