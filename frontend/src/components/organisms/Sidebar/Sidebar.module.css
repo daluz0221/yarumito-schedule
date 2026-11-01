@@ -4,8 +4,17 @@
   gap: 20px;
   height: 100%;
   padding: 28px 16px 16px;
-  background: var(--color-surface);
-  border-right: 1px solid var(--color-border-subtle);
+  background: var(--color-sidebar);
+  color: var(--color-sidebar-text);
+  border-right: 0;
+}
+
+.sidebar p:first-child {
+  color: var(--color-sidebar-text);
+}
+
+.sidebar p:not(:first-child) {
+  color: rgb(244 251 233 / 78%);
 }
 
 .nav {
@@ -17,11 +26,11 @@
 .divider {
   height: 1px;
   margin: 4px 6px;
-  background: var(--color-border-subtle);
+  background: rgb(255 255 255 / 18%);
 }
 
 .account {
   margin-top: auto;
   padding-top: 12px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid rgb(255 255 255 / 18%);
 }

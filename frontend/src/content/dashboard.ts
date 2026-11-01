@@ -48,10 +48,21 @@ export type ModuleItemData = {
   to?: string
 }
 
+export type StatWash =
+  | 'total'
+  | 'active'
+  | 'license'
+  | 'retired'
+  | 'danger'
+  | 'warning'
+  | 'success'
+  | 'neutral'
+
 export type StatItemData = {
   id: string
   value: string
   label: string
+  wash?: StatWash
 }
 
 export type AlertItemData = {

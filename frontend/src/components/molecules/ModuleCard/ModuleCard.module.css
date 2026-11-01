@@ -21,4 +21,5 @@
 .copy h3 {
   font-size: 15px;
   font-weight: 700;
+  color: var(--color-primary);
 }

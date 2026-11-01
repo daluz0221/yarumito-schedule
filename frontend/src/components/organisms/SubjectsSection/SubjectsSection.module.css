@@ -38,8 +38,8 @@
   padding: 14px 12px;
   text-align: left;
   font-size: 13px;
-  background: #f7f7f7;
-  color: #5a5a5a;
+  background: var(--color-accent-soft);
+  color: var(--color-text-muted);
   font-weight: 600;
   white-space: nowrap;
   border-bottom: 1px solid var(--color-border-subtle);
@@ -48,7 +48,53 @@
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 14px;
+  gap: 8px;
+}
+
+.iconAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #c3de96;
+  border-radius: 8px;
+  background: #e3f2c4;
+  color: var(--color-brand);
+  cursor: pointer;
+}
+
+.iconAction:hover {
+  background: #d0e9a8;
+  border-color: #b3d484;
+}
+
+.iconAction:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.iconActionOff {
+  border-color: #f0e0bf;
+  background: #fff6e5;
+  color: #8a5a12;
+}
+
+.iconActionOff:hover {
+  background: #f8e8c4;
+  border-color: #e2cf9a;
+}
+
+.iconActionOn {
+  border-color: #b9d0ea;
+  background: #d9e8f8;
+  color: var(--color-primary);
+}
+
+.iconActionOn:hover {
+  background: #c5daf3;
+  border-color: #a4c2e4;
 }
 
 .cards {
@@ -82,7 +128,7 @@
 
 .card p {
   margin: 0;
-  color: #5a5a5a;
+  color: var(--color-text-muted);
   font-size: 13px;
 }
 

@@ -18,11 +18,11 @@ export function ValidationMetrics({
 }: ValidationMetricsProps) {
   return (
     <div className={styles.row} aria-label="Resumen de conflictos">
-      <StatCard value={String(total)} label="Total conflictos" />
-      <StatCard value={String(errors)} label="Errores" tone="danger" />
-      <StatCard value={String(warnings)} label="Advertencias" tone="warning" />
-      <StatCard value={String(resolved)} label="Resueltos" tone="success" />
-      <StatCard value={String(pending)} label="Pendientes" />
+      <StatCard value={String(total)} label="Total conflictos" wash="total" />
+      <StatCard value={String(errors)} label="Errores" wash="danger" />
+      <StatCard value={String(warnings)} label="Advertencias" wash="warning" />
+      <StatCard value={String(resolved)} label="Resueltos" wash="success" />
+      <StatCard value={String(pending)} label="Pendientes" wash="neutral" />
     </div>
   )
 }

@@ -24,14 +24,14 @@
 }
 
 .note {
-  color: #5a5a5a;
+  color: var(--color-text-muted);
 }
 
 .hint {
   padding: 12px 14px;
   border-radius: 10px;
-  background: #f4f4f5;
-  color: #5a5a5a;
+  background: var(--color-muted-btn);
+  color: var(--color-text-muted);
 }
 
 .actions {

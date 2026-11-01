@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Paletas Yarumito</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #5c6b7c;
+      --line: #e2e8f0;
+      --page: #f6f7f9;
+      --card: #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 420px at 10% -10%, #e7f0fa 0%, transparent 55%),
+        var(--page);
+      line-height: 1.45;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 28px;
+      align-items: center;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 36px 24px 12px;
+    }
+
+    header img {
+      width: 120px;
+      height: auto;
+      filter: drop-shadow(0 10px 18px rgba(1, 73, 152, 0.18));
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      letter-spacing: -0.03em;
+    }
+
+    header p {
+      margin: 0;
+      max-width: 68ch;
+      color: var(--muted);
+    }
+
+    .source {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .source span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 10px 4px 4px;
+      font-size: 13px;
+    }
+
+    .dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 12px 24px 64px;
+      display: grid;
+      gap: 22px;
+    }
+
+    article {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(18, 32, 51, 0.05);
+    }
+
+    .head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-end;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .kicker {
+      margin: 0 0 2px;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -0.02em;
+    }
+
+    .head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      max-width: 62ch;
+    }
+
+    .body {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 320px;
+    }
+
+    .swatches {
+      padding: 16px;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      background: #fbfcfd;
+      border-right: 1px solid var(--line);
+    }
+
+    .swatch {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .chip {
+      height: 42px;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .swatch strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .swatch code {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .stage {
+      padding: 18px;
+    }
+
+    .app {
+      border-radius: 14px;
+      overflow: hidden;
+      min-height: 286px;
+      display: grid;
+      grid-template-columns: 168px 1fr;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .app.bands {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .app.bands > * {
+      width: 100%;
+      margin: 0;
+    }
+
+    .side {
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .brand {
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+
+    .nav {
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+
+    .mainpane {
+      padding: 14px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .topbar h3 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .card {
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .meta {
+      display: flex;
+      gap: 8px;
+      margin: 8px 0 12px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      font-size: 12px;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-weight: 600;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      font: inherit;
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 650;
+      cursor: default;
+    }
+
+    .ghost {
+      background: transparent;
+    }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 24px 40px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .stat-stage {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      padding: 18px;
+      background: #f2f6f1;
+    }
+
+    .stat {
+      min-height: 96px;
+      padding: 16px 18px;
+      background: #fff;
+      border: 1px solid #d7e4d9;
+      border-top: 3px solid #83bc1d;
+      border-radius: 12px;
+      box-shadow: 0 8px 18px rgb(0 79 15 / 6%);
+    }
+
+    .stat b {
+      display: block;
+      font-size: 28px;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      color: #122016;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 6px;
+      font-size: 13px;
+      color: #5c6b5f;
+    }
+
+    .stat .mark {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 6px;
+      border-radius: 50%;
+      vertical-align: middle;
+    }
+
+    @media (max-width: 860px) {
+      header, .body { grid-template-columns: 1fr; }
+      .swatches { border-right: 0; border-bottom: 1px solid var(--line); }
+      header img { width: 88px; }
+      .stat-stage { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="frontend/src/assets/escudo-yarumito.png" alt="Escudo de la Institución Educativa Yarumito" />
+    <div>
+      <h1>Cinco paletas desde el escudo</h1>
+      <p>
+        Colores medidos del logo: azul del arco, verde del campo, amarillo del marco,
+        verde lima de las colinas y cielo. Cada opción reordena esos mismos tonos
+        para que la interfaz deje de verse gris y plana. El amarillo <code>#fcf11e</code>
+        se usa en fondos, filetes o sobre azul y verde; sobre blanco no tiene contraste suficiente para texto.
+      </p>
+      <div class="source">
+        <span><i class="dot" style="background:#014998"></i> Azul #014998</span>
+        <span><i class="dot" style="background:#004f0f"></i> Verde #004f0f</span>
+        <span><i class="dot" style="background:#fcf11e"></i> Amarillo #fcf11e</span>
+        <span><i class="dot" style="background:#83bc1d"></i> Lima #83bc1d</span>
+        <span><i class="dot" style="background:#ddeffb"></i> Cielo #ddeffb</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <article>
+      <div class="head">
+        <div>
+          <p class="kicker">Opción 1</p>
+          <h2>Arco azul</h2>
+          <p>El azul del arco superior lleva la navegación y las acciones. El verde queda para estados positivos y el amarillo solo como señal breve.</p>
+        </div>
+      </div>
+      <div class="body">
+        <div class="swatches">
+          <div class="swatch"><div class="chip" style="background:#f3f6fb"></div><div><strong>Fondo</strong><code>#f3f6fb</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#ffffff"></div><div><strong>Superficie</strong><code>#ffffff</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#014998"></div><div><strong>Primario</strong><code>#014998</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#013675"></div><div><strong>Primario oscuro</strong><code>#013675</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#004f0f"></div><div><strong>Secundario</strong><code>#004f0f</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#fcf11e"></div><div><strong>Acento</strong><code>#fcf11e</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#e7f0fa"></div><div><strong>Suave</strong><code>#e7f0fa</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#122033"></div><div><strong>Texto</strong><code>#122033</code></div></div>
+        </div>
+        <div class="stage" style="background:#eef3f9">
+          <div class="app">
+            <aside class="side" style="background:#014998; color:#fff">
+              <div class="brand">YARUMITO</div>
+              <div class="nav" style="background:#fcf11e; color:#243000">Horarios</div>
+              <div class="nav">Docentes</div>
+              <div class="nav">Plan de estudios</div>
+              <div class="nav" style="margin-top:auto; background:rgba(255,255,255,.12)">Año escolar</div>
+            </aside>
+            <section class="mainpane" style="background:#f3f6fb; color:#122033">
+              <div class="topbar">
+                <h3>Construcción de horario</h3>
+                <span class="pill" style="background:#e5f3e8; color:#004f0f">Publicado</span>
+              </div>
+              <div class="card" style="background:#fff; border:1px solid #d3deea; box-shadow:0 8px 18px rgba(1,73,152,.08)">
+                <strong>Grado 10 · Grupo A</strong>
+                <div class="meta">
+                  <span class="pill" style="background:#e7f0fa; color:#014998">Matemáticas</span>
+                  <span class="pill" style="background:#004f0f; color:#fff">Idóneo</span>
+                </div>
+                <div class="actions">
+                  <button style="background:#014998; color:#fff">Asignar bloque</button>
+                  <button class="ghost" style="color:#014998; border:1px solid #014998">Ver docente</button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article>
+      <div class="head">
+        <div>
+          <p class="kicker">Opción 2</p>
+          <h2>Campo verde</h2>
+          <p>El verde exterior del escudo domina la cromática. El azul se reserva para la acción principal, así hay dos colores con trabajo distinto y la pantalla no queda monocroma.</p>
+        </div>
+      </div>
+      <div class="body">
+        <div class="swatches">
+          <div class="swatch"><div class="chip" style="background:#f2f6f1"></div><div><strong>Fondo</strong><code>#f2f6f1</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#ffffff"></div><div><strong>Superficie</strong><code>#ffffff</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#004f0f"></div><div><strong>Primario</strong><code>#004f0f</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#01380b"></div><div><strong>Primario oscuro</strong><code>#01380b</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#014998"></div><div><strong>Acción</strong><code>#014998</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#83bc1d"></div><div><strong>Lima</strong><code>#83bc1d</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#eef6d8"></div><div><strong>Suave</strong><code>#eef6d8</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#122016"></div><div><strong>Texto</strong><code>#122016</code></div></div>
+        </div>
+        <div class="stage" style="background:#e7f0e6">
+          <div class="app">
+            <aside class="side" style="background:#004f0f; color:#f4fbe9">
+              <div class="brand">YARUMITO</div>
+              <div class="nav" style="background:#83bc1d; color:#12300a">Horarios</div>
+              <div class="nav">Docentes</div>
+              <div class="nav">Plan de estudios</div>
+              <div class="nav" style="margin-top:auto; background:rgba(255,255,255,.1)">Año escolar</div>
+            </aside>
+            <section class="mainpane" style="background:#f2f6f1; color:#122016">
+              <div class="topbar">
+                <h3>Docentes</h3>
+                <span class="pill" style="background:#eef6d8; color:#3f6a0c">12 activos</span>
+              </div>
+              <div class="card" style="background:#fff; border-top:4px solid #83bc1d; box-shadow:0 8px 18px rgba(0,79,15,.08)">
+                <strong>Carlos Pérez · Ciencias</strong>
+                <div class="meta">
+                  <span class="pill" style="background:#e7f0fa; color:#014998">Media técnica</span>
+                  <span class="pill" style="background:#004f0f; color:#fff">Vigente</span>
+                </div>
+                <div class="actions">
+                  <button style="background:#014998; color:#fff">Abrir perfil</button>
+                  <button class="ghost" style="color:#004f0f; border:1px solid #004f0f">Idoneidades</button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article>
+      <div class="head">
+        <div>
+          <p class="kicker">Opción 3</p>
+          <h2>Cielo abierto</h2>
+          <p>El fondo deja de ser gris y toma el cielo del escudo. La navegación sigue clara; el color entra por la página, las colinas en lima y el azul en lo que se pulsa.</p>
+        </div>
+      </div>
+      <div class="body">
+        <div class="swatches">
+          <div class="swatch"><div class="chip" style="background:#ddeffb"></div><div><strong>Fondo</strong><code>#ddeffb</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#ffffff"></div><div><strong>Superficie</strong><code>#ffffff</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#014998"></div><div><strong>Primario</strong><code>#014998</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#83bc1d"></div><div><strong>Lima</strong><code>#83bc1d</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#004f0f"></div><div><strong>Verde profundo</strong><code>#004f0f</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#f4f8e4"></div><div><strong>Suave</strong><code>#f4f8e4</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#c5dceb"></div><div><strong>Borde</strong><code>#c5dceb</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#0e2744"></div><div><strong>Texto</strong><code>#0e2744</code></div></div>
+        </div>
+        <div class="stage" style="background:#cfe6f6">
+          <div class="app" style="border-color:#b7d4ea">
+            <aside class="side" style="background:#ffffff; color:#0e2744; border-right:1px solid #c5dceb">
+              <div class="brand" style="color:#014998">YARUMITO</div>
+              <div class="nav" style="background:#014998; color:#fff">Horarios</div>
+              <div class="nav">Docentes</div>
+              <div class="nav">Plan de estudios</div>
+              <div class="nav" style="margin-top:auto; background:#f4f8e4; color:#3f6a0c">Año escolar</div>
+            </aside>
+            <section class="mainpane" style="background:#ddeffb; color:#0e2744">
+              <div class="topbar">
+                <h3>Plan de estudios</h3>
+                <span class="pill" style="background:#83bc1d; color:#14300a">En edición</span>
+              </div>
+              <div class="card" style="background:#fff; border:1px solid #c5dceb">
+                <strong>Ciencias naturales · Grado 9</strong>
+                <div class="meta">
+                  <span class="pill" style="background:#e7f0fa; color:#014998">4 horas</span>
+                  <span class="pill" style="background:#f4f8e4; color:#3f6a0c">Área activa</span>
+                </div>
+                <div class="actions">
+                  <button style="background:#014998; color:#fff">Agregar asignatura</button>
+                  <button class="ghost" style="background:#fff; color:#004f0f; border:1px solid #83bc1d">Áreas</button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article>
+      <div class="head">
+        <div>
+          <p class="kicker">Opción 4</p>
+          <h2>Marco de oro</h2>
+          <p>El filete amarillo del escudo se vuelve el acento gráfico: bordes, ítem activo y botón. El verde profundo da peso y el azul sigue identificando la información.</p>
+        </div>
+      </div>
+      <div class="body">
+        <div class="swatches">
+          <div class="swatch"><div class="chip" style="background:#f7f6ef"></div><div><strong>Fondo</strong><code>#f7f6ef</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#fffdf6"></div><div><strong>Superficie</strong><code>#fffdf6</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#0c3d18"></div><div><strong>Verde profundo</strong><code>#0c3d18</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#fcf11e"></div><div><strong>Oro</strong><code>#fcf11e</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#014998"></div><div><strong>Azul</strong><code>#014998</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#004f0f"></div><div><strong>Verde</strong><code>#004f0f</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#e6d98a"></div><div><strong>Filete</strong><code>#e6d98a</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#1a1a14"></div><div><strong>Texto</strong><code>#1a1a14</code></div></div>
+        </div>
+        <div class="stage" style="background:#efe8c8">
+          <div class="app" style="border:3px solid #fcf11e">
+            <aside class="side" style="background:#0c3d18; color:#f8f6df">
+              <div class="brand">YARUMITO</div>
+              <div class="nav" style="background:#fcf11e; color:#1a2400; box-shadow:inset 0 0 0 1px #d6cc3a">Horarios</div>
+              <div class="nav">Docentes</div>
+              <div class="nav">Plan de estudios</div>
+              <div class="nav" style="margin-top:auto; color:#fcf11e">Año escolar</div>
+            </aside>
+            <section class="mainpane" style="background:#f7f6ef; color:#1a1a14">
+              <div class="topbar">
+                <h3>Validaciones</h3>
+                <span class="pill" style="background:#fcf11e; color:#3d4200">3 alertas</span>
+              </div>
+              <div class="card" style="background:#fffdf6; border:1px solid #e6d98a; box-shadow:4px 4px 0 #014998">
+                <strong>Cruce de sede principal</strong>
+                <div class="meta">
+                  <span class="pill" style="background:#e7f0fa; color:#014998">Horario</span>
+                  <span class="pill" style="background:#004f0f; color:#fff">Bloqueante</span>
+                </div>
+                <div class="actions">
+                  <button style="background:#fcf11e; color:#1a2400">Revisar</button>
+                  <button class="ghost" style="color:#014998; border:1px solid #014998">Detalle</button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article>
+      <div class="head">
+        <div>
+          <p class="kicker">Opción 5</p>
+          <h2>Tres franjas</h2>
+          <p>Repite la composición del escudo: banda azul, campo blanco y cierre verde, separados por el amarillo. Es la más gráfica y la que más se reconoce como el logo.</p>
+        </div>
+      </div>
+      <div class="body">
+        <div class="swatches">
+          <div class="swatch"><div class="chip" style="background:#f6f7f4"></div><div><strong>Fondo</strong><code>#f6f7f4</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#ffffff"></div><div><strong>Franja blanca</strong><code>#ffffff</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#014998"></div><div><strong>Franja azul</strong><code>#014998</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#004f0f"></div><div><strong>Franja verde</strong><code>#004f0f</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#fcf11e"></div><div><strong>Filete</strong><code>#fcf11e</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#83bc1d"></div><div><strong>Lima</strong><code>#83bc1d</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#141414"></div><div><strong>Tinta</strong><code>#141414</code></div></div>
+          <div class="swatch"><div class="chip" style="background:#ddeffb"></div><div><strong>Cielo</strong><code>#ddeffb</code></div></div>
+        </div>
+        <div class="stage" style="background:#eceee8">
+          <div class="app bands">
+            <header style="background:#014998; color:#fff; padding:12px 14px; display:flex; justify-content:space-between; align-items:center">
+              <strong style="letter-spacing:.08em">YARUMITO</strong>
+              <span style="font-size:13px">Horarios · Docentes · Plan</span>
+            </header>
+            <div style="height:4px; background:#fcf11e"></div>
+            <section class="mainpane" style="background:#fff; color:#141414">
+              <div class="topbar">
+                <h3>Grupos del año</h3>
+                <span class="pill" style="background:#ddeffb; color:#014998">Sede principal</span>
+              </div>
+              <div class="card" style="background:#f6f7f4; border-left:6px solid #83bc1d">
+                <strong>10A · Mañana</strong>
+                <div class="meta">
+                  <span class="pill" style="background:#014998; color:#fff">28 estudiantes</span>
+                  <span class="pill" style="background:#e5f3e8; color:#004f0f">Director asignado</span>
+                </div>
+                <div class="actions">
+                  <button style="background:#004f0f; color:#fff">Abrir grupo</button>
+                  <button class="ghost" style="background:#fff; color:#141414; border:1px solid #141414">Editar</button>
+                </div>
+              </div>
+            </section>
+            <footer style="background:#004f0f; color:#f4fbe9; padding:8px 14px; font-size:12px; letter-spacing:.04em">
+              ESFUERZO Y SUPERACIÓN CONDUCEN AL ÉXITO
+            </footer>
+          </div>
+        </div>
+      </div>
+    </article>
+    <article>
+      <div class="head">
+        <div>
+          <p class="kicker">Docentes · tarjetas</p>
+          <h2>Cinco formas de colorear las cifras</h2>
+          <p>
+            El significado no cambia entre opciones. Azul <code>#014998</code> es el total, el conjunto.
+            Verde <code>#004f0f</code> es quien está en servicio. Ámbar <code>#8a5a12</code> es una pausa, no un error.
+            Gris <code>#4e5966</code> es un cierre, no una alerta. Lo que varía es dónde se pone ese color.
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <article>
+      <div class="head">
+        <div>
+          <p class="kicker">Sugerencia 1</p>
+          <h2>Número de estado</h2>
+          <p>La tarjeta sigue blanca. Solo la cifra toma el color, así el dato se lee antes que la etiqueta.</p>
+        </div>
+      </div>
+      <div class="stat-stage">
+        <div class="stat"><b style="color:#014998">24</b><span>Total docentes</span></div>
+        <div class="stat"><b style="color:#004f0f">20</b><span>Docentes activos</span></div>
+        <div class="stat"><b style="color:#8a5a12">3</b><span>En licencia</span></div>
+        <div class="stat"><b style="color:#4e5966">1</b><span>Retirados</span></div>
+      </div>
+    </article>
+
+    <article>
+      <div class="head">
+        <div>
+          <p class="kicker">Sugerencia 2</p>
+          <h2>Filete propio</h2>
+          <p>El filete lima deja de ser igual en las cuatro. Cada borde superior dice el estado y el número se queda en tinta.</p>
+        </div>
+      </div>
+      <div class="stat-stage">
+        <div class="stat" style="border-top-color:#014998"><b>24</b><span>Total docentes</span></div>
+        <div class="stat" style="border-top-color:#004f0f"><b>20</b><span>Docentes activos</span></div>
+        <div class="stat" style="border-top-color:#e2b340"><b>3</b><span>En licencia</span></div>
+        <div class="stat" style="border-top-color:#9aa3ad"><b>1</b><span>Retirados</span></div>
+      </div>
+    </article>
+
+    <article>
+      <div class="head">
+        <div>
+          <p class="kicker">Sugerencia 3</p>
+          <h2>Lavado suave</h2>
+          <p>El fondo de la tarjeta se tiñe y la cifra usa el mismo tono, más oscuro. Se nota el grupo sin gritar.</p>
+        </div>
+      </div>
+      <div class="stat-stage">
+        <div class="stat" style="background:#e7f0fa; border-color:#c5d8ee; border-top-color:#014998"><b style="color:#014998">24</b><span>Total docentes</span></div>
+        <div class="stat" style="background:#eef6d8; border-color:#d3e4b0; border-top-color:#004f0f"><b style="color:#004f0f">20</b><span>Docentes activos</span></div>
+        <div class="stat" style="background:#fff6e5; border-color:#f0e0bf; border-top-color:#e2b340"><b style="color:#8a5a12">3</b><span>En licencia</span></div>
+        <div class="stat" style="background:#eef1f4; border-color:#d5dbe2; border-top-color:#9aa3ad"><b style="color:#4e5966">1</b><span>Retirados</span></div>
+      </div>
+    </article>
+
+    <article>
+      <div class="head">
+        <div>
+          <p class="kicker">Sugerencia 4</p>
+          <h2>Marca en la etiqueta</h2>
+          <p>La cifra sigue neutra. Un punto de color junto al nombre del estado alcanza para distinguirlas.</p>
+        </div>
+      </div>
+      <div class="stat-stage">
+        <div class="stat"><b>24</b><span><i class="mark" style="background:#014998"></i>Total docentes</span></div>
+        <div class="stat"><b>20</b><span><i class="mark" style="background:#004f0f"></i>Docentes activos</span></div>
+        <div class="stat"><b>3</b><span><i class="mark" style="background:#e2b340"></i>En licencia</span></div>
+        <div class="stat"><b>1</b><span><i class="mark" style="background:#9aa3ad"></i>Retirados</span></div>
+      </div>
+    </article>
+
+    <article>
+      <div class="head">
+        <div>
+          <p class="kicker">Sugerencia 5</p>
+          <h2>Tarjeta llena</h2>
+          <p>Toda la superficie toma el color del estado y el texto va en claro. Es la más gráfica y la que más se separa del fondo verde.</p>
+        </div>
+      </div>
+      <div class="stat-stage">
+        <div class="stat" style="background:#014998; border-color:#014998; color:#fff"><b style="color:#fff">24</b><span style="color:#d6e6f8">Total docentes</span></div>
+        <div class="stat" style="background:#004f0f; border-color:#004f0f"><b style="color:#fff">20</b><span style="color:#d7ecc0">Docentes activos</span></div>
+        <div class="stat" style="background:#8a5a12; border-color:#8a5a12"><b style="color:#fff">3</b><span style="color:#ffe8c2">En licencia</span></div>
+        <div class="stat" style="background:#4e5966; border-color:#4e5966"><b style="color:#fff">1</b><span style="color:#e4e8ed">Retirados</span></div>
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    Archivo aislado del frontend. Ábrelo en el navegador desde la raíz del repositorio para ver el escudo y las cinco muestras.
+  </footer>
+</body>
+</html>

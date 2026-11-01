@@ -5,7 +5,7 @@ import type { AsignaturaResponse } from '../../../api/asignaturas'
 import { Button } from '../../atoms/Button'
 import { Card } from '../../atoms/Card'
 import { TextInput } from '../../atoms/TextInput'
-import { TextLink } from '../../atoms/TextLink'
+import { BanIcon, CheckIcon, PencilIcon } from '../../atoms/icons'
 import { FormField } from '../../molecules/FormField'
 import { SectionHeader } from '../../molecules/SectionHeader'
 import { SelectField } from '../../molecules/SelectField'
@@ -245,15 +245,13 @@ export function SubjectsSection({
                   <td className={subject.activa ? styles.positive : undefined}>
                     {subject.activa ? 'Activa' : 'Inactiva'}
                   </td>
-                  <td className={styles.actions}>
-                    <TextLink onClick={() => loadSubjectDetail(subject.id)}>
-                      Editar
-                    </TextLink>
-                    <TextLink
-                      onClick={() => setModal({ name: 'deactivate', subject })}
-                    >
-                      {subject.activa === false ? 'Activar' : 'Inactivar'}
-                    </TextLink>
+                  <td>
+                    <SubjectActions
+                      nombre={subject.nombre}
+                      activa={subject.activa}
+                      onEdit={() => loadSubjectDetail(subject.id)}
+                      onDeactivate={() => setModal({ name: 'deactivate', subject })}
+                    />
                   </td>
                 </tr>
               ))}
@@ -279,16 +277,12 @@ export function SubjectsSection({
                   {' · '}
                   {subject.maxClasesConsecutivas} consecutivas
                 </p>
-                <div className={styles.actions}>
-                  <TextLink onClick={() => loadSubjectDetail(subject.id)}>
-                    Editar
-                  </TextLink>
-                  <TextLink
-                    onClick={() => setModal({ name: 'deactivate', subject })}
-                  >
-                    {subject.activa === false ? 'Activar' : 'Inactivar'}
-                  </TextLink>
-                </div>
+                <SubjectActions
+                  nombre={subject.nombre}
+                  activa={subject.activa}
+                  onEdit={() => loadSubjectDetail(subject.id)}
+                  onDeactivate={() => setModal({ name: 'deactivate', subject })}
+                />
               </li>
             ))}
           </ul>
@@ -326,5 +320,43 @@ export function SubjectsSection({
         />
       ) : null}
     </Card>
+  )
+}
+
+function SubjectActions({
+  nombre,
+  activa,
+  onEdit,
+  onDeactivate,
+}: {
+  nombre: string
+  activa?: boolean
+  onEdit: () => void
+  onDeactivate: () => void
+}) {
+  const inactive = activa === false
+  const toggleLabel = inactive ? 'Activar' : 'Inactivar'
+
+  return (
+    <span className={styles.actions}>
+      <button
+        type="button"
+        className={styles.iconAction}
+        onClick={onEdit}
+        aria-label={`Editar ${nombre}`}
+        title="Editar"
+      >
+        <PencilIcon />
+      </button>
+      <button
+        type="button"
+        className={`${styles.iconAction} ${inactive ? styles.iconActionOn : styles.iconActionOff}`}
+        onClick={onDeactivate}
+        aria-label={`${toggleLabel} ${nombre}`}
+        title={toggleLabel}
+      >
+        {inactive ? <CheckIcon /> : <BanIcon />}
+      </button>
+    </span>
   )
 }

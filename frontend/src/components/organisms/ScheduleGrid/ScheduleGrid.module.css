@@ -59,8 +59,8 @@
   margin: 2px 0;
   padding: 8px 12px;
   border-radius: 8px;
-  background: #f3f3f3;
-  color: #8a8a8a;
+  background: var(--color-input);
+  color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -75,14 +75,14 @@
   min-height: 78px;
   border: 0;
   border-radius: 8px;
-  background: #e4e4e4;
-  color: #5c5c5c;
+  background: var(--color-muted-btn);
+  color: var(--color-text-muted);
   font-size: 13px;
   font-weight: 700;
 }
 
 .program:hover:not(:disabled) {
-  background: #d9d9d9;
+  background: var(--color-border);
 }
 
 .program:focus-visible {

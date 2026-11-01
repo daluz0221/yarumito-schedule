@@ -21,6 +21,15 @@
   display: none;
 }
 
+.sidebarClose button {
+  color: var(--color-sidebar-text);
+}
+
+.sidebarClose button:hover {
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+}
+
 .main {
   display: flex;
   flex-direction: column;

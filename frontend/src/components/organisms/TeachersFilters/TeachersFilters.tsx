@@ -4,7 +4,7 @@ import {
 } from '../../../content/teachers'
 import type { SelectOption } from '../../atoms/Select'
 import { TextInput } from '../../atoms/TextInput'
-import { TextLink } from '../../atoms/TextLink'
+import { FilterOffIcon } from '../../atoms/icons'
 import { FormField } from '../../molecules/FormField'
 import { SelectField } from '../../molecules/SelectField'
 import styles from './TeachersFilters.module.css'
@@ -77,7 +77,10 @@ export function TeachersFilters({
         onChange={onContractChange}
       />
       <div className={styles.clear}>
-        <TextLink onClick={onClear}>Limpiar filtros</TextLink>
+        <button type="button" className={styles.clearButton} onClick={onClear}>
+          <FilterOffIcon />
+          Limpiar filtros
+        </button>
       </div>
     </form>
   )

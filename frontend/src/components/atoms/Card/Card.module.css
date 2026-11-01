@@ -1,7 +1,9 @@
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-border-subtle);
+  border-top: 3px solid var(--color-accent);
   border-radius: var(--radius-lg);
+  box-shadow: 0 8px 18px rgb(0 79 15 / 6%);
 }
 
 .sm {
@@ -17,6 +19,6 @@
 }
 
 .highlighted {
-  border-color: #7a7a7a;
-  box-shadow: 0 0 0 1px #7a7a7a;
+  border-color: var(--color-brand);
+  box-shadow: 0 8px 18px rgb(0 79 15 / 10%);
 }

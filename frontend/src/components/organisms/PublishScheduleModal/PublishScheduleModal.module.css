@@ -2,7 +2,7 @@
   margin: 0;
   padding: 14px 16px 14px 34px;
   border-radius: 10px;
-  background: #f4f4f5;
+  background: var(--color-muted-btn);
   color: #3a3a3a;
   font-size: 14px;
   line-height: 1.55;

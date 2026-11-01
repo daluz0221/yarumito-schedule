@@ -73,10 +73,10 @@ export function teacherStatsFromCounts(counts: {
   retired: number
 }): StatItemData[] {
   return [
-    { id: 'total', value: String(counts.total), label: 'Total docentes' },
-    { id: 'active', value: String(counts.active), label: 'Docentes activos' },
-    { id: 'license', value: String(counts.license), label: 'En licencia' },
-    { id: 'retired', value: String(counts.retired), label: 'Retirados' },
+    { id: 'total', value: String(counts.total), label: 'Total docentes', wash: 'total' },
+    { id: 'active', value: String(counts.active), label: 'Docentes activos', wash: 'active' },
+    { id: 'license', value: String(counts.license), label: 'En licencia', wash: 'license' },
+    { id: 'retired', value: String(counts.retired), label: 'Retirados', wash: 'retired' },
   ]
 }
 

@@ -21,7 +21,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  color: #5a5a5a;
+  color: var(--color-text-muted);
   font-size: 13px;
 }
 
@@ -82,8 +82,8 @@
   padding: 8px 8px;
   border: none;
   border-radius: 8px;
-  background: #e6e6e6;
-  color: #3f3f3f;
+  background: var(--color-muted-btn);
+  color: var(--color-text-label);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -102,8 +102,8 @@
 }
 
 .DISPONIBLE {
-  background: #e4e4e4;
-  color: #3f3f3f;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-ink);
 }
 
 .NO_DISPONIBLE {

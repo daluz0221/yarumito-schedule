@@ -31,7 +31,7 @@
 
 .itemSelected {
   border-color: var(--color-primary);
-  background: #f5f7ff;
+  background: var(--color-info-soft);
 }
 
 .subject,

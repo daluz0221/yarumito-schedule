@@ -108,11 +108,50 @@ export function SearchIcon() {
   )
 }
 
-export function UserIcon() {
+export function UserIcon({ size = 20 }: { size?: number } = {}) {
   return (
-    <IconFrame>
+    <IconFrame size={size}>
       <circle cx="12" cy="8.2" r="3.2" {...stroke} />
       <path d="M5.5 19.2c.8-3 3.2-4.6 6.5-4.6s5.7 1.6 6.5 4.6" {...stroke} />
+    </IconFrame>
+  )
+}
+
+export function PencilIcon({ size = 18 }: { size?: number } = {}) {
+  return (
+    <IconFrame size={size}>
+      <path
+        d="M4 20h4.2L19.1 9.1a1.7 1.7 0 0 0 0-2.4l-1.8-1.8a1.7 1.7 0 0 0-2.4 0L4 15.8V20Z"
+        {...stroke}
+      />
+      <path d="m12.6 6.7 4.7 4.7" {...stroke} />
+    </IconFrame>
+  )
+}
+
+export function FilterOffIcon({ size = 18 }: { size?: number } = {}) {
+  return (
+    <IconFrame size={size}>
+      <path d="M3.5 5.2h11.6L11 10.2v4.1l-2.8 1.2v-5.3L3.5 5.2Z" {...stroke} />
+      <path d="m15.6 14.6 4.4 4.4M20 14.6l-4.4 4.4" {...stroke} />
+    </IconFrame>
+  )
+}
+
+export function BanIcon({ size = 18 }: { size?: number } = {}) {
+  return (
+    <IconFrame size={size}>
+      <circle cx="12" cy="12" r="7.2" {...stroke} />
+      <path d="m7.2 16.8 9.6-9.6" {...stroke} />
+    </IconFrame>
+  )
+}
+
+export function CheckIcon({ size = 18 }: { size?: number } = {}) {
+  return (
+    <IconFrame size={size}>
+      <circle cx="12" cy="12" r="7.2" {...stroke} />
+      <path d="m8.4 12.2 2.3 2.3 4.9-5" {...stroke} />
     </IconFrame>
   )
 }

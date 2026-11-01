@@ -55,18 +55,18 @@
 }
 
 .outline {
-  color: var(--color-text);
+  color: var(--color-brand);
   background: var(--color-surface);
-  border-color: #d4d4d4;
+  border-color: var(--color-brand);
 }
 
 .outline:hover:not(:disabled) {
-  background: #fafafa;
-  border-color: #bfbfbf;
+  background: var(--color-accent-soft);
+  border-color: var(--color-brand-deep);
 }
 
 .muted {
-  color: #6d6d6d;
+  color: var(--color-text-label);
   background: var(--color-muted-btn);
 }
 
