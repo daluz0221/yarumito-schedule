@@ -1,6 +1,6 @@
 import { etiquetaGrado, gradoPorId, planDesdeGrado, type GradoResponse } from './grados'
 import type { SchoolGroup, SchoolLevel } from '../content/academicYear'
-import { api } from './client'
+import { ApiError, api } from './client'
 
 export type CrearGrupoRequest = {
   codigo: string
@@ -91,8 +91,36 @@ export function gruposVisibles(
   })
 }
 
+export function consultarGrupo(id: string, signal?: AbortSignal) {
+  return api.get<GrupoResponse>(`/api/v1/grupos/${id}`, { signal })
+}
+
+function codigoDesdeRespuesta(payload: unknown) {
+  if (typeof payload === 'string' && payload.trim()) {
+    return payload.trim()
+  }
+
+  if (typeof payload === 'number' && Number.isFinite(payload)) {
+    return String(payload)
+  }
+
+  throw new ApiError('No se pudo leer el código sugerido', 200)
+}
+
+export function sugerirCodigoGrupo(gradoId: string, anioEscolarId: string, signal?: AbortSignal) {
+  const search = new URLSearchParams({ gradoId, anioEscolarId })
+
+  return api
+    .get<unknown>(`/api/v1/grupos/siguiente-codigo?${search.toString()}`, { signal })
+    .then(codigoDesdeRespuesta)
+}
+
 export function registrarGrupo(payload: CrearGrupoRequest) {
   return api.post<GrupoResponse, CrearGrupoRequest>('/api/v1/grupos', payload)
+}
+
+export function actualizarGrupo(id: string, payload: CrearGrupoRequest) {
+  return api.put<GrupoResponse, CrearGrupoRequest>(`/api/v1/grupos/${id}`, payload)
 }
 
 export async function listarCatalogoGrupos(signal?: AbortSignal) {

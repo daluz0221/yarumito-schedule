@@ -1,0 +1,1 @@
+export { FranjasPage } from './FranjasPage'

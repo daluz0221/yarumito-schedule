@@ -37,6 +37,25 @@ export async function listarCatalogoSedes(signal?: AbortSignal) {
   return sedes
 }
 
+export type SedeRequest = {
+  nombre: string
+  codigo: string
+  direccion: string | null
+  esPrincipal: boolean
+}
+
+export function consultarSede(id: string, signal?: AbortSignal) {
+  return api.get<SedeResponse>(`/api/v1/sedes/${id}`, { signal })
+}
+
+export function registrarSede(payload: SedeRequest) {
+  return api.post<SedeResponse, SedeRequest>('/api/v1/sedes', payload)
+}
+
+export function actualizarSede(id: string, payload: SedeRequest) {
+  return api.put<SedeResponse, SedeRequest>(`/api/v1/sedes/${id}`, payload)
+}
+
 export function sedeVisible(sedes: SedeResponse[]) {
   return sedes.find((sede) => sede.esPrincipal) ?? sedes[0] ?? null
 }

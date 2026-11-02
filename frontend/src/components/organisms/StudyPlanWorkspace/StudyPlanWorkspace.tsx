@@ -5,6 +5,7 @@ import {
   etiquetaGrado,
   listarAreas,
   listarAsignaturas,
+  listarCatalogoTurnos,
   listarPlanesEstudio,
   opcionesAniosEscolares,
   opcionesSelectorPlan,
@@ -40,8 +41,10 @@ function mensajeError(cause: unknown, fallback: string) {
 function entradaDesdePlan(
   plan: PlanEstudiosResponse,
   areaPorAsignatura: ReadonlyMap<string, string>,
+  turnoPorId: ReadonlyMap<string, string>,
 ): StudyPlanEntry {
   const area = areaPorAsignatura.get(plan.asignaturaId)?.trim()
+  const turno = plan.turnoId ? turnoPorId.get(plan.turnoId)?.trim() : ''
 
   return {
     id: plan.id,
@@ -50,7 +53,7 @@ function entradaDesdePlan(
     area: area || '—',
     subject: plan.asignaturaNombre?.trim() || '—',
     weeklyHours: plan.horasSemanales,
-    shift: '—',
+    shift: turno || '—',
     note: plan.observacion?.trim() || null,
   }
 }
@@ -77,9 +80,32 @@ export function StudyPlanWorkspace() {
   const [areaPorAsignatura, setAreaPorAsignatura] = useState<ReadonlyMap<string, string>>(
     () => new Map(),
   )
+  const [turnoPorId, setTurnoPorId] = useState<ReadonlyMap<string, string>>(() => new Map())
   const [planes, setPlanes] = useState<PlanEstudiosResponse[] | null>(null)
   const [planesError, setPlanesError] = useState('')
   const { grados, error: gradosError, loading: gradosLoading } = useCatalogoGrados()
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    listarCatalogoTurnos(controller.signal)
+      .then((items) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        setTurnoPorId(new Map(items.map((turno) => [turno.id, turno.nombre])))
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setTurnoPorId(new Map())
+      })
+
+    return () => controller.abort()
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -177,7 +203,7 @@ export function StudyPlanWorkspace() {
   const planesLoading = planes === null && !planesError
   const entriesDelAnio = (planes ?? [])
     .filter((plan) => (year ? plan.anioEscolarId === year.id : false))
-    .map((plan) => entradaDesdePlan(plan, areaPorAsignatura))
+    .map((plan) => entradaDesdePlan(plan, areaPorAsignatura, turnoPorId))
   const planEntries = entriesDelAnio.filter((entry) => entry.gradeId === grado?.id)
   const rows = filterStudyPlanEntries(entriesDelAnio, {
     yearId: year?.id ?? '',
@@ -263,12 +289,29 @@ export function StudyPlanWorkspace() {
 
             <GradeSubjectsSection
               year={year.year}
+              yearId={year.id}
+              gradeId={grade.id}
               gradeLabel={grade.label}
               areaNames={areaNames}
               area={area}
               query={query}
               rows={rows}
-              planEntries={planEntries}
+              planes={(planes ?? []).filter(
+                (plan) => plan.anioEscolarId === year.id && plan.gradoId === grade.id,
+              )}
+              onSaved={(plan) => {
+                setPlanes((current) => {
+                  const list = current ?? []
+
+                  return list.some((item) => item.id === plan.id)
+                    ? list.map((item) => (item.id === plan.id ? plan : item))
+                    : [...list, plan]
+                })
+                setPlanesError('')
+              }}
+              onMissing={(planId) =>
+                setPlanes((current) => (current ?? []).filter((item) => item.id !== planId))
+              }
               emptyPlanMessage={
                 planesError
                   ? 'La intensidad de este grado no está disponible mientras falle la consulta del plan.'

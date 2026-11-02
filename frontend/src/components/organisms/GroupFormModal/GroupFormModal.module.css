@@ -31,6 +31,20 @@
   font-weight: 700;
 }
 
+.status {
+  margin: 0;
+  color: #4a5568;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.feedback {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .error {
   margin: 0;
   color: #c0392b;

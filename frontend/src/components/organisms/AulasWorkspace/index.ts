@@ -1,0 +1,1 @@
+export { AulasWorkspace } from './AulasWorkspace'

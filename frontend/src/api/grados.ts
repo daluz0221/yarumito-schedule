@@ -30,6 +30,22 @@ function listarPagina(page: number, signal?: AbortSignal) {
   return api.get<PaginaGrados>(`/api/v1/grados?${search.toString()}`, { signal })
 }
 
+export type GradoRequest = {
+  nivel: number
+}
+
+export function consultarGrado(id: string, signal?: AbortSignal) {
+  return api.get<GradoResponse>(`/api/v1/grados/${id}`, { signal })
+}
+
+export function registrarGrado(payload: GradoRequest) {
+  return api.post<GradoResponse, GradoRequest>('/api/v1/grados', payload)
+}
+
+export function actualizarGrado(id: string, payload: GradoRequest) {
+  return api.put<GradoResponse, GradoRequest>(`/api/v1/grados/${id}`, payload)
+}
+
 export async function listarCatalogoGrados(signal?: AbortSignal) {
   const first = await listarPagina(0, signal)
   const grados = [...(first.content ?? [])]

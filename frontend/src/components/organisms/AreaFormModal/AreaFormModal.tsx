@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react'
-import { actualizarArea, ApiError, registrarArea } from '../../../api'
+import { useEffect, useState, type FormEvent } from 'react'
+import { actualizarArea, ApiError, listarAreasPredefinidas, registrarArea } from '../../../api'
 import type { AreaResponse } from '../../../api/areas'
+import type { OpcionCatalogo } from '../../../api/catalogos'
 import {
   areaFormStatusOptions,
   areaYesNoOptions,
@@ -102,6 +103,8 @@ function AreaFormFields({
   const [values, setValues] = useState<FormValues>(() =>
     mode === 'edit' ? valuesFromArea(area) : emptyValues,
   )
+  const [catalogo, setCatalogo] = useState<OpcionCatalogo[]>([])
+  const [catalogoCodigo, setCatalogoCodigo] = useState('')
   const [attempted, setAttempted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -109,6 +112,24 @@ function AreaFormFields({
   const codeTaken = isAreaCodeTaken(areas, values.codigo, area?.id)
   const missingChoice = !values.obligatoria || !values.soloMedia || !values.activa
   const creating = mode === 'create'
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    listarAreasPredefinidas(controller.signal)
+      .then((items) => {
+        if (!controller.signal.aborted) {
+          setCatalogo(items ?? [])
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setCatalogo([])
+        }
+      })
+
+    return () => controller.abort()
+  }, [])
 
   const setBusy = (next: boolean) => {
     setSubmitting(next)
@@ -168,6 +189,32 @@ function AreaFormFields({
 
   return (
     <form id={formId} className={styles.form} onSubmit={handleSubmit}>
+      <SelectField
+        id={`${formId}-catalog`}
+        label="Área del catálogo"
+        name="catalogo"
+        disabled={submitting || catalogo.length === 0}
+        value={catalogoCodigo}
+        options={[
+          { value: '', label: catalogo.length ? 'Escribir manualmente' : 'Cargando catálogo...' },
+          ...catalogo.map((item) => ({
+            value: item.codigo,
+            label: `${item.nombre} (${item.codigo})`,
+          })),
+        ]}
+        hint="El nombre y el código salen del catálogo fijo. Puedes ajustarlos."
+        onChange={(codigo) => {
+          const opcion = catalogo.find((item) => item.codigo === codigo)
+          setCatalogoCodigo(codigo)
+          if (opcion) {
+            setValues((current) => ({
+              ...current,
+              nombre: opcion.nombre,
+              codigo: opcion.codigo,
+            }))
+          }
+        }}
+      />
       <div className={styles.grid}>
         <TextField
           id={`${formId}-name`}

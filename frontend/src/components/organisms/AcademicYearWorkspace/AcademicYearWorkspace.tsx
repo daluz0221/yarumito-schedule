@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  aAcademicYear,
   anioEscolarVisible,
   gruposVisibles,
   useCatalogoAniosEscolares,
@@ -12,14 +13,17 @@ import {
   matchesAcademicYear,
   schoolGroupStats,
   schoolGroups,
+  type AcademicYear,
 } from '../../../content/academicYear'
+import { Button } from '../../atoms/Button'
 import { Text } from '../../atoms/Text'
 import { AcademicYearCard } from '../AcademicYearCard'
+import { AcademicYearFormModal } from '../AcademicYearFormModal'
 import { SchoolGroupsSection } from '../SchoolGroupsSection'
 import styles from './AcademicYearWorkspace.module.css'
 
 export function AcademicYearWorkspace() {
-  const { anios, error, loading } = useCatalogoAniosEscolares()
+  const { anios, error, loading, incorporar, retirar } = useCatalogoAniosEscolares()
   const {
     grupos,
     error: gruposError,
@@ -32,6 +36,7 @@ export function AcademicYearWorkspace() {
   const [grade, setGrade] = useState('')
   const [status, setStatus] = useState('')
   const [query, setQuery] = useState('')
+  const [crear, setCrear] = useState(false)
 
   useEffect(() => {
     if (!catalogo?.length) {
@@ -63,6 +68,11 @@ export function AcademicYearWorkspace() {
     setQuery('')
   }
 
+  const guardarAnio = (anio: AcademicYear) => {
+    incorporar(anio)
+    setYearId(anio.id)
+  }
+
   return (
     <section className={styles.workspace}>
       <div className={styles.intro}>
@@ -92,7 +102,13 @@ export function AcademicYearWorkspace() {
 
       {year ? (
         <>
-          <AcademicYearCard years={catalogo ?? []} year={year} onYearChange={selectYear} />
+          <AcademicYearCard
+            years={catalogo ?? []}
+            year={year}
+            onYearChange={selectYear}
+            onSaved={guardarAnio}
+            onMissing={retirar}
+          />
 
           {fuenteGrupos ? (
             <SchoolGroupsSection
@@ -116,10 +132,28 @@ export function AcademicYearWorkspace() {
           ) : null}
         </>
       ) : loading ? null : (
-        <Text variant="body">
-          No hay años escolares registrados. Los grupos se configuran sobre un año
-          lectivo.
-        </Text>
+        <div className={styles.intro}>
+          <Text variant="body">
+            No hay años escolares registrados. Los grupos se configuran sobre un año
+            lectivo.
+          </Text>
+          <Button variant="primary" size="sm" onClick={() => setCrear(true)}>
+            + Nuevo año lectivo
+          </Button>
+          <AcademicYearFormModal
+            open={crear}
+            mode="create"
+            years={catalogo ?? []}
+            onClose={() => setCrear(false)}
+            onCreated={(anio) => {
+              const mapped = aAcademicYear(anio)
+
+              if (mapped) {
+                guardarAnio(mapped)
+              }
+            }}
+          />
+        </div>
       )}
     </section>
   )

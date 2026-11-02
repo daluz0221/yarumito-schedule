@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { AcademicYear } from '../content/academicYear'
-import { listarCatalogoAniosEscolares } from './aniosEscolares'
+import { listarCatalogoAniosEscolares, ordenarAniosEscolares } from './aniosEscolares'
 import { ApiError } from './client'
 
 function isAbortError(error: unknown) {
@@ -47,9 +47,32 @@ export function useCatalogoAniosEscolares(enabled = true) {
     return () => controller.abort()
   }, [enabled])
 
+  const incorporar = (anio: AcademicYear) => {
+    setAnios((current) => {
+      const base = current ?? []
+      const reemplazado = base.some((item) => item.id === anio.id)
+        ? base.map((item) => (item.id === anio.id ? anio : item))
+        : [...base, anio]
+      const ajustado = anio.current
+        ? reemplazado.map((item) =>
+            item.id === anio.id ? item : { ...item, current: false },
+          )
+        : reemplazado
+
+      return ordenarAniosEscolares(ajustado)
+    })
+    setError('')
+  }
+
+  const retirar = (id: string) => {
+    setAnios((current) => (current ?? []).filter((item) => item.id !== id))
+  }
+
   return {
     anios: enabled ? anios : null,
     error: enabled ? error : '',
     loading: enabled && anios === null && !error,
+    incorporar,
+    retirar,
   }
 }

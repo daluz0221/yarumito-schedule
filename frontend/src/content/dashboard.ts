@@ -70,6 +70,36 @@ export const sidebarPrimaryNav: NavItemData[] = [
     to: '/dashboard/anio-lectivo',
   },
   {
+    id: 'sedes',
+    label: 'Sedes',
+    icon: 'bookOpen',
+    to: '/dashboard/sedes',
+  },
+  {
+    id: 'aulas',
+    label: 'Aulas',
+    icon: 'grid',
+    to: '/dashboard/aulas',
+  },
+  {
+    id: 'turnos',
+    label: 'Turnos',
+    icon: 'clock',
+    to: '/dashboard/turnos',
+  },
+  {
+    id: 'franjas',
+    label: 'Franjas horarias',
+    icon: 'list',
+    to: '/dashboard/franjas',
+  },
+  {
+    id: 'grados',
+    label: 'Grados',
+    icon: 'list',
+    to: '/dashboard/grados',
+  },
+  {
     id: 'areas',
     label: 'Áreas y asignaturas',
     icon: 'book',

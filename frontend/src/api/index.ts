@@ -1,4 +1,40 @@
 export { api, apiRequest, ApiError } from './client'
+export {
+  actualizarAula,
+  consultarAula,
+  eliminarAula,
+  etiquetaTipoAula,
+  listarAulasPorSede,
+  registrarAula,
+  registrarNuevaVersionAula,
+  tiposAula,
+} from './aulas'
+export type { ActualizarAulaRequest, AulaRequest, AulaResponse, TipoAula } from './aulas'
+export {
+  actualizarTurno,
+  consultarTurno,
+  horaCorta,
+  listarCatalogoTurnos,
+  registrarTurno,
+} from './turnos'
+export type { TurnoRequest, TurnoResponse } from './turnos'
+export {
+  actualizarFranjaHoraria,
+  consultarFranjaHoraria,
+  horaDesdeMinutos,
+  listarFranjasPorTurno,
+  minutosDelDia,
+  registrarFranjaHoraria,
+} from './franjasHorarias'
+export type { FranjaHorariaRequest, FranjaHorariaResponse } from './franjasHorarias'
+export {
+  listarAreasPredefinidas,
+  listarAsignaturasPredefinidas,
+  listarEscalafones,
+  listarRegimenesDocentes,
+  regimenDesdeEscalafon,
+} from './catalogos'
+export type { OpcionAsignaturaPredefinida, OpcionCatalogo } from './catalogos'
 export { getAuthenticatedUser, login, logout, verifySession } from './auth'
 export {
   actualizarArea,
@@ -33,6 +69,8 @@ export {
   registrarIdoneidad,
 } from './idoneidades'
 export {
+  actualizarGrado,
+  consultarGrado,
   etiquetaGrado,
   gradoPorEtiqueta,
   gradoPorId,
@@ -41,26 +79,50 @@ export {
   opcionesGradoRequerido,
   opcionesSelectorPlan,
   planDesdeGrado,
+  registrarGrado,
 } from './grados'
+export type { GradoRequest, GradoResponse } from './grados'
 export {
+  aAcademicYear,
+  actualizarAnioEscolar,
   anioEscolarVisible,
+  consultarAnioEscolar,
   listarCatalogoAniosEscolares,
   opcionesAniosEscolares,
+  registrarAnioEscolar,
 } from './aniosEscolares'
-export { listarPlanesEstudio } from './planesEstudio'
+export type { AnioEscolarRequest, AnioEscolarResponse } from './aniosEscolares'
 export {
+  actualizarPlanEstudios,
+  consultarPlanEstudios,
+  listarPlanesEstudio,
+  registrarPlanEstudios,
+} from './planesEstudio'
+export type { PlanEstudiosRequest, PlanEstudiosResponse } from './planesEstudio'
+export {
+  actualizarSede,
+  consultarSede,
   etiquetaCatalogoSedes,
   listarCatalogoSedes,
   opcionesCatalogoSedes,
+  registrarSede,
   sedeVisible,
 } from './sedes'
+export type { SedeRequest, SedeResponse } from './sedes'
 export {
   actualizarTituloProfesional,
   consultarTituloProfesional,
   listarTitulosPorDocente,
   registrarTituloProfesional,
 } from './titulos'
-export { gruposVisibles, listarCatalogoGrupos, registrarGrupo } from './grupos'
+export {
+  actualizarGrupo,
+  consultarGrupo,
+  gruposVisibles,
+  listarCatalogoGrupos,
+  registrarGrupo,
+  sugerirCodigoGrupo,
+} from './grupos'
 export type { CrearGrupoRequest, GrupoResponse } from './grupos'
 export { useCatalogoAniosEscolares } from './useCatalogoAniosEscolares'
 export { useCatalogoGrados } from './useCatalogoGrados'

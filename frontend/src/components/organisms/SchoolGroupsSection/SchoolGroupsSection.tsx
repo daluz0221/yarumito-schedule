@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { ApiError, consultarGrupo } from '../../../api'
+import type { GrupoResponse } from '../../../api/grupos'
 import type { StatItemData } from '../../../content/dashboard'
 import type { AcademicYear, SchoolGroup } from '../../../content/academicYear'
 import { StatCard } from '../../molecules/StatCard'
@@ -24,10 +26,23 @@ export type SchoolGroupsSectionProps = {
   onGroupCreated?: () => void
 }
 
-type GroupModal =
-  | { name: 'closed' }
-  | { name: 'create' }
-  | { name: 'edit'; group: SchoolGroup }
+type GroupModal = { name: 'closed' } | { name: 'create' } | { name: 'edit'; id: string }
+
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
+function detalleError(cause: unknown) {
+  if (cause instanceof ApiError) {
+    if (cause.status === 404) {
+      return 'Este grupo ya no está disponible. Cierra el formulario y revisa el listado.'
+    }
+
+    return cause.message
+  }
+
+  return 'No se pudo cargar el grupo.'
+}
 
 export function SchoolGroupsSection({
   year,
@@ -44,7 +59,56 @@ export function SchoolGroupsSection({
   onGroupCreated,
 }: SchoolGroupsSectionProps) {
   const [modal, setModal] = useState<GroupModal>({ name: 'closed' })
-  const closeModal = () => setModal({ name: 'closed' })
+  const [editing, setEditing] = useState<GrupoResponse | null>(null)
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState('')
+  const detailRequest = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    return () => detailRequest.current?.abort()
+  }, [])
+
+  const closeModal = () => {
+    detailRequest.current?.abort()
+    detailRequest.current = null
+    setModal({ name: 'closed' })
+    setEditing(null)
+    setEditLoading(false)
+    setEditError('')
+  }
+
+  const loadGrupo = (groupId: string) => {
+    detailRequest.current?.abort()
+    const controller = new AbortController()
+    detailRequest.current = controller
+
+    setModal({ name: 'edit', id: groupId })
+    setEditing(null)
+    setEditError('')
+    setEditLoading(true)
+
+    consultarGrupo(groupId, controller.signal)
+      .then((grupo) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        setEditing(grupo)
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setEditing(null)
+        setEditError(detalleError(cause))
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setEditLoading(false)
+        }
+      })
+  }
 
   return (
     <section className={styles.section}>
@@ -76,7 +140,7 @@ export function SchoolGroupsSection({
       <SchoolGroupsTable
         rows={rows}
         emptyMessage={emptyMessage}
-        onEdit={(group) => setModal({ name: 'edit', group })}
+        onEdit={(group) => loadGrupo(group.id)}
       />
 
       <GroupFormModal
@@ -95,8 +159,12 @@ export function SchoolGroupsSection({
         mode="edit"
         year={year}
         groups={groups}
-        group={modal.name === 'edit' ? modal.group : undefined}
+        grupo={editing ?? undefined}
+        loading={editLoading}
+        loadError={editError}
+        onRetry={modal.name === 'edit' ? () => loadGrupo(modal.id) : undefined}
         onClose={closeModal}
+        onUpdated={() => onGroupCreated?.()}
       />
     </section>
   )

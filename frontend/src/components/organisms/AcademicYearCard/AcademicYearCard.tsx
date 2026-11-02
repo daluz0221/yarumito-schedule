@@ -1,4 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  aAcademicYear,
+  ApiError,
+  consultarAnioEscolar,
+} from '../../../api'
+import type { AnioEscolarResponse } from '../../../api/aniosEscolares'
 import {
   academicYearOptions,
   formatYearTimeline,
@@ -20,6 +26,24 @@ export type AcademicYearCardProps = {
   years: AcademicYear[]
   year: AcademicYear
   onYearChange: (yearId: string) => void
+  onSaved: (year: AcademicYear) => void
+  onMissing?: (yearId: string) => void
+}
+
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
+function detalleError(cause: unknown) {
+  if (cause instanceof ApiError) {
+    if (cause.status === 404) {
+      return 'Este año escolar ya no está disponible. Cierra el formulario y revisa el listado.'
+    }
+
+    return cause.message
+  }
+
+  return 'No se pudo cargar el año escolar.'
 }
 
 type YearModal =
@@ -33,13 +57,81 @@ export function AcademicYearCard({
   years,
   year,
   onYearChange,
+  onSaved,
+  onMissing,
 }: AcademicYearCardProps) {
   const [modal, setModal] = useState<YearModal>({ name: 'closed' })
+  const [editing, setEditing] = useState<AnioEscolarResponse | null>(null)
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState('')
+  const detailRequest = useRef<AbortController | null>(null)
   const plannedYear =
     year.status === 'ACTIVO' && year.current
       ? nextPlannedYear(years, year)
       : null
-  const closeModal = () => setModal({ name: 'closed' })
+
+  useEffect(() => {
+    return () => detailRequest.current?.abort()
+  }, [])
+
+  const closeModal = () => {
+    detailRequest.current?.abort()
+    detailRequest.current = null
+    setModal({ name: 'closed' })
+    setEditing(null)
+    setEditLoading(false)
+    setEditError('')
+  }
+
+  const publicar = (anio: AnioEscolarResponse) => {
+    const mapped = aAcademicYear(anio)
+
+    if (mapped) {
+      onSaved(mapped)
+    }
+  }
+
+  const loadAnio = (anioId: string) => {
+    detailRequest.current?.abort()
+    const controller = new AbortController()
+    detailRequest.current = controller
+
+    setModal({ name: 'edit' })
+    setEditing(null)
+    setEditError('')
+    setEditLoading(true)
+
+    consultarAnioEscolar(anioId, controller.signal)
+      .then((anio) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        setEditing(anio)
+        const mapped = aAcademicYear(anio)
+
+        if (mapped) {
+          onSaved(mapped)
+        }
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setEditing(null)
+        setEditError(detalleError(cause))
+
+        if (cause instanceof ApiError && cause.status === 404) {
+          onMissing?.(anioId)
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setEditLoading(false)
+        }
+      })
+  }
 
   return (
     <>
@@ -88,7 +180,7 @@ export function AcademicYearCard({
           Acciones disponibles para {year.year} — {labelYearStatus(year.status)}
         </Text>
         <div className={styles.actions}>
-          <Button variant="outline" size="sm" onClick={() => setModal({ name: 'edit' })}>
+          <Button variant="outline" size="sm" onClick={() => loadAnio(year.id)}>
             Editar fechas
           </Button>
           {year.status === 'ACTIVO' ? (
@@ -130,23 +222,35 @@ export function AcademicYearCard({
         mode="create"
         years={years}
         onClose={closeModal}
+        onCreated={publicar}
       />
       <AcademicYearFormModal
         open={modal.name === 'edit'}
         mode="edit"
         years={years}
-        year={year}
+        anio={editing ?? undefined}
+        loading={editLoading}
+        loadError={editError}
+        onRetry={() => loadAnio(year.id)}
         onClose={closeModal}
+        onUpdated={publicar}
       />
       <ActivateAcademicYearModal
         open={modal.name === 'activate'}
         year={modal.name === 'activate' ? modal.year : undefined}
+        otroActual={years.some(
+          (item) =>
+            item.current &&
+            item.id !== (modal.name === 'activate' ? modal.year.id : ''),
+        )}
         onClose={closeModal}
+        onActivated={publicar}
       />
       <CloseAcademicYearModal
         open={modal.name === 'close'}
         year={year}
         onClose={closeModal}
+        onClosed={publicar}
       />
     </>
   )

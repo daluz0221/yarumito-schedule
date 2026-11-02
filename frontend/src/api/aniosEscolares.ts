@@ -14,6 +14,14 @@ export type AnioEscolarResponse = {
   esActual: boolean
 }
 
+export type AnioEscolarRequest = {
+  anio: number
+  fechaInicio: string
+  fechaFin: string
+  estado: AcademicYearStatus
+  esActual: boolean
+}
+
 type PaginaAniosEscolares = {
   content: AnioEscolarResponse[]
   totalPages: number
@@ -82,6 +90,24 @@ export async function listarCatalogoAniosEscolares(signal?: AbortSignal) {
       const year = aAcademicYear(item)
       return year ? [year] : []
     }),
+  )
+}
+
+export function consultarAnioEscolar(id: string, signal?: AbortSignal) {
+  return api.get<AnioEscolarResponse>(`/api/v1/anios-escolares/${id}`, { signal })
+}
+
+export function registrarAnioEscolar(payload: AnioEscolarRequest) {
+  return api.post<AnioEscolarResponse, AnioEscolarRequest>(
+    '/api/v1/anios-escolares',
+    payload,
+  )
+}
+
+export function actualizarAnioEscolar(id: string, payload: AnioEscolarRequest) {
+  return api.put<AnioEscolarResponse, AnioEscolarRequest>(
+    `/api/v1/anios-escolares/${id}`,
+    payload,
   )
 }
 

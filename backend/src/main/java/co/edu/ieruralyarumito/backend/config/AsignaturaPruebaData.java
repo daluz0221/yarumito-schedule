@@ -31,9 +31,9 @@ public class AsignaturaPruebaData implements ApplicationRunner {
     }
 
     private void asegurarAsignaturas(Area matematicas) {
-        crear(matematicas, "ALG", "Álgebra", "ALG");
-        crear(matematicas, "TRIG", "Trigonometría", "TRIG");
-        crear(matematicas, "GEO", "Geometría", "GEO");
+        crear(matematicas, "ALG", "Álgebra", "MATE");
+        crear(matematicas, "TRIG", "Trigonometría", "ESTAD");
+        crear(matematicas, "GEO", "Geometría", "GEOM");
     }
 
     private void crear(Area area, String codigo, String nombre, String abreviatura) {

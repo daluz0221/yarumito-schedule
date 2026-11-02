@@ -1,7 +1,13 @@
-import { useState, type FormEvent } from 'react'
-import { actualizarAsignatura, ApiError, registrarAsignatura } from '../../../api'
+import { useEffect, useState, type FormEvent } from 'react'
+import {
+  actualizarAsignatura,
+  ApiError,
+  listarAsignaturasPredefinidas,
+  registrarAsignatura,
+} from '../../../api'
 import type { AreaResponse } from '../../../api/areas'
 import type { AsignaturaResponse } from '../../../api/asignaturas'
+import type { OpcionAsignaturaPredefinida } from '../../../api/catalogos'
 import {
   areaSelectOptions,
   SIN_REQUISITO_AULA,
@@ -162,6 +168,8 @@ function SubjectFormFields({
   const [attempted, setAttempted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [catalogo, setCatalogo] = useState<OpcionAsignaturaPredefinida[]>([])
+  const [catalogoCodigo, setCatalogoCodigo] = useState('')
   const formId = `subject-${mode}-form`
   const creating = mode === 'create'
   const maxValue = Number(values.maxConsecutivas)
@@ -178,6 +186,31 @@ function SubjectFormFields({
     setSubmitting(next)
     onSubmittingChange(next)
   }
+
+  const areaCodigo = areas.find((item) => item.id === values.areaId)?.codigo ?? ''
+
+  useEffect(() => {
+    if (!areaCodigo) {
+      setCatalogo([])
+      return
+    }
+
+    const controller = new AbortController()
+
+    listarAsignaturasPredefinidas(areaCodigo, controller.signal)
+      .then((items) => {
+        if (!controller.signal.aborted) {
+          setCatalogo(items ?? [])
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setCatalogo([])
+        }
+      })
+
+    return () => controller.abort()
+  }, [areaCodigo])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -252,7 +285,43 @@ function SubjectFormFields({
             value={values.areaId}
             options={areaSelectOptions(areas)}
             error={attempted && !values.areaId ? requiredChoiceMessage : undefined}
-            onChange={(areaId) => patch({ areaId })}
+            onChange={(areaId) => {
+              setCatalogoCodigo('')
+              patch({ areaId })
+            }}
+          />
+          <SelectField
+            id={`${formId}-catalog`}
+            label="Asignatura del catálogo"
+            name="catalogo"
+            disabled={submitting || !areaCodigo || catalogo.length === 0}
+            value={catalogoCodigo}
+            options={[
+              {
+                value: '',
+                label: !areaCodigo
+                  ? 'Elige un área'
+                  : catalogo.length
+                    ? 'Escribir manualmente'
+                    : 'Sin asignaturas en el catálogo',
+              },
+              ...catalogo.map((item) => ({
+                value: item.codigo,
+                label: item.nombre,
+              })),
+            ]}
+            hint="El nombre, el código y la abreviatura salen del catálogo del área."
+            onChange={(codigo) => {
+              const opcion = catalogo.find((item) => item.codigo === codigo)
+              setCatalogoCodigo(codigo)
+              if (opcion) {
+                patch({
+                  nombre: opcion.nombre,
+                  codigo: opcion.codigo,
+                  abreviatura: opcion.abreviatura,
+                })
+              }
+            }}
           />
           <TextField
             id={`${formId}-name`}

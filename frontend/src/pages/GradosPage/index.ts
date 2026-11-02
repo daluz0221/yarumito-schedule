@@ -1,0 +1,1 @@
+export { GradosPage } from './GradosPage'

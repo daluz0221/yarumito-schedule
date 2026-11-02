@@ -1,21 +1,24 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
+  actualizarGrupo,
   ApiError,
   etiquetaGrado,
-  gradoPorEtiqueta,
+  etiquetaTipoAula,
   gradoPorId,
+  listarAulasPorSede,
   listarDocentes,
   opcionesCatalogoSedes,
   opcionesGradoRequerido,
   planDesdeGrado,
   registrarGrupo,
   sedeVisible,
+  sugerirCodigoGrupo,
   useCatalogoGrados,
   useCatalogoSedes,
+  type AulaResponse,
   type GrupoResponse,
 } from '../../../api'
 import {
-  classroomOptions,
   groupStatusOptions,
   isGroupCodeTaken,
   labelYearStatus,
@@ -26,6 +29,7 @@ import {
 import { formatTeacherName, type Teacher } from '../../../content/teachers'
 import { Modal } from '../../atoms/Modal'
 import { Text } from '../../atoms/Text'
+import { TextLink } from '../../atoms/TextLink'
 import { ModalActions } from '../../molecules/ModalActions'
 import { SelectField } from '../../molecules/SelectField'
 import { TextField } from '../../molecules/TextField'
@@ -39,8 +43,13 @@ export type GroupFormModalProps = {
   year: AcademicYear
   groups: SchoolGroup[]
   group?: SchoolGroup
+  grupo?: GrupoResponse
+  loading?: boolean
+  loadError?: string
+  onRetry?: () => void
   onClose: () => void
   onCreated?: (group: GrupoResponse) => void
+  onUpdated?: (group: GrupoResponse) => void
 }
 
 type FormValues = {
@@ -68,8 +77,10 @@ const statusOptions = [
   ...groupStatusOptions,
 ]
 
-const duplicateCodeMessage =
-  'Ya existe un grupo con este código para el año lectivo seleccionado.'
+const duplicateCreateMessage =
+  'Ya existe un grupo con ese código en el año escolar indicado'
+const duplicateEditMessage =
+  'Ya existe otro grupo con ese código en el año escolar indicado'
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -104,7 +115,7 @@ function mensajeCrearGrupo(cause: unknown) {
   }
 
   if (cause.status === 409) {
-    return duplicateCodeMessage
+    return duplicateCreateMessage
   }
 
   if (cause.status === 404) {
@@ -128,8 +139,13 @@ export function GroupFormModal({
   year,
   groups,
   group,
+  grupo,
+  loading = false,
+  loadError = '',
+  onRetry,
   onClose,
   onCreated,
+  onUpdated,
 }: GroupFormModalProps) {
   const [values, setValues] = useState<FormValues>(createValues)
   const [attempted, setAttempted] = useState(false)
@@ -137,6 +153,12 @@ export function GroupFormModal({
   const [submitError, setSubmitError] = useState('')
   const [directores, setDirectores] = useState<Teacher[] | null>(null)
   const [directoresError, setDirectoresError] = useState('')
+  const [aulas, setAulas] = useState<AulaResponse[] | null>(null)
+  const [aulasError, setAulasError] = useState('')
+  const [codigoSugeridoEstado, setCodigoSugeridoEstado] = useState<
+    'idle' | 'loading' | 'ready' | 'error'
+  >('idle')
+  const sugeridoAplicado = useRef('')
   const { grados, error: gradosError } = useCatalogoGrados(open)
   const { sedes, error: sedesError } = useCatalogoSedes(open)
   const gradeOptions = opcionesGradoRequerido(grados, gradosError)
@@ -150,10 +172,43 @@ export function GroupFormModal({
     ? etiquetaGrado(gradoSeleccionado.nombre)
     : ''
   const directorOptions = opcionesDirector(directores, directoresError)
-  const codeTaken =
-    mode === 'create' && isGroupCodeTaken(groups, year.id, values.code, group?.id)
-  const aulaSinCatalogo = Boolean(values.classroomId) && !esUuid(values.classroomId)
   const creating = mode === 'create'
+  const codeTaken = isGroupCodeTaken(groups, year.id, values.code, grupo?.id ?? group?.id)
+  const duplicateCodeMessage = creating ? duplicateCreateMessage : duplicateEditMessage
+  const aulasDeLaSede = (aulas ?? []).filter((aula) => aula.sedeId === values.sedeId)
+  const aulaActual = aulasDeLaSede.find((aula) => aula.id === values.classroomId)
+  const classroomOptions = !esUuid(values.sedeId)
+    ? [{ value: '', label: 'Sin asignar' }]
+    : aulas === null && !aulasError
+      ? [
+          { value: '', label: 'Cargando aulas…' },
+          ...(esUuid(values.classroomId)
+            ? [{ value: values.classroomId, label: 'Aula actual' }]
+            : []),
+        ]
+      : [
+          { value: '', label: 'Sin asignar' },
+          ...aulasDeLaSede
+            .filter((aula) => aula.activa || aula.id === values.classroomId)
+            .map((aula) => ({
+              value: aula.id,
+              label: aula.activa
+                ? `${aula.nombre} · ${etiquetaTipoAula(aula.tipo)}`
+                : `${aula.nombre} · inactiva`,
+            })),
+          ...(esUuid(values.classroomId) && !aulaActual
+            ? [{ value: values.classroomId, label: 'Aula actual' }]
+            : []),
+        ]
+  const codeHint = !creating
+    ? undefined
+    : codigoSugeridoEstado === 'loading'
+      ? 'Buscando el siguiente código disponible…'
+      : codigoSugeridoEstado === 'error'
+        ? 'No se pudo sugerir el código. Escríbelo manualmente.'
+        : codigoSugeridoEstado === 'ready'
+          ? 'Sugerido para este grado y año. Puedes cambiarlo.'
+          : 'Elige un grado para sugerir el siguiente código.'
 
   const handleClose = () => {
     if (submitting) {
@@ -164,27 +219,73 @@ export function GroupFormModal({
   }
 
   useEffect(() => {
-    if (!open) {
-      return
-    }
-
-    if (mode === 'edit' && group) {
-      setValues({
-        code: group.code,
-        grade: '',
-        students: String(group.students),
-        directorId: '',
-        status: group.status,
-        classroomId: '',
-        sedeId: group.sedeId ?? '',
-      })
+    if (!open || mode !== 'create') {
       return
     }
 
     setValues(createValues)
     setAttempted(false)
     setSubmitError('')
-  }, [group, mode, open])
+    sugeridoAplicado.current = ''
+    setCodigoSugeridoEstado('idle')
+  }, [mode, open])
+
+  useEffect(() => {
+    if (!open || mode !== 'create' || !esUuid(values.grade) || !esUuid(year.id)) {
+      return
+    }
+
+    const controller = new AbortController()
+    const gradoId = values.grade
+    const anioId = year.id
+    setCodigoSugeridoEstado('loading')
+
+    sugerirCodigoGrupo(gradoId, anioId, controller.signal)
+      .then((codigo) => {
+        setCodigoSugeridoEstado('ready')
+        setValues((current) => {
+          if (current.grade !== gradoId) {
+            return current
+          }
+
+          const actual = current.code.trim()
+
+          if (actual && actual !== sugeridoAplicado.current) {
+            return current
+          }
+
+          sugeridoAplicado.current = codigo
+          return { ...current, code: codigo }
+        })
+      })
+      .catch((cause) => {
+        if (cause instanceof DOMException && cause.name === 'AbortError') {
+          return
+        }
+
+        setCodigoSugeridoEstado('error')
+      })
+
+    return () => controller.abort()
+  }, [mode, open, values.grade, year.id])
+
+  useEffect(() => {
+    if (!open || mode !== 'edit' || !grupo) {
+      return
+    }
+
+    setValues({
+      code: grupo.codigo,
+      grade: grupo.gradoId,
+      students: grupo.cantidadEstudiantes == null ? '' : String(grupo.cantidadEstudiantes),
+      directorId: grupo.directorGrupoId ?? '',
+      status: grupo.activo ? 'ACTIVO' : 'INACTIVO',
+      classroomId: grupo.aulaFijaId && esUuid(grupo.aulaFijaId) ? grupo.aulaFijaId : '',
+      sedeId: grupo.sedeId,
+    })
+    setAttempted(false)
+    setSubmitError('')
+  }, [grupo, mode, open])
 
   useEffect(() => {
     if (!open) {
@@ -235,16 +336,6 @@ export function GroupFormModal({
   }, [open])
 
   useEffect(() => {
-    if (!open || mode !== 'edit' || !group || !grados) {
-      return
-    }
-
-    const grade = gradoPorEtiqueta(grados, group.grade)?.id ?? ''
-
-    setValues((current) => (current.grade === grade ? current : { ...current, grade }))
-  }, [grados, group, mode, open])
-
-  useEffect(() => {
     if (!open || !sedes?.length) {
       return
     }
@@ -256,32 +347,62 @@ export function GroupFormModal({
     )
   }, [open, sedes])
 
+  useEffect(() => {
+    if (!open || !esUuid(values.sedeId)) {
+      return
+    }
+
+    const controller = new AbortController()
+    const sedeId = values.sedeId
+    setAulas(null)
+    setAulasError('')
+
+    listarAulasPorSede(sedeId, controller.signal)
+      .then((items) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        setAulas(items)
+        setAulasError('')
+      })
+      .catch((cause) => {
+        if (cause instanceof DOMException && cause.name === 'AbortError') {
+          return
+        }
+
+        setAulas([])
+        setAulasError('No se pudieron cargar las aulas. Puedes guardar el grupo sin aula.')
+      })
+
+    return () => controller.abort()
+  }, [open, values.sedeId])
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setAttempted(true)
     setSubmitError('')
 
-    if (!creating) {
-      onClose()
+    if (submitting) {
       return
     }
 
-    if (submitting) {
+    if (!creating && !grupo?.id) {
+      setSubmitError('No se encontró el grupo a actualizar.')
       return
     }
 
     if (
       codeTaken ||
-      aulaSinCatalogo ||
       !gradoLista ||
       !sedeLista ||
-      !esUuid(year.id) ||
+      !esUuid(creating ? year.id : (grupo?.anioEscolarId ?? year.id)) ||
       !values.code.trim() ||
       !values.grade ||
       !values.sedeId ||
       !values.status
     ) {
-      if (!esUuid(year.id)) {
+      if (!esUuid(creating ? year.id : (grupo?.anioEscolarId ?? year.id))) {
         setSubmitError(
           'El año lectivo seleccionado no está disponible en el servidor. No se puede crear el grupo.',
         )
@@ -298,23 +419,36 @@ export function GroupFormModal({
     const payload = {
       codigo: values.code.trim(),
       gradoId: values.grade,
-      anioEscolarId: year.id,
+      anioEscolarId: creating ? year.id : (grupo?.anioEscolarId ?? year.id),
       sedeId: values.sedeId,
       activo: values.status === 'ACTIVO',
       ...(values.students !== ''
         ? { cantidadEstudiantes: Number(values.students) }
         : {}),
       ...(values.directorId ? { directorGrupoId: values.directorId } : {}),
+      ...(esUuid(values.classroomId) ? { aulaFijaId: values.classroomId } : {}),
     }
 
     setSubmitting(true)
 
     try {
-      const created = await registrarGrupo(payload)
-      onCreated?.(created)
+      if (creating) {
+        const created = await registrarGrupo(payload)
+        onCreated?.(created)
+      } else if (grupo) {
+        const updated = await actualizarGrupo(grupo.id, payload)
+        onUpdated?.(updated)
+      }
+
       onClose()
     } catch (cause) {
-      setSubmitError(mensajeCrearGrupo(cause))
+      setSubmitError(
+        creating
+          ? mensajeCrearGrupo(cause)
+          : cause instanceof ApiError
+            ? cause.message
+            : 'No se pudo actualizar el grupo. Inténtalo de nuevo.',
+      )
     } finally {
       setSubmitting(false)
     }
@@ -324,7 +458,9 @@ export function GroupFormModal({
     <Modal
       open={open}
       size="lg"
-      title={mode === 'create' ? 'Agregar grupo' : `Editar grupo ${group?.code ?? values.code}`}
+      title={
+        mode === 'create' ? 'Agregar grupo' : `Editar grupo ${grupo?.codigo ?? group?.code ?? values.code}`
+      }
       description={
         mode === 'create'
           ? 'Configura un grupo para el año lectivo seleccionado.'
@@ -335,23 +471,41 @@ export function GroupFormModal({
         <ModalActions
           formId={formId}
           confirmLabel={
-            submitting ? 'Guardando...' : creating ? 'Guardar grupo' : 'Guardar cambios'
+            loadError
+              ? undefined
+              : loading
+                ? 'Cargando...'
+                : submitting
+                  ? 'Guardando...'
+                  : creating
+                    ? 'Guardar grupo'
+                    : 'Guardar cambios'
           }
           confirmType="submit"
-          disabled={submitting}
+          disabled={submitting || loading || Boolean(loadError)}
           onCancel={handleClose}
         />
       }
     >
+      {loading ? (
+        <p className={styles.status}>Cargando grupo...</p>
+      ) : loadError ? (
+        <div className={styles.feedback}>
+          <p className={styles.error} role="alert">
+            {loadError}
+          </p>
+          {onRetry ? <TextLink onClick={onRetry}>Reintentar</TextLink> : null}
+        </div>
+      ) : (
       <form id={formId} className={styles.form} onSubmit={handleSubmit}>
         <div className={styles.grid}>
           <TextField
             id={`${formId}-code`}
             label="Código del grupo"
             required
-            disabled={mode === 'edit' || submitting}
-            className={mode === 'edit' ? styles.locked : undefined}
+            disabled={submitting}
             value={values.code}
+            hint={codeHint}
             error={codeTaken ? duplicateCodeMessage : undefined}
             onChange={(event) =>
               setValues((current) => ({ ...current, code: event.target.value }))
@@ -366,9 +520,7 @@ export function GroupFormModal({
             disabled={!gradoLista || submitting}
             error={
               gradosError ||
-              (attempted && creating && gradoLista && !values.grade
-                ? 'Seleccione un grado.'
-                : undefined)
+              (attempted && gradoLista && !values.grade ? 'Seleccione un grado.' : undefined)
             }
             onChange={(grade) => setValues((current) => ({ ...current, grade }))}
           />
@@ -389,11 +541,18 @@ export function GroupFormModal({
             disabled={!sedeLista || submitting}
             error={
               sedesError ||
-              (attempted && creating && sedeLista && !values.sedeId
-                ? 'Seleccione una sede.'
-                : undefined)
+              (attempted && sedeLista && !values.sedeId ? 'Seleccione una sede.' : undefined)
             }
-            onChange={(sedeId) => setValues((current) => ({ ...current, sedeId }))}
+            onChange={(sedeId) =>
+              setValues((current) => ({
+                ...current,
+                sedeId,
+                classroomId:
+                  grupo && sedeId === grupo.sedeId && grupo.aulaFijaId && esUuid(grupo.aulaFijaId)
+                    ? grupo.aulaFijaId
+                    : '',
+              }))
+            }
           />
           <TextField
             id={`${formId}-students`}
@@ -426,9 +585,7 @@ export function GroupFormModal({
             disabled={submitting}
             value={values.status}
             options={statusOptions}
-            error={
-              attempted && creating && !values.status ? 'Seleccione un estado.' : undefined
-            }
+            error={attempted && !values.status ? 'Seleccione un estado.' : undefined}
             onChange={(status) =>
               setValues((current) => ({
                 ...current,
@@ -439,14 +596,10 @@ export function GroupFormModal({
           <SelectField
             id={`${formId}-classroom`}
             label="Aula habitual (opcional)"
-            disabled={submitting}
+            disabled={submitting || !esUuid(values.sedeId) || (aulas === null && !aulasError)}
             value={values.classroomId}
             options={classroomOptions}
-            error={
-              aulaSinCatalogo
-                ? 'El catálogo de aulas aún no está disponible. Déjala en Sin asignar para crear el grupo.'
-                : undefined
-            }
+            error={aulasError || undefined}
             onChange={(classroomId) =>
               setValues((current) => ({ ...current, classroomId }))
             }
@@ -486,6 +639,7 @@ export function GroupFormModal({
                     : 'Seleccione un grado para ver el tipo y la intensidad que vienen del catálogo. Director y aula son opcionales.'}
         </p>
       </form>
+      )}
     </Modal>
   )
 }

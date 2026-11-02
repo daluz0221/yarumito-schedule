@@ -1,5 +1,14 @@
 import { api } from './client'
 
+export type PlanEstudiosRequest = {
+  anioEscolarId: string
+  gradoId: string
+  asignaturaId: string
+  horasSemanales: number
+  turnoId: string | null
+  observacion: string | null
+}
+
 export type PlanEstudiosResponse = {
   id: string
   anioEscolarId: string
@@ -31,6 +40,21 @@ function listarPagina(page: number, signal?: AbortSignal) {
   return api.get<PaginaPlanesEstudio>(`/api/v1/planes-estudio?${search.toString()}`, {
     signal,
   })
+}
+
+export function consultarPlanEstudios(id: string, signal?: AbortSignal) {
+  return api.get<PlanEstudiosResponse>(`/api/v1/planes-estudio/${id}`, { signal })
+}
+
+export function registrarPlanEstudios(payload: PlanEstudiosRequest) {
+  return api.post<PlanEstudiosResponse, PlanEstudiosRequest>('/api/v1/planes-estudio', payload)
+}
+
+export function actualizarPlanEstudios(id: string, payload: PlanEstudiosRequest) {
+  return api.put<PlanEstudiosResponse, PlanEstudiosRequest>(
+    `/api/v1/planes-estudio/${id}`,
+    payload,
+  )
 }
 
 export async function listarPlanesEstudio(signal?: AbortSignal) {
