@@ -11,11 +11,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.util.UUID;
 
 // Representa la habilitación de un docente para un área académica.
 @Entity
+@Table(name = "idoneidad", schema = "accesopersonas")
 public class Idoneidad {
 
     // Identificador único de la idoneidad.

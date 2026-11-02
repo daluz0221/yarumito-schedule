@@ -124,28 +124,106 @@ Después de `down -v`, el rector se vuelve a crear al arrancar. Si quieres otra 
 
 ## Puertos ocupados
 
+
 Si `5173`, `8080` o `5432` ya están en uso, detén el otro proceso o cambia el mapeo en `docker-compose.yml`.
 
-
-implementa el siguiente endpoint expuesto por el backend
-
-"GET /api/v1/idoneidades/{id}"
-
-teniendo en cuenta lo siguiente
-1. modificar SOLO el frontend
-2. si es necesario modificar el backend, no lo hagas, explícame qué hay que modificar, donde y por qué y espera mi aprobación
-3. en caso de tener que crear algo nuevo del frontend, dimelo antes de proceder (con nuevo me refiero a una pantalla o modal completo)
-4. válida que funcione la integración tanto en el caso de éxito, como en los casos de posibles errores, es decir, en caso de un error, esté controlado y no degrade la experiencia de usuario
-5. dime donde puedo validar, en el navegador, que haya quedado implementada la integración
+```
+### Configurar variables de entorno
 
 
-pendientes en el mock, 
-las sedes (API 11-13)
-la de gestión académica
-no hay relación catalogoacademico.sede
-tengo error 500 en GET /api/v1/grados responde 500: relation "catalogoacademico.grado" does not exist
-mock up del modal de crear grados -> 
-el mock up del sidebar gestion academica es la misma para areas y asignaturas
-La entidad AnioEscolar apunta a catalogoacademico.anio_escolar, y ese esquema no existe.
-Hoy esa consulta responde 500 porque no existe la tabla catalogoacademico.plan_estudio
-El PUT /api/v1/idoneidades/{id} permite actualizar `areaId`, `asignaturaId`, `tipo`, `tituloSoporteId`, `justificacion`, `vigenteDesde` y `vigenteHasta`. El docente, el identificador y el usuario aprobador no se reasignan desde este endpoint.
+1. Copia el archivo `.env.example` a `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+2. Completa con las credenciales locales
+
+    ```
+    
+    ```
+
+
+
+## Arquitectura
+
+### Backend
+
+```
+src/
+├── main/
+│   ├── java/
+│   │   └── co/
+│   │       └── edu/
+│   │           └── ieruralyarumito/
+│   │               └── backend/
+│   │                   ├── BackendApplication.java
+│   │                   │
+│   │                   ├── config/                    # Configuraciones globales
+│   │                   │   ├── SecurityConfig.java
+│   │                   │   ├── WebConfig.java
+│   │                   │   └── SwaggerConfig.java
+│   │                   │
+│   │                   ├── controller/                # Capa de presentación (endpoints)
+│   │                   │   ├── UsuarioController.java
+│   │                   │   ├── ProductoController.java
+│   │                   │   └── PedidoController.java
+│   │                   │
+│   │                   ├── service/                   # Capa de negocio
+│   │                   │   ├── UsuarioService.java
+│   │                   │   ├── ProductoService.java
+│   │                   │   └── PedidoService.java
+│   │                   │
+│   │                   ├── repository/                # Capa de acceso a datos
+│   │                   │   ├── UsuarioRepository.java
+│   │                   │   ├── ProductoRepository.java
+│   │                   │   └── PedidoRepository.java
+│   │                   │
+│   │                   ├── model/                     # Entidades de base de datos
+│   │                   │   ├── Usuario.java
+│   │                   │   ├── Producto.java
+│   │                   │   └── Pedido.java
+│   │                   │
+│   │                   ├── dto/                       # Data Transfer Objects
+│   │                   │   ├── request/
+│   │                   │   │   ├── CrearUsuarioRequest.java
+│   │                   │   │   └── ActualizarUsuarioRequest.java
+│   │                   │   └── response/
+│   │                   │       ├── UsuarioResponse.java
+│   │                   │       └── ProductoResponse.java
+│   │                   │
+│   │                   ├── exception/                 # Manejo de errores
+│   │                   │   ├── GlobalExceptionHandler.java
+│   │                   │   ├── ResourceNotFoundException.java
+│   │                   │   └── BusinessException.java
+│   │                   │
+│   │                   └── util/                      # Utilidades y helpers
+│   │                       ├── DateUtils.java
+│   │                       └── ValidationUtils.java
+│   │
+│   └── resources/
+│       ├── application.properties                     # Configuración principal
+│       ├── application-dev.properties                 # Configuración desarrollo
+│       ├── application-prod.properties                # Configuración producción
+│       │
+│       ├── db/
+│       │   └── migration/                             # Migraciones Flyway/Liquibase
+│       │       ├── V1__create_usuarios_table.sql
+│       │       └── V2__create_productos_table.sql
+│       │
+│       └── static/                                    # Archivos estáticos (si los necesitas)
+│           └── .gitkeep
+│
+└── test/
+    └── java/
+        └── co/
+            └── edu/
+                └── ieruralyarumito/
+                    └── backend/
+                        ├── BackendApplicationTests.java
+                        ├── controller/
+                        │   └── UsuarioControllerTest.java
+                        ├── service/
+                        │   └── UsuarioServiceTest.java
+                        └── repository/
+                            └── UsuarioRepositoryTest.java
+```
+

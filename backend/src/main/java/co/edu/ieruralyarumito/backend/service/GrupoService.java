@@ -4,13 +4,16 @@ import co.edu.ieruralyarumito.backend.dto.ActualizarGrupoRequest;
 import co.edu.ieruralyarumito.backend.dto.CrearGrupoRequest;
 import co.edu.ieruralyarumito.backend.dto.GrupoResponse;
 import co.edu.ieruralyarumito.backend.entity.AnioEscolar;
+import co.edu.ieruralyarumito.backend.entity.Aula;
 import co.edu.ieruralyarumito.backend.entity.Docente;
 import co.edu.ieruralyarumito.backend.entity.Grado;
 import co.edu.ieruralyarumito.backend.entity.Grupo;
 import co.edu.ieruralyarumito.backend.entity.Sede;
 import co.edu.ieruralyarumito.backend.exception.RecursoDuplicadoException;
 import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
+import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
 import co.edu.ieruralyarumito.backend.repository.AnioEscolarRepository;
+import co.edu.ieruralyarumito.backend.repository.AulaRepository;
 import co.edu.ieruralyarumito.backend.repository.DocenteRepository;
 import co.edu.ieruralyarumito.backend.repository.GradoRepository;
 import co.edu.ieruralyarumito.backend.repository.GrupoRepository;
@@ -21,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.List;
 
 // Contiene la lógica de negocio para la gestión de grupos escolares.
 @Service
@@ -31,6 +35,7 @@ public class GrupoService {
     private final AnioEscolarRepository anioEscolarRepository;
     private final SedeRepository sedeRepository;
     private final DocenteRepository docenteRepository;
+    private final AulaRepository aulaRepository;
 
     // Inyección de dependencias mediante constructor.
     public GrupoService(
@@ -38,13 +43,15 @@ public class GrupoService {
             GradoRepository gradoRepository,
             AnioEscolarRepository anioEscolarRepository,
             SedeRepository sedeRepository,
-            DocenteRepository docenteRepository) {
+            DocenteRepository docenteRepository,
+            AulaRepository aulaRepository) {
 
         this.grupoRepository = grupoRepository;
         this.gradoRepository = gradoRepository;
         this.anioEscolarRepository = anioEscolarRepository;
         this.sedeRepository = sedeRepository;
         this.docenteRepository = docenteRepository;
+        this.aulaRepository = aulaRepository;
     }
 
     // Elimina espacios externos del código del grupo.
@@ -92,6 +99,59 @@ public class GrupoService {
                                 "El docente director de grupo no existe"));
     }
 
+    // Obtiene el aula fija cuando fue informada.
+    //
+    // Un grupo puede existir sin aula fija.
+    // Si se realiza una nueva asignación, el aula debe existir y estar activa.
+    private Aula obtenerAulaFija(UUID aulaFijaId) {
+
+        if (aulaFijaId == null) {
+            return null;
+        }
+
+        Aula aula =
+                aulaRepository.findById(aulaFijaId)
+                        .orElseThrow(() ->
+                                new RecursoNoEncontradoException(
+                                        "El aula fija no existe"));
+
+        if (!aula.isActiva()) {
+            throw new RelacionAcademicaInvalidaException(
+                    "No se puede asignar un aula inactiva como aula fija del grupo");
+        }
+
+        return aula;
+    }
+
+    // Resuelve el aula fija durante una actualización.
+    //
+    // Si el grupo conserva exactamente la misma aula que ya tenía asignada,
+    // se permite mantener la referencia aunque el aula haya sido inactivada
+    // posteriormente. Esto preserva la relación existente.
+    //
+    // Si se intenta asignar una aula diferente, se considera una nueva
+    // asignación y esa aula debe estar activa.
+    private Aula obtenerAulaFijaParaActualizacion(
+            Grupo grupo,
+            UUID aulaFijaId) {
+
+        if (aulaFijaId == null) {
+            return null;
+        }
+
+        Aula aulaActual =
+                grupo.getAulaFija();
+
+        if (aulaActual != null
+                && aulaFijaId.equals(aulaActual.getId())) {
+
+            return aulaActual;
+        }
+
+        return obtenerAulaFija(
+                aulaFijaId);
+    }
+
     // Obtiene un grupo existente.
     private Grupo obtenerGrupo(UUID id) {
 
@@ -131,31 +191,76 @@ public class GrupoService {
         }
     }
 
+    private String obtenerAdvertenciaLogistica(
+            Grupo grupo) {
+
+        if (grupo.getAulaFija() == null) {
+            return null;
+        }
+
+        Integer capacidad =
+                grupo.getAulaFija()
+                        .getCapacidad();
+
+        Integer cantidadEstudiantes =
+                grupo.getCantidadEstudiantes();
+
+        if (capacidad == null
+                || cantidadEstudiantes == null) {
+
+            return null;
+        }
+
+        if (cantidadEstudiantes > capacidad) {
+
+            return "La cantidad de estudiantes del grupo supera "
+                    + "la capacidad registrada del aula.";
+        }
+
+        return null;
+    }
+
     // Convierte la entidad Grupo en el DTO devuelto por la API.
     private GrupoResponse convertirAResponse(Grupo grupo) {
 
-        GrupoResponse response = new GrupoResponse();
+        GrupoResponse response =
+                new GrupoResponse();
 
-        response.setId(grupo.getId());
-        response.setCodigo(grupo.getCodigo());
+        response.setId(
+                grupo.getId());
 
-        response.setGradoId(grupo.getGrado().getId());
-        response.setGradoNivel(grupo.getGrado().getNivel());
-        response.setGradoNombre(grupo.getGrado().getNombre());
+        response.setCodigo(
+                grupo.getCodigo());
+
+        response.setGradoId(
+                grupo.getGrado().getId());
+
+        response.setGradoNivel(
+                grupo.getGrado().getNivel());
+
+        response.setGradoNombre(
+                grupo.getGrado().getNombre());
 
         response.setAnioEscolarId(
                 grupo.getAnioEscolar().getId());
+
         response.setAnioEscolar(
                 grupo.getAnioEscolar().getAnio());
 
-        response.setSedeId(grupo.getSede().getId());
-        response.setSedeNombre(grupo.getSede().getNombre());
+        response.setSedeId(
+                grupo.getSede().getId());
+
+        response.setSedeNombre(
+                grupo.getSede().getNombre());
 
         if (grupo.getDirectorGrupo() != null) {
 
-            Docente director = grupo.getDirectorGrupo();
+            Docente director =
+                    grupo.getDirectorGrupo();
 
-            response.setDirectorGrupoId(director.getId());
+            response.setDirectorGrupoId(
+                    director.getId());
+
             response.setDirectorGrupoNombre(
                     director.getNombres()
                             + " "
@@ -165,8 +270,15 @@ public class GrupoService {
         response.setCantidadEstudiantes(
                 grupo.getCantidadEstudiantes());
 
-        response.setAulaFijaId(
-                grupo.getAulaFijaId());
+        if (grupo.getAulaFija() != null) {
+
+            response.setAulaFijaId(
+                    grupo.getAulaFija().getId());
+        }
+
+        response.setAdvertenciaLogistica(
+                obtenerAdvertenciaLogistica(
+                        grupo));
 
         response.setActivo(
                 grupo.isActivo());
@@ -180,47 +292,130 @@ public class GrupoService {
             CrearGrupoRequest request) {
 
         String codigoNormalizado =
-                normalizarCodigo(request.getCodigo());
+                normalizarCodigo(
+                        request.getCodigo());
 
         validarCodigoDuplicado(
                 request.getAnioEscolarId(),
                 codigoNormalizado);
 
         Grado grado =
-                obtenerGrado(request.getGradoId());
+                obtenerGrado(
+                        request.getGradoId());
 
         AnioEscolar anioEscolar =
-                obtenerAnioEscolar(request.getAnioEscolarId());
+                obtenerAnioEscolar(
+                        request.getAnioEscolarId());
 
         Sede sede =
-                obtenerSede(request.getSedeId());
+                obtenerSede(
+                        request.getSedeId());
 
         Docente directorGrupo =
-                obtenerDirectorGrupo(request.getDirectorGrupoId());
+                obtenerDirectorGrupo(
+                        request.getDirectorGrupoId());
 
-        Grupo grupo = new Grupo();
+        Aula aulaFija =
+                obtenerAulaFija(
+                        request.getAulaFijaId());
 
-        grupo.setCodigo(codigoNormalizado);
-        grupo.setGrado(grado);
-        grupo.setAnioEscolar(anioEscolar);
-        grupo.setSede(sede);
-        grupo.setDirectorGrupo(directorGrupo);
+        Grupo grupo =
+                new Grupo();
+
+        grupo.setCodigo(
+                codigoNormalizado);
+
+        grupo.setGrado(
+                grado);
+
+        grupo.setAnioEscolar(
+                anioEscolar);
+
+        grupo.setSede(
+                sede);
+
+        grupo.setDirectorGrupo(
+                directorGrupo);
+
         grupo.setCantidadEstudiantes(
                 request.getCantidadEstudiantes());
-        grupo.setAulaFijaId(
-                request.getAulaFijaId());
+
+        grupo.setAulaFija(
+                aulaFija);
+
         grupo.setActivo(
                 request.getActivo());
 
         Grupo grupoGuardado =
-                grupoRepository.save(grupo);
+                grupoRepository.save(
+                        grupo);
 
-        return convertirAResponse(grupoGuardado);
+        return convertirAResponse(
+                grupoGuardado);
+    }
+
+    // Sugiere el siguiente código disponible para un grado y año escolar.
+    @Transactional(readOnly = true)
+    public String sugerirCodigoGrupo(
+            UUID gradoId,
+            UUID anioEscolarId) {
+
+        Grado grado = obtenerGrado(gradoId);
+        obtenerAnioEscolar(anioEscolarId);
+
+        int nivel = grado.getNivel();
+
+        if (nivel < 1 || nivel > 11) {
+            throw new IllegalArgumentException(
+                    "El nivel del grado debe estar entre 1 y 11");
+        }
+
+        int base = nivel * 100;
+
+        List<Grupo> grupos =
+                grupoRepository.findByGrado_IdAndAnioEscolar_Id(
+                        gradoId,
+                        anioEscolarId);
+
+        int consecutivoMayor = 0;
+
+        for (Grupo grupo : grupos) {
+            String codigo = grupo.getCodigo();
+
+            if (codigo == null || !codigo.matches("\\d+")) {
+                continue;
+            }
+
+            int numero = Integer.parseInt(codigo);
+            int consecutivo = numero - base;
+
+            if (consecutivo >= 1 && consecutivo <= 99) {
+                consecutivoMayor = Math.max(
+                        consecutivoMayor,
+                        consecutivo);
+            }
+        }
+
+        for (int consecutivo = consecutivoMayor + 1;
+             consecutivo <= 99;
+             consecutivo++) {
+
+            String codigo = String.valueOf(base + consecutivo);
+
+            if (!grupoRepository.existsByAnioEscolar_IdAndCodigo(
+                    anioEscolarId, codigo)) {
+                return codigo;
+            }
+        }
+
+        throw new IllegalStateException(
+                "No hay más consecutivos disponibles para este grado");
     }
 
     // Consulta un grupo por su identificador.
     @Transactional(readOnly = true)
-    public GrupoResponse consultarGrupo(UUID id) {
+    public GrupoResponse consultarGrupo(
+            UUID id) {
 
         return convertirAResponse(
                 obtenerGrupo(id));
@@ -231,7 +426,8 @@ public class GrupoService {
     public Page<GrupoResponse> listarGrupos(
             Pageable pageable) {
 
-        return grupoRepository.findAll(pageable)
+        return grupoRepository
+                .findAll(pageable)
                 .map(this::convertirAResponse);
     }
 
@@ -245,7 +441,8 @@ public class GrupoService {
                 obtenerGrupo(id);
 
         String codigoNormalizado =
-                normalizarCodigo(request.getCodigo());
+                normalizarCodigo(
+                        request.getCodigo());
 
         validarCodigoDuplicadoAlActualizar(
                 request.getAnioEscolarId(),
@@ -253,32 +450,55 @@ public class GrupoService {
                 id);
 
         Grado grado =
-                obtenerGrado(request.getGradoId());
+                obtenerGrado(
+                        request.getGradoId());
 
         AnioEscolar anioEscolar =
-                obtenerAnioEscolar(request.getAnioEscolarId());
+                obtenerAnioEscolar(
+                        request.getAnioEscolarId());
 
         Sede sede =
-                obtenerSede(request.getSedeId());
+                obtenerSede(
+                        request.getSedeId());
 
         Docente directorGrupo =
-                obtenerDirectorGrupo(request.getDirectorGrupoId());
+                obtenerDirectorGrupo(
+                        request.getDirectorGrupoId());
 
-        grupo.setCodigo(codigoNormalizado);
-        grupo.setGrado(grado);
-        grupo.setAnioEscolar(anioEscolar);
-        grupo.setSede(sede);
-        grupo.setDirectorGrupo(directorGrupo);
+        Aula aulaFija =
+                obtenerAulaFijaParaActualizacion(
+                        grupo,
+                        request.getAulaFijaId());
+
+        grupo.setCodigo(
+                codigoNormalizado);
+
+        grupo.setGrado(
+                grado);
+
+        grupo.setAnioEscolar(
+                anioEscolar);
+
+        grupo.setSede(
+                sede);
+
+        grupo.setDirectorGrupo(
+                directorGrupo);
+
         grupo.setCantidadEstudiantes(
                 request.getCantidadEstudiantes());
-        grupo.setAulaFijaId(
-                request.getAulaFijaId());
+
+        grupo.setAulaFija(
+                aulaFija);
+
         grupo.setActivo(
                 request.getActivo());
 
         Grupo grupoActualizado =
-                grupoRepository.save(grupo);
+                grupoRepository.save(
+                        grupo);
 
-        return convertirAResponse(grupoActualizado);
+        return convertirAResponse(
+                grupoActualizado);
     }
 }

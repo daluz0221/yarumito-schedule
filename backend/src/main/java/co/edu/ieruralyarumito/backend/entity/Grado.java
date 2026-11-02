@@ -24,7 +24,7 @@ public class Grado {
     private int nivel;
 
     // Nombre correspondiente al grado: SEXTO, SÉPTIMO, OCTAVO, etc.
-    @Column(nullable = false)
+    @Column(name = "nombre", nullable = false)
     private String nombre;
 
     // Indica si el grado pertenece a educación media.
