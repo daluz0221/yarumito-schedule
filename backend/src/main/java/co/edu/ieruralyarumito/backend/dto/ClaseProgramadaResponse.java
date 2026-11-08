@@ -3,6 +3,7 @@ package co.edu.ieruralyarumito.backend.dto;
 import co.edu.ieruralyarumito.backend.entity.enums.DiasSemana;
 
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 // Bloque ya ubicado en la rejilla del horario.
@@ -33,6 +34,9 @@ public class ClaseProgramadaResponse {
 
     private boolean esHoraExtra;
     private boolean bloqueada;
+
+    // Advertencias no bloqueantes. El bloque se guarda aunque existan.
+    private List<String> warnings = List.of();
 
     public UUID getId() {
         return id;
@@ -176,5 +180,13 @@ public class ClaseProgramadaResponse {
 
     public void setBloqueada(boolean bloqueada) {
         this.bloqueada = bloqueada;
+    }
+
+    public List<String> getWarnings() {
+        return warnings;
+    }
+
+    public void setWarnings(List<String> warnings) {
+        this.warnings = warnings == null ? List.of() : warnings;
     }
 }
