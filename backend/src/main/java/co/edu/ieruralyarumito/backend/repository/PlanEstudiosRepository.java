@@ -28,4 +28,10 @@ public interface PlanEstudiosRepository
 
     Optional<List<PlanEstudios>> findByAnioEscolarAndGrado(UUID anioEscolar, UUID grado);
 
+    // Lista los planes de estudio de un grado dentro de un año escolar.
+    // Permite resolver el turno con el que se construye la rejilla.
+    List<PlanEstudios> findByAnioEscolar_IdAndGrado_Id(
+            UUID anioEscolarId,
+            UUID gradoId);
+
 }
