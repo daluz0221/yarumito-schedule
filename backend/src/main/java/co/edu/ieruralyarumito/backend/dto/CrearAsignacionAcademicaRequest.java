@@ -1,34 +1,77 @@
 package co.edu.ieruralyarumito.backend.dto;
 
-import co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
+
 import java.util.UUID;
-                                 
+
+// Datos necesarios para registrar una nueva asignación académica.
 public class CrearAsignacionAcademicaRequest {
 
-    @NotNull (message = "El año escolar es obligatorio")
+    @NotNull(message = "El año escolar es obligatorio")
     private UUID anioEscolarId;
 
-    @NotNull (message = "Debe asignar un docente valido")
+    @NotNull(message = "Debe asignar un docente válido")
     private UUID docenteId;
 
-    @NotNull (message = "Debe asignar un grupo valido")
+    @NotNull(message = "Debe asignar un grupo válido")
     private UUID grupoId;
 
-    @NotNull (message = "Debe seleccionar una asignatura valida")
+    @NotNull(message = "Debe seleccionar una asignatura válida")
     private UUID asignaturaId;
-    
-    @NotNull (message = "El tipo de idoneidad es obligatorio")
-    private TipoIdoneidad tipoIdoneidad;
 
-    @Positive (message = "La cantidad de horas semanales debe ser un número positivo")
-    private int horasSemanales;
+    @NotNull(message = "La cantidad de horas semanales es obligatoria")
+    @Positive(message = "La cantidad de horas semanales debe ser un número positivo")
+    private Integer horasSemanales;
 
-    @NotNull
+    // La observación es opcional.
     private String observacion;
 
+    public UUID getAnioEscolarId() {
+        return anioEscolarId;
+    }
+
+    public void setAnioEscolarId(UUID anioEscolarId) {
+        this.anioEscolarId = anioEscolarId;
+    }
+
+    public UUID getDocenteId() {
+        return docenteId;
+    }
+
+    public void setDocenteId(UUID docenteId) {
+        this.docenteId = docenteId;
+    }
+
+    public UUID getGrupoId() {
+        return grupoId;
+    }
+
+    public void setGrupoId(UUID grupoId) {
+        this.grupoId = grupoId;
+    }
+
+    public UUID getAsignaturaId() {
+        return asignaturaId;
+    }
+
+    public void setAsignaturaId(UUID asignaturaId) {
+        this.asignaturaId = asignaturaId;
+    }
+
+    public Integer getHorasSemanales() {
+        return horasSemanales;
+    }
+
+    public void setHorasSemanales(Integer horasSemanales) {
+        this.horasSemanales = horasSemanales;
+    }
+
+    public String getObservacion() {
+        return observacion;
+    }
+
+    public void setObservacion(String observacion) {
+        this.observacion = observacion;
+    }
 }
