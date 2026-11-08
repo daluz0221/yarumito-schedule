@@ -9,11 +9,13 @@ import co.edu.ieruralyarumito.backend.entity.Asignatura;
 import co.edu.ieruralyarumito.backend.entity.Docente;
 import co.edu.ieruralyarumito.backend.entity.Grado;
 import co.edu.ieruralyarumito.backend.entity.Grupo;
+import co.edu.ieruralyarumito.backend.entity.Idoneidad;
 import co.edu.ieruralyarumito.backend.entity.PlanEstudios;
 import co.edu.ieruralyarumito.backend.entity.Usuario;
 import co.edu.ieruralyarumito.backend.entity.enums.EstadoAsignacionAcademica;
 import co.edu.ieruralyarumito.backend.exception.RecursoDuplicadoException;
 import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
+import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
 import co.edu.ieruralyarumito.backend.exception.TransicionEstadoNoPermitidaException;
 import co.edu.ieruralyarumito.backend.mapper.AsignacionAcademicaMapper;
 import co.edu.ieruralyarumito.backend.repository.AnioEscolarRepository;
@@ -21,11 +23,13 @@ import co.edu.ieruralyarumito.backend.repository.AsignacionAcademicaRepository;
 import co.edu.ieruralyarumito.backend.repository.AsignaturaRepository;
 import co.edu.ieruralyarumito.backend.repository.DocenteRepository;
 import co.edu.ieruralyarumito.backend.repository.GrupoRepository;
+import co.edu.ieruralyarumito.backend.repository.IdoneidadRepository;
 import co.edu.ieruralyarumito.backend.repository.PlanEstudiosRepository;
 import co.edu.ieruralyarumito.backend.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,6 +43,7 @@ public class AsignacionAcademicaService {
     private final GrupoRepository grupoRepository;
     private final AsignaturaRepository asignaturaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final IdoneidadRepository idoneidadRepository;
     private final PlanEstudiosRepository planEstudiosRepository;
     private final AsignacionAcademicaMapper asignacionAcademicaMapper;
 
@@ -49,6 +54,7 @@ public class AsignacionAcademicaService {
             GrupoRepository grupoRepository,
             AsignaturaRepository asignaturaRepository,
             UsuarioRepository usuarioRepository,
+            IdoneidadRepository idoneidadRepository,
             PlanEstudiosRepository planEstudiosRepository,
             AsignacionAcademicaMapper asignacionAcademicaMapper) {
 
@@ -58,6 +64,7 @@ public class AsignacionAcademicaService {
         this.grupoRepository = grupoRepository;
         this.asignaturaRepository = asignaturaRepository;
         this.usuarioRepository = usuarioRepository;
+        this.idoneidadRepository = idoneidadRepository;
         this.planEstudiosRepository = planEstudiosRepository;
         this.asignacionAcademicaMapper = asignacionAcademicaMapper;
     }
@@ -93,18 +100,10 @@ public class AsignacionAcademicaService {
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "El usuario autenticado no existe"));
 
-        boolean existeAsignacion =
-                asignacionAcademicaRepository
-                        .existsByAnioEscolar_IdAndGrupo_IdAndAsignatura_Id(
-                                anioEscolar.getId(),
-                                grupo.getId(),
-                                asignatura.getId());
-
-        if (existeAsignacion) {
-            throw new RecursoDuplicadoException(
-                    "Ya existe una asignación académica para el año escolar, "
-                            + "grupo y asignatura indicados");
-        }
+        // Reglas de negocio HU-06, aplicadas antes de persistir.
+        validarUnicidad(anioEscolar, grupo, asignatura);
+        validarContinuidadDocente(anioEscolar, grupo, asignatura, docente);
+        validarIdoneidadDocente(docente, asignatura);
 
         AsignacionAcademica asignacion =
                 asignacionAcademicaMapper.toEntity(
@@ -191,6 +190,107 @@ public class AsignacionAcademicaService {
 
         return asignacionAcademicaMapper.toResponse(
                 asignacionAcademicaRepository.save(asignacion));
+    }
+
+    // CA-12: impide duplicar la misma asignatura para el mismo año escolar,
+    // grupo y asignatura.
+    private void validarUnicidad(
+            AnioEscolar anioEscolar,
+            Grupo grupo,
+            Asignatura asignatura) {
+
+        boolean existeAsignacion =
+                asignacionAcademicaRepository
+                        .existsByAnioEscolar_IdAndGrupo_IdAndAsignatura_Id(
+                                anioEscolar.getId(),
+                                grupo.getId(),
+                                asignatura.getId());
+
+        if (existeAsignacion) {
+            throw new RecursoDuplicadoException(
+                    "Ya existe una asignación académica para el año escolar, "
+                            + "grupo y asignatura indicados");
+        }
+    }
+
+    // CA-09: una asignatura de un grado debe ser dictada por un único docente
+    // en todos los grupos de ese grado durante el mismo año escolar.
+    private void validarContinuidadDocente(
+            AnioEscolar anioEscolar,
+            Grupo grupo,
+            Asignatura asignatura,
+            Docente docente) {
+
+        List<AsignacionAcademica> asignacionesExistentes =
+                asignacionAcademicaRepository
+                        .findByAnioEscolar_IdAndGrupo_Grado_IdAndAsignatura_Id(
+                                anioEscolar.getId(),
+                                grupo.getGrado().getId(),
+                                asignatura.getId());
+
+        boolean asignadaAOtroDocente = asignacionesExistentes.stream()
+                .anyMatch(asignacion -> !asignacion.getDocente().getId()
+                        .equals(docente.getId()));
+
+        if (asignadaAOtroDocente) {
+            throw new RelacionAcademicaInvalidaException(
+                    "La asignatura ya está asignada a otro docente en el grado "
+                            + grupo.getGrado().getNombre()
+                            + "; debe ser dictada por el mismo docente en todos "
+                            + "los grupos del grado");
+        }
+    }
+
+    // CA-07: el docente debe tener una idoneidad vigente para la asignatura.
+    // Sólo se consulta la idoneidad; no se crea ni se modifica.
+    private void validarIdoneidadDocente(
+            Docente docente,
+            Asignatura asignatura) {
+
+        LocalDate hoy = LocalDate.now();
+
+        List<Idoneidad> idoneidades =
+                idoneidadRepository.findByDocente_Id(docente.getId());
+
+        boolean habilitado = idoneidades.stream()
+                .anyMatch(idoneidad ->
+                        cubreAsignatura(idoneidad, asignatura)
+                                && estaVigente(idoneidad, hoy));
+
+        if (!habilitado) {
+            throw new RelacionAcademicaInvalidaException(
+                    "El docente no cuenta con una idoneidad vigente "
+                            + "para la asignatura indicada");
+        }
+    }
+
+    // Una idoneidad cubre la asignatura de forma específica
+    // o por el área a la que pertenece la asignatura.
+    private boolean cubreAsignatura(
+            Idoneidad idoneidad,
+            Asignatura asignatura) {
+
+        if (idoneidad.getAsignatura() != null) {
+            return idoneidad.getAsignatura().getId()
+                    .equals(asignatura.getId());
+        }
+
+        return idoneidad.getArea() != null
+                && asignatura.getArea() != null
+                && idoneidad.getArea().getId()
+                        .equals(asignatura.getArea().getId());
+    }
+
+    // Verifica que la idoneidad esté vigente en la fecha indicada.
+    private boolean estaVigente(
+            Idoneidad idoneidad,
+            LocalDate fecha) {
+
+        boolean yaInicio = !idoneidad.getVigenteDesde().isAfter(fecha);
+        boolean noHaFinalizado = idoneidad.getVigenteHasta() == null
+                || !idoneidad.getVigenteHasta().isBefore(fecha);
+
+        return yaInicio && noHaFinalizado;
     }
 
     // Obtiene una asignación existente o lanza el error de no encontrado.

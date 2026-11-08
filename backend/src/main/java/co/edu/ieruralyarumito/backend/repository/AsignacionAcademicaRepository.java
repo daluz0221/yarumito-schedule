@@ -28,6 +28,13 @@ public interface AsignacionAcademicaRepository
             UUID anioEscolarId,
             UUID grupoId);
 
+    // Lista las asignaciones de una asignatura dentro de un grado
+    // para un año escolar. Permite validar la continuidad docente (CA-09).
+    List<AsignacionAcademica> findByAnioEscolar_IdAndGrupo_Grado_IdAndAsignatura_Id(
+            UUID anioEscolarId,
+            UUID gradoId,
+            UUID asignaturaId);
+
     // Verifica si ya existe una asignación para el mismo año escolar,
     // grupo y asignatura.
     boolean existsByAnioEscolar_IdAndGrupo_IdAndAsignatura_Id(
