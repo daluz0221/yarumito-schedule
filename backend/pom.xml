@@ -139,6 +139,20 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- HU-04: generacion de informes PDF -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.8</version>
+        </dependency>
+
+        <!-- HU-04: generacion de informes Excel XLSX -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.5.1</version>
+        </dependency>
+
         <!-- Permite ejecutar contenedores PostgreSQL reales para pruebas. -->
         <dependency>
             <groupId>org.testcontainers</groupId>
