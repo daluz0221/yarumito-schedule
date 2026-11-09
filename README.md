@@ -51,7 +51,7 @@ git pull
 La primera vez (o cuando cambie el backend o el frontend) construye las imágenes:
 
 ```bash
-docker compose up --build
+docker compose --profile app up --build
 ```
 
 Cuando los tres servicios estén listos:
@@ -67,7 +67,7 @@ El frontend espera a que el backend responda. El primer arranque puede tardar 1�
 Para dejarlo en segundo plano:
 
 ```bash
-docker compose up --build -d
+docker compose --profile app up --build -d
 ```
 
 ---
@@ -106,16 +106,16 @@ docker compose --profile seed run --rm seed
 
 ```bash
 # Ver logs en vivo
-docker compose logs -f
+docker compose --profile app logs -f
 
 # Detener los contenedores (conserva la base de datos)
-docker compose down
+docker compose --profile app down
 
 # Detener y borrar el volumen de PostgreSQL (base limpia)
-docker compose down -v
+docker compose --profile app down -v
 
 # Volver a levantar sin reconstruir
-docker compose up
+docker compose --profile app up
 ```
 
 Después de `down -v`, el rector se vuelve a crear al arrancar. Si quieres otra vez los docentes de demo, vuelve a ejecutar el seed.
@@ -127,19 +127,13 @@ Después de `down -v`, el rector se vuelve a crear al arrancar. Si quieres otra 
 
 Si `5173`, `8080` o `5432` ya están en uso, detén el otro proceso o cambia el mapeo en `docker-compose.yml`.
 
+## Configurar variables de entorno
+
+Antes de levantar los contenedores, copia el ejemplo. Esos valores son los de desarrollo local y coinciden con los que usa el backend fuera de Docker.
+
+```bash
+cp .env.example .env
 ```
-### Configurar variables de entorno
-
-
-1. Copia el archivo `.env.example` a `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-2. Completa con las credenciales locales
-
-    ```
-    
-    ```
 
 
 
