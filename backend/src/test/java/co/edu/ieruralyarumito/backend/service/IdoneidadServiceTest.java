@@ -20,6 +20,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import co.edu.ieruralyarumito.backend.entity.Area;
 import co.edu.ieruralyarumito.backend.entity.Docente;
@@ -34,7 +35,6 @@ import co.edu.ieruralyarumito.backend.dto.ActualizarIdoneidadRequest;
 import co.edu.ieruralyarumito.backend.entity.TituloProfesional;
 import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
 import static org.mockito.Mockito.lenient;
-
 
 // Pruebas unitarias de la lógica de negocio de IdoneidadService.
 @ExtendWith(MockitoExtension.class)
@@ -241,10 +241,12 @@ public class IdoneidadServiceTest {
         UUID idoneidadId = UUID.randomUUID();
         UUID docenteId = UUID.randomUUID();
         UUID otroDocenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
         UUID tituloId = UUID.randomUUID();
 
         Docente docente = spy(new Docente());
         Docente otroDocente = spy(new Docente());
+        Area area = new Area();
 
         doReturn(docenteId).when(docente).getId();
         doReturn(otroDocenteId).when(otroDocente).getId();
@@ -258,10 +260,18 @@ public class IdoneidadServiceTest {
         ActualizarIdoneidadRequest request =
                 new ActualizarIdoneidadRequest();
 
+        request.setAreaId(areaId);
+        request.setTipo(
+                co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad.AUTORIZADA
+        );
         request.setTituloSoporteId(tituloId);
+        request.setVigenteDesde(LocalDate.of(2026, 9, 19));
 
         when(idoneidadRepository.findById(idoneidadId))
                 .thenReturn(Optional.of(idoneidad));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
 
         when(tituloProfesionalRepository.findById(tituloId))
                 .thenReturn(Optional.of(tituloProfesional));
@@ -273,6 +283,125 @@ public class IdoneidadServiceTest {
                         request
                 )
         );
+    }
+
+    // Verifica que el PUT pueda actualizar todas las propiedades editables.
+    @Test
+    void actualizarIdoneidad_debeActualizarTodosLosCampos() {
+
+        UUID idoneidadId = UUID.randomUUID();
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+        UUID asignaturaId = UUID.randomUUID();
+        UUID tituloId = UUID.randomUUID();
+
+        Docente docente = spy(new Docente());
+        Area area = spy(new Area());
+        Asignatura asignatura = spy(new Asignatura());
+        TituloProfesional titulo = spy(new TituloProfesional());
+        Idoneidad idoneidad = spy(new Idoneidad());
+
+        doReturn(docenteId).when(docente).getId();
+        doReturn(areaId).when(area).getId();
+        doReturn(asignaturaId).when(asignatura).getId();
+        doReturn(tituloId).when(titulo).getId();
+        doReturn(idoneidadId).when(idoneidad).getId();
+
+        asignatura.setArea(area);
+        titulo.setDocente(docente);
+        idoneidad.setDocente(docente);
+
+        ActualizarIdoneidadRequest request =
+                new ActualizarIdoneidadRequest();
+
+        request.setAreaId(areaId);
+        request.setAsignaturaId(asignaturaId);
+        request.setTipo(
+                co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad.EXCEPCIONAL
+        );
+        request.setTituloSoporteId(tituloId);
+        request.setJustificacion("Necesidad institucional actualizada");
+        request.setVigenteDesde(LocalDate.of(2026, 10, 20));
+        request.setVigenteHasta(LocalDate.of(2026, 12, 15));
+
+        when(idoneidadRepository.findById(idoneidadId))
+                .thenReturn(Optional.of(idoneidad));
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
+        when(asignaturaRepository.findById(asignaturaId))
+                .thenReturn(Optional.of(asignatura));
+        when(tituloProfesionalRepository.findById(tituloId))
+                .thenReturn(Optional.of(titulo));
+        when(idoneidadRepository.findByDocente_Id(docenteId))
+                .thenReturn(List.of(idoneidad));
+        when(idoneidadRepository.save(any(Idoneidad.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        IdoneidadResponse response =
+                idoneidadService.actualizarIdoneidad(idoneidadId, request);
+
+        assertEquals(areaId, response.getAreaId());
+        assertEquals(asignaturaId, response.getAsignaturaId());
+        assertEquals(
+                co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad.EXCEPCIONAL,
+                response.getTipo()
+        );
+        assertEquals(tituloId, response.getTituloSoporteId());
+        assertEquals(
+                "Necesidad institucional actualizada",
+                response.getJustificacion()
+        );
+        assertEquals(LocalDate.of(2026, 10, 20), response.getVigenteDesde());
+        assertEquals(LocalDate.of(2026, 12, 15), response.getVigenteHasta());
+    }
+
+    // Verifica que los campos opcionales puedan eliminarse enviando null.
+    @Test
+    void actualizarIdoneidad_debePermitirLimpiarCamposOpcionales() {
+
+        UUID idoneidadId = UUID.randomUUID();
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        Docente docente = spy(new Docente());
+        Area area = spy(new Area());
+        Idoneidad idoneidad = spy(new Idoneidad());
+
+        doReturn(docenteId).when(docente).getId();
+        doReturn(areaId).when(area).getId();
+        doReturn(idoneidadId).when(idoneidad).getId();
+
+        idoneidad.setDocente(docente);
+        idoneidad.setAsignatura(new Asignatura());
+        idoneidad.setTituloSoporte(new TituloProfesional());
+        idoneidad.setJustificacion("Justificación anterior");
+        idoneidad.setVigenteHasta(LocalDate.of(2026, 11, 30));
+
+        ActualizarIdoneidadRequest request =
+                new ActualizarIdoneidadRequest();
+
+        request.setAreaId(areaId);
+        request.setTipo(
+                co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad.AUTORIZADA
+        );
+        request.setVigenteDesde(LocalDate.of(2026, 10, 20));
+
+        when(idoneidadRepository.findById(idoneidadId))
+                .thenReturn(Optional.of(idoneidad));
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
+        when(idoneidadRepository.findByDocente_Id(docenteId))
+                .thenReturn(List.of(idoneidad));
+        when(idoneidadRepository.save(any(Idoneidad.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        IdoneidadResponse response =
+                idoneidadService.actualizarIdoneidad(idoneidadId, request);
+
+        assertNull(response.getAsignaturaId());
+        assertNull(response.getTituloSoporteId());
+        assertNull(response.getJustificacion());
+        assertNull(response.getVigenteHasta());
     }
 
     // Verifica que se listen las idoneidades asociadas a un docente existente.
@@ -423,18 +552,28 @@ public class IdoneidadServiceTest {
     void actualizarIdoneidad_debeRechazarTituloInexistente() {
 
         UUID idoneidadId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
         UUID tituloId = UUID.randomUUID();
 
         Idoneidad idoneidad = new Idoneidad();
         idoneidad.setDocente(new Docente());
+        Area area = new Area();
 
         ActualizarIdoneidadRequest request =
                 new ActualizarIdoneidadRequest();
 
+        request.setAreaId(areaId);
+        request.setTipo(
+                co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad.AUTORIZADA
+        );
         request.setTituloSoporteId(tituloId);
+        request.setVigenteDesde(LocalDate.of(2026, 9, 19));
 
         when(idoneidadRepository.findById(idoneidadId))
                 .thenReturn(Optional.of(idoneidad));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
 
         when(tituloProfesionalRepository.findById(tituloId))
                 .thenReturn(Optional.empty());
@@ -580,6 +719,63 @@ public class IdoneidadServiceTest {
         assertEquals(areaId, response.getAreaId());
         assertEquals(asignaturaId, response.getAsignaturaId());
     }
+
+    @Test
+    void registrarIdoneidad_debePermitirDocenteMediaTecnicaEnAsignaturaOrdinaria() {
+
+        UUID docenteId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+        UUID asignaturaId = UUID.randomUUID();
+
+        Area area = spy(new Area());
+        doReturn(areaId).when(area).getId();
+
+        Docente docente = spy(new Docente());
+        doReturn(docenteId).when(docente).getId();
+
+        // El docente tiene habilitado el perfil de Media Técnica,
+        // pero esto no restringe su participación en asignaturas ordinarias.
+        docente.setEsExclusivoMediaTecnica(true);
+
+        Asignatura asignatura = spy(new Asignatura());
+        doReturn(asignaturaId).when(asignatura).getId();
+
+        asignatura.setArea(area);
+        asignatura.setEsMediaTecnica(false);
+        asignatura.setRequiereDocenteExclusivo(false);
+
+        CrearIdoneidadRequest request =
+                new CrearIdoneidadRequest();
+
+        request.setDocenteId(docenteId);
+        request.setAreaId(areaId);
+        request.setAsignaturaId(asignaturaId);
+        request.setTipo(
+                co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad.AUTORIZADA
+        );
+
+        when(docenteRepository.findById(docenteId))
+                .thenReturn(Optional.of(docente));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(area));
+
+        when(asignaturaRepository.findById(asignaturaId))
+                .thenReturn(Optional.of(asignatura));
+
+        when(idoneidadRepository.save(any(Idoneidad.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        IdoneidadResponse response =
+                idoneidadService.registrarIdoneidad(request);
+
+        assertEquals(docenteId, response.getDocenteId());
+        assertEquals(areaId, response.getAreaId());
+        assertEquals(asignaturaId, response.getAsignaturaId());
+        assertEquals(request.getTipo(), response.getTipo());
+    }
+
+
 
 
     // Verifica que una idoneidad PRINCIPAL permita una asignatura
@@ -762,8 +958,10 @@ public class IdoneidadServiceTest {
     void actualizarIdoneidadExcepcional_debeRechazarJustificacionVacia() {
 
         UUID idoneidadId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
 
         Idoneidad idoneidad = new Idoneidad();
+        idoneidad.setDocente(new Docente());
         idoneidad.setTipo(
                 co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad.EXCEPCIONAL
         );
@@ -774,10 +972,18 @@ public class IdoneidadServiceTest {
         ActualizarIdoneidadRequest request =
                 new ActualizarIdoneidadRequest();
 
+        request.setAreaId(areaId);
+        request.setTipo(
+                co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad.EXCEPCIONAL
+        );
         request.setJustificacion("   ");
+        request.setVigenteDesde(LocalDate.of(2026, 9, 19));
 
         when(idoneidadRepository.findById(idoneidadId))
                 .thenReturn(Optional.of(idoneidad));
+
+        when(areaRepository.findById(areaId))
+                .thenReturn(Optional.of(new Area()));
 
         assertThrows(
                 RelacionAcademicaInvalidaException.class,

@@ -1,5 +1,4 @@
 import { Select } from '../../atoms/Select'
-import { TextLink } from '../../atoms/TextLink'
 import styles from './Pagination.module.css'
 
 export type PaginationProps = {
@@ -43,12 +42,20 @@ export function Pagination({
             aria-label="Filas por página"
           />
         </label>
-        <TextLink disabled={isFirst} onClick={() => onPageChange(page - 1)}>
-          Anterior
-        </TextLink>
-        <TextLink disabled={isLast} onClick={() => onPageChange(page + 1)}>
-          Siguiente
-        </TextLink>
+        {isFirst ? null : (
+          <button type="button" className={styles.pageButton} onClick={() => onPageChange(page - 1)}>
+            Anterior
+          </button>
+        )}
+        {isLast ? null : (
+          <button
+            type="button"
+            className={`${styles.pageButton} ${styles.pageButtonNext}`}
+            onClick={() => onPageChange(page + 1)}
+          >
+            Siguiente
+          </button>
+        )}
       </div>
     </div>
   )

@@ -1,0 +1,63 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lead,
+.note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.lead {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #fff6e5;
+  border: 1px solid #f3d7a3;
+}
+
+.list {
+  margin: 0;
+  padding-left: 18px;
+  color: #3a3a3a;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.note {
+  color: #8a5a12;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .actions {
+    flex-direction: column;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}

@@ -41,6 +41,7 @@ export type ListarDocentesQuery = {
   texto?: string
   estado?: string
   tipoVinculacion?: string
+  areaId?: string
   page: number
   size: number
 }
@@ -114,6 +115,19 @@ export function actualizarDocente(
   )
 }
 
+export type CambiarEstadoDocenteRequest = {
+  nuevoEstado: TeacherStatus
+}
+
+export function cambiarEstadoDocente(id: string, nuevoEstado: TeacherStatus) {
+  return api
+    .patch<DocenteResponse, CambiarEstadoDocenteRequest>(
+      `/api/v1/docentes/${id}/estado`,
+      { nuevoEstado },
+    )
+    .then(toTeacher)
+}
+
 export function listarDocentes(
   query: ListarDocentesQuery,
   signal?: AbortSignal,
@@ -124,6 +138,7 @@ export function listarDocentes(
         texto: query.texto?.trim(),
         estado: query.estado,
         tipoVinculacion: query.tipoVinculacion,
+        areaId: query.areaId,
         page: query.page,
         size: query.size,
       }),

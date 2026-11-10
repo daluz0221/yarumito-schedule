@@ -14,12 +14,14 @@ import jakarta.persistence.JoinColumn; // Define la columna FK
 import jakarta.persistence.ManyToOne; // Relación muchos Docentes a un Area
 import java.time.LocalDate; // Tipo de fecha sin hora
 import co.edu.ieruralyarumito.backend.entity.enums.EstadoDocente; // Enum de estado del docente
+import jakarta.persistence.Table;
 
 // Importa UUID para utilizar identificadores únicos.
 import java.util.UUID; // Tipo del identificador
 
 // Representa el perfil laboral y académico del docente.
 @Entity // Indica que Docente es una entidad persistente
+@Table(name = "docente", schema = "accesopersonas")
 public class Docente {
 
     // Identificador único del docente.
@@ -47,7 +49,7 @@ public class Docente {
 
     // Información institucional del docente.
     @Enumerated(EnumType.STRING) // Guarda PLANTA, PROVISIONAL o CONTRATO como texto
-    @Column(name = "tipo_vinculacion", nullable = false) // Campo obligatorio; mapea tipo_vinculacion
+    @Column(name = "tipo_vinculacion", nullable = false, length = 20) // Campo obligatorio; mapea tipo_vinculacion
     private TipoVinculacion tipoVinculacion; // Tipo de vinculación del docente
 
     // Área de nombramiento obligatoria del docente.
@@ -55,12 +57,13 @@ public class Docente {
     @JoinColumn(name = "area_nombramiento_id", nullable = false) // FK obligatoria hacia Area
     private Area areaNombramiento; // Área de nombramiento del docente
 
-    @Column(name = "numero_decreto") // Mapea la columna numero_decreto
+    @Column(name = "numero_decreto", length = 20) // Mapea la columna numero_decreto
     private String numeroDecreto; // Número del decreto de vinculación
 
     @Column(name = "fecha_decreto") // Mapea la columna fecha_decreto
     private LocalDate fechaDecreto; // Fecha del decreto de vinculación
 
+    @Column(name = "escalafon", length = 5)
     private String escalafon; // Escalafón docente
 
     // Parámetros de carga laboral del docente.
@@ -70,7 +73,7 @@ public class Docente {
     @Column(name = "max_horas_extra", nullable = false) // Campo obligatorio
     private int maxHorasExtra = 10; // Máximo de horas extra permitidas por defecto
 
-    @Column(name = "es_exclusivo_media_tecnica", nullable = false) // Campo obligatorio
+    @Column(name = "es_exclusivo_med_tecnica", nullable = false) // Campo obligatorio
     private boolean esExclusivoMediaTecnica = false; // Indica si el docente es exclusivo de media técnica
 
     // Estado administrativo actual del docente.
@@ -213,3 +216,4 @@ public class Docente {
         this.fechaVinculacion = fechaVinculacion;
     }
 }
+

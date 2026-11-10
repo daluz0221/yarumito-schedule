@@ -10,4 +10,7 @@ public interface IdoneidadRepository extends JpaRepository<Idoneidad, UUID> {
 
     // Consulta las idoneidades asociadas a un docente.
     List<Idoneidad> findByDocente_Id(UUID docenteId);
+
+    // Verifica si existen idoneidades asociadas a una asignatura.
+    boolean existsByAsignatura_Id(UUID asignaturaId);
 }

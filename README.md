@@ -51,7 +51,7 @@ git pull
 La primera vez (o cuando cambie el backend o el frontend) construye las imágenes:
 
 ```bash
-docker compose up --build
+docker compose --profile app up --build
 ```
 
 Cuando los tres servicios estén listos:
@@ -67,7 +67,7 @@ El frontend espera a que el backend responda. El primer arranque puede tardar 1�
 Para dejarlo en segundo plano:
 
 ```bash
-docker compose up --build -d
+docker compose --profile app up --build -d
 ```
 
 ---
@@ -106,16 +106,16 @@ docker compose --profile seed run --rm seed
 
 ```bash
 # Ver logs en vivo
-docker compose logs -f
+docker compose --profile app logs -f
 
 # Detener los contenedores (conserva la base de datos)
-docker compose down
+docker compose --profile app down
 
 # Detener y borrar el volumen de PostgreSQL (base limpia)
-docker compose down -v
+docker compose --profile app down -v
 
 # Volver a levantar sin reconstruir
-docker compose up
+docker compose --profile app up
 ```
 
 Después de `down -v`, el rector se vuelve a crear al arrancar. Si quieres otra vez los docentes de demo, vuelve a ejecutar el seed.
@@ -124,4 +124,100 @@ Después de `down -v`, el rector se vuelve a crear al arrancar. Si quieres otra 
 
 ## Puertos ocupados
 
+
 Si `5173`, `8080` o `5432` ya están en uso, detén el otro proceso o cambia el mapeo en `docker-compose.yml`.
+
+## Configurar variables de entorno
+
+Antes de levantar los contenedores, copia el ejemplo. Esos valores son los de desarrollo local y coinciden con los que usa el backend fuera de Docker.
+
+```bash
+cp .env.example .env
+```
+
+
+
+## Arquitectura
+
+### Backend
+
+```
+src/
+├── main/
+│   ├── java/
+│   │   └── co/
+│   │       └── edu/
+│   │           └── ieruralyarumito/
+│   │               └── backend/
+│   │                   ├── BackendApplication.java
+│   │                   │
+│   │                   ├── config/                    # Configuraciones globales
+│   │                   │   ├── SecurityConfig.java
+│   │                   │   ├── WebConfig.java
+│   │                   │   └── SwaggerConfig.java
+│   │                   │
+│   │                   ├── controller/                # Capa de presentación (endpoints)
+│   │                   │   ├── UsuarioController.java
+│   │                   │   ├── ProductoController.java
+│   │                   │   └── PedidoController.java
+│   │                   │
+│   │                   ├── service/                   # Capa de negocio
+│   │                   │   ├── UsuarioService.java
+│   │                   │   ├── ProductoService.java
+│   │                   │   └── PedidoService.java
+│   │                   │
+│   │                   ├── repository/                # Capa de acceso a datos
+│   │                   │   ├── UsuarioRepository.java
+│   │                   │   ├── ProductoRepository.java
+│   │                   │   └── PedidoRepository.java
+│   │                   │
+│   │                   ├── model/                     # Entidades de base de datos
+│   │                   │   ├── Usuario.java
+│   │                   │   ├── Producto.java
+│   │                   │   └── Pedido.java
+│   │                   │
+│   │                   ├── dto/                       # Data Transfer Objects
+│   │                   │   ├── request/
+│   │                   │   │   ├── CrearUsuarioRequest.java
+│   │                   │   │   └── ActualizarUsuarioRequest.java
+│   │                   │   └── response/
+│   │                   │       ├── UsuarioResponse.java
+│   │                   │       └── ProductoResponse.java
+│   │                   │
+│   │                   ├── exception/                 # Manejo de errores
+│   │                   │   ├── GlobalExceptionHandler.java
+│   │                   │   ├── ResourceNotFoundException.java
+│   │                   │   └── BusinessException.java
+│   │                   │
+│   │                   └── util/                      # Utilidades y helpers
+│   │                       ├── DateUtils.java
+│   │                       └── ValidationUtils.java
+│   │
+│   └── resources/
+│       ├── application.properties                     # Configuración principal
+│       ├── application-dev.properties                 # Configuración desarrollo
+│       ├── application-prod.properties                # Configuración producción
+│       │
+│       ├── db/
+│       │   └── migration/                             # Migraciones Flyway/Liquibase
+│       │       ├── V1__create_usuarios_table.sql
+│       │       └── V2__create_productos_table.sql
+│       │
+│       └── static/                                    # Archivos estáticos (si los necesitas)
+│           └── .gitkeep
+│
+└── test/
+    └── java/
+        └── co/
+            └── edu/
+                └── ieruralyarumito/
+                    └── backend/
+                        ├── BackendApplicationTests.java
+                        ├── controller/
+                        │   └── UsuarioControllerTest.java
+                        ├── service/
+                        │   └── UsuarioServiceTest.java
+                        └── repository/
+                            └── UsuarioRepositoryTest.java
+```
+

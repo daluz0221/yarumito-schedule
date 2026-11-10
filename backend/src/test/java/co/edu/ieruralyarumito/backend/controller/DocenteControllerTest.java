@@ -27,6 +27,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import co.edu.ieruralyarumito.backend.dto.ActualizarDocenteRequest;
 import static org.mockito.Mockito.verifyNoInteractions;
+import co.edu.ieruralyarumito.backend.dto.CambiarEstadoDocenteRequest;
+import co.edu.ieruralyarumito.backend.entity.enums.EstadoDocente;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import co.edu.ieruralyarumito.backend.exception.GlobalExceptionHandler;
+import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
+import co.edu.ieruralyarumito.backend.exception.TransicionEstadoNoPermitidaException;
+
 
 // Pruebas unitarias de los endpoints de DocenteController.
 @ExtendWith(MockitoExtension.class)
@@ -48,11 +55,13 @@ public class DocenteControllerTest {
 
         mockMvc = MockMvcBuilders
                 .standaloneSetup(docenteController)
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(
                         new PageableHandlerMethodArgumentResolver()
                 )
                 .build();
     }
+
     // Verifica que GET /api/v1/docentes/{id} retorne un docente existente.
     @Test
     void consultarDocente_debeRetornarOk() throws Exception {
@@ -188,6 +197,99 @@ public class DocenteControllerTest {
                 .andExpect(jsonPath("$.apellidos").value("Bermúdez"))
                 .andExpect(jsonPath("$.numeroDocumento").value("555666777"));
     }
+
+    @Test
+    void cambiarEstado_debeRetornarOk() throws Exception {
+
+        UUID docenteId = UUID.randomUUID();
+
+        DocenteResponse response = new DocenteResponse();
+        response.setId(docenteId);
+        response.setEstado(EstadoDocente.LICENCIA);
+
+        when(docenteService.cambiarEstado(
+                org.mockito.ArgumentMatchers.eq(docenteId),
+                any(CambiarEstadoDocenteRequest.class)))
+                .thenReturn(response);
+
+        String json = """
+        {
+          "nuevoEstado": "LICENCIA"
+        }
+        """;
+
+        mockMvc.perform(patch("/api/v1/docentes/{id}/estado", docenteId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(docenteId.toString()))
+                .andExpect(jsonPath("$.estado").value("LICENCIA"));
+    }
+
+    @Test
+    void cambiarEstado_debeRetornarBadRequestSinEstado() throws Exception {
+
+        UUID docenteId = UUID.randomUUID();
+
+        String json = """
+        {
+        }
+        """;
+
+        mockMvc.perform(patch("/api/v1/docentes/{id}/estado", docenteId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(docenteService);
+    }
+
+    @Test
+    void cambiarEstado_debeRetornarNotFoundSiDocenteNoExiste() throws Exception {
+
+        UUID docenteId = UUID.randomUUID();
+
+        when(docenteService.cambiarEstado(
+                org.mockito.ArgumentMatchers.eq(docenteId),
+                any(CambiarEstadoDocenteRequest.class)))
+                .thenThrow(new RecursoNoEncontradoException(
+                        "El docente no existe"));
+
+        String json = """
+        {
+          "nuevoEstado": "LICENCIA"
+        }
+        """;
+
+        mockMvc.perform(patch("/api/v1/docentes/{id}/estado", docenteId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void cambiarEstado_debeRetornarConflictSiTransicionNoPermitida() throws Exception {
+
+        UUID docenteId = UUID.randomUUID();
+
+        when(docenteService.cambiarEstado(
+                org.mockito.ArgumentMatchers.eq(docenteId),
+                any(CambiarEstadoDocenteRequest.class)))
+                .thenThrow(new TransicionEstadoNoPermitidaException(
+                        "No se permite cambiar el estado del docente"));
+
+        String json = """
+        {
+          "nuevoEstado": "ACTIVO"
+        }
+        """;
+
+        mockMvc.perform(patch("/api/v1/docentes/{id}/estado", docenteId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isConflict());
+    }
+
     // Verifica que POST /api/v1/docentes rechace datos obligatorios faltantes.
     @Test
     void registrarDocente_debeRetornarBadRequestConDatosInvalidos() throws Exception {

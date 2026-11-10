@@ -1,7 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import type { ProfessionalTitle } from '../../../content/teacherProfile'
-import { titleLevelOptions } from '../../../content/teacherProfile'
+import {
+  emptyCrearTituloForm,
+  titleLevelOptions,
+  type CrearTituloForm,
+  type ProfessionalTitle,
+} from '../../../content/teacherProfile'
 import { Modal } from '../../atoms/Modal'
+import { TextLink } from '../../atoms/TextLink'
 import { FileField } from '../../molecules/FileField'
 import { ModalActions } from '../../molecules/ModalActions'
 import { SelectField } from '../../molecules/SelectField'
@@ -12,30 +17,36 @@ export type TitleFormModalProps = {
   open: boolean
   mode: 'add' | 'edit'
   title?: ProfessionalTitle
+  loading?: boolean
+  loadError?: string
+  submitting?: boolean
+  error?: string
   onClose: () => void
-}
-
-const emptyValues = {
-  level: '',
-  name: '',
-  institution: '',
-  year: '',
-  supportFile: '',
+  onRetry?: () => void
+  onSubmit?: (values: CrearTituloForm) => void
 }
 
 export function TitleFormModal({
   open,
   mode,
   title,
+  loading = false,
+  loadError = '',
+  submitting = false,
+  error = '',
   onClose,
+  onRetry,
+  onSubmit,
 }: TitleFormModalProps) {
-  const [values, setValues] = useState(emptyValues)
+  const [values, setValues] = useState<CrearTituloForm>(emptyCrearTituloForm)
+  const [localError, setLocalError] = useState('')
 
   useEffect(() => {
     if (!open) {
       return
     }
 
+    setLocalError('')
     setValues(
       mode === 'edit' && title
         ? {
@@ -45,13 +56,51 @@ export function TitleFormModal({
             year: title.year,
             supportFile: title.supportFile ?? '',
           }
-        : emptyValues,
+        : emptyCrearTituloForm,
     )
   }, [mode, open, title])
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    onClose()
+
+    if (submitting || loading || loadError) {
+      return
+    }
+
+    if (!onSubmit) {
+      onClose()
+      return
+    }
+
+    if (!values.level) {
+      setLocalError('El nivel del título es obligatorio')
+      return
+    }
+
+    if (!values.name.trim()) {
+      setLocalError('El nombre del título es obligatorio')
+      return
+    }
+
+    const year = values.year.trim()
+
+    if (year && !/^\d{4}$/.test(year)) {
+      setLocalError('El año de graduación debe tener 4 dígitos')
+      return
+    }
+
+    if (year) {
+      const parsedYear = Number(year)
+      const maxYear = new Date().getFullYear() + 1
+
+      if (parsedYear < 1900 || parsedYear > maxYear) {
+        setLocalError(`El año de graduación debe estar entre 1900 y ${maxYear}`)
+        return
+      }
+    }
+
+    setLocalError('')
+    onSubmit(values)
   }
 
   return (
@@ -60,18 +109,48 @@ export function TitleFormModal({
       title={
         mode === 'add' ? 'Agregar título profesional' : 'Editar título profesional'
       }
-      description="Registra la formación académica que respalda el perfil profesional del docente."
+      description={
+        mode === 'add'
+          ? 'Registra la formación académica que respalda el perfil profesional del docente.'
+          : 'Corrige los datos del título profesional registrado para este docente.'
+      }
       onClose={onClose}
       footer={
         <ModalActions
           formId="title-form"
-          confirmLabel={mode === 'add' ? 'Guardar título' : 'Guardar cambios'}
+          confirmLabel={
+            loadError
+              ? undefined
+              : loading
+                ? 'Cargando...'
+                : submitting
+                  ? 'Guardando...'
+                  : mode === 'add'
+                    ? 'Guardar título'
+                    : 'Guardar cambios'
+          }
           confirmType="submit"
+          disabled={submitting || loading}
           onCancel={onClose}
         />
       }
     >
-      <form id="title-form" className={styles.form} onSubmit={handleSubmit}>
+      {loading ? (
+        <p className={styles.status}>Cargando título profesional...</p>
+      ) : loadError ? (
+        <div className={styles.feedback}>
+          <p className={styles.error} role="alert">
+            {loadError}
+          </p>
+          {onRetry ? <TextLink onClick={onRetry}>Reintentar</TextLink> : null}
+        </div>
+      ) : (
+      <form
+        id="title-form"
+        className={styles.form}
+        noValidate
+        onSubmit={handleSubmit}
+      >
         <SelectField
           id="title-level"
           label="Nivel"
@@ -122,7 +201,13 @@ export function TitleFormModal({
             setValues((current) => ({ ...current, supportFile }))
           }
         />
+        {error || localError ? (
+          <p className={styles.error} role="alert">
+            {error || localError}
+          </p>
+        ) : null}
       </form>
+      )}
     </Modal>
   )
 }

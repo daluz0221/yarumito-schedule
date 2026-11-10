@@ -1,0 +1,1 @@
+export { AulaFormModal } from './AulaFormModal'

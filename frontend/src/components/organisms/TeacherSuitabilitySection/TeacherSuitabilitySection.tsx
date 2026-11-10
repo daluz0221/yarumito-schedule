@@ -1,12 +1,14 @@
 import {
-  PENDING_BACKEND_LABEL,
   formatVigencia,
   isIdoneidadVigente,
   labelTipoIdoneidad,
+  resolveTituloSoporte,
   type Idoneidad,
+  type ProfessionalTitle,
 } from '../../../content/teacherProfile'
 import { Button } from '../../atoms/Button'
 import { Card } from '../../atoms/Card'
+import { IconAction } from '../../atoms/IconAction'
 import { PlusIcon } from '../../atoms/icons'
 import { Table } from '../../atoms/Table'
 import { Text } from '../../atoms/Text'
@@ -18,7 +20,10 @@ import styles from './TeacherSuitabilitySection.module.css'
 
 export type TeacherSuitabilitySectionProps = {
   items: Idoneidad[]
+  titles: ProfessionalTitle[]
+  titlesUnavailable?: boolean
   areaNameById: (areaId: string) => string
+  subjectNameById: (asignaturaId: string) => string
   onAdd: () => void
   onEdit: (item: Idoneidad) => void
   onEnd: (item: Idoneidad) => void
@@ -26,11 +31,28 @@ export type TeacherSuitabilitySectionProps = {
 
 export function TeacherSuitabilitySection({
   items,
+  titles,
+  titlesUnavailable = false,
   areaNameById,
+  subjectNameById,
   onAdd,
   onEdit,
   onEnd,
 }: TeacherSuitabilitySectionProps) {
+  const titleLabel = (tituloId: string) => {
+    if (titlesUnavailable && tituloId) {
+      return 'No se pudieron cargar los títulos'
+    }
+
+    return resolveTituloSoporte(tituloId, titles)
+  }
+  const subjectLabel = (asignaturaId: string) => {
+    if (!asignaturaId) {
+      return 'Toda el área'
+    }
+
+    return subjectNameById(asignaturaId) || 'Cargando...'
+  }
   return (
     <section className={styles.section}>
       <SectionHeader
@@ -59,13 +81,11 @@ export function TeacherSuitabilitySection({
             {items.map((item) => (
               <tr key={item.id}>
                 <td>{areaNameById(item.areaId)}</td>
-                <td className={styles.strong}>
-                  <span className={styles.pending}>{PENDING_BACKEND_LABEL}</span>
+                <td className={item.asignaturaId ? styles.strong : styles.pending}>
+                  {subjectLabel(item.asignaturaId)}
                 </td>
                 <td>{labelTipoIdoneidad(item.tipo)}</td>
-                <td>
-                  <span className={styles.pending}>{PENDING_BACKEND_LABEL}</span>
-                </td>
+                <td>{titleLabel(item.tituloSoporteId)}</td>
                 <td>
                   <ValidityStatus
                     current={isIdoneidadVigente(item)}
@@ -74,7 +94,10 @@ export function TeacherSuitabilitySection({
                 </td>
                 <td>
                   <RowActions>
-                    <TextLink onClick={() => onEdit(item)}>Editar</TextLink>
+                    <IconAction
+                      label={`Editar idoneidad de ${areaNameById(item.areaId)}`}
+                      onClick={() => onEdit(item)}
+                    />
                     {isIdoneidadVigente(item) ? (
                       <TextLink onClick={() => onEnd(item)}>
                         Finalizar vigencia
@@ -93,13 +116,17 @@ export function TeacherSuitabilitySection({
               <strong>
                 {areaNameById(item.areaId)} · {labelTipoIdoneidad(item.tipo)}
               </strong>
-              <p>{PENDING_BACKEND_LABEL}</p>
+              <p>{subjectLabel(item.asignaturaId)}</p>
+              <p>{titleLabel(item.tituloSoporteId)}</p>
               <ValidityStatus
                 current={isIdoneidadVigente(item)}
                 since={formatVigencia(item)}
               />
               <RowActions>
-                <TextLink onClick={() => onEdit(item)}>Editar</TextLink>
+                <IconAction
+                  label={`Editar idoneidad de ${areaNameById(item.areaId)}`}
+                  onClick={() => onEdit(item)}
+                />
                 {isIdoneidadVigente(item) ? (
                   <TextLink onClick={() => onEnd(item)}>
                     Finalizar vigencia
@@ -118,8 +145,9 @@ export function TeacherSuitabilitySection({
 
         <div className={styles.note}>
           <Text variant="body">
-            Asignatura y título de soporte aparecen como “Próximamente”:
-            no hay catálogo de asignaturas ni de títulos profesionales.
+            La asignatura es opcional. Sin asignatura, la idoneidad cubre toda
+            el área. El título de soporte se toma de los títulos profesionales
+            del docente.
           </Text>
         </div>
       </Card>

@@ -12,7 +12,7 @@ export function ValidityStatus({ current, since }: ValidityStatusProps) {
         {current ? 'Vigente' : 'Finalizado'}
       </span>
       <span className={styles.since}>
-        {current ? `Desde ${since}` : since}
+        {current && !since.includes('–') ? `Desde ${since}` : since}
       </span>
     </span>
   )

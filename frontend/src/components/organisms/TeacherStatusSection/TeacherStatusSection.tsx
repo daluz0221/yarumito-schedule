@@ -1,4 +1,5 @@
 import { registerStatusOptions, type TeacherStatus } from '../../../content/teachers'
+import type { SelectOption } from '../../atoms/Select'
 import { Text } from '../../atoms/Text'
 import { FormSection } from '../../molecules/FormSection'
 import { SelectField } from '../../molecules/SelectField'
@@ -6,14 +7,18 @@ import styles from './TeacherStatusSection.module.css'
 
 export type TeacherStatusSectionProps = {
   value: TeacherStatus
+  options?: SelectOption[]
   hint?: string
+  error?: string
   disabled?: boolean
   onChange: (value: TeacherStatus) => void
 }
 
 export function TeacherStatusSection({
   value,
+  options = registerStatusOptions,
   hint,
+  error,
   disabled = false,
   onChange,
 }: TeacherStatusSectionProps) {
@@ -28,8 +33,9 @@ export function TeacherStatusSection({
         label="Estado"
         required
         value={value}
-        options={registerStatusOptions}
+        options={options}
         hint={hint}
+        error={error}
         disabled={disabled}
         onChange={(next) => onChange(next as TeacherStatus)}
       />

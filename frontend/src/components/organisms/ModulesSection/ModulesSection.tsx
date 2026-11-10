@@ -9,6 +9,7 @@ import {
   ClockIcon,
   GridIcon,
   LayersIcon,
+  PublishIcon,
   SearchIcon,
   ShieldIcon,
   UsersIcon,
@@ -25,6 +26,7 @@ const moduleIcons: Record<ModuleIconName, ReactNode> = {
   clipboard: <ClipboardIcon />,
   grid: <GridIcon />,
   shield: <ShieldIcon />,
+  publish: <PublishIcon />,
   search: <SearchIcon />,
 }
 

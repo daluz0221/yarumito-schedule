@@ -1,19 +1,31 @@
 import {
-  PENDING_BACKEND_LABEL,
+  labelConteoTitulos,
+  labelResumenIdoneidad,
+  type ResumenAcademicoDocente,
+} from '../../../content/teacherProfile'
+import {
   formatTeacherName,
   labelEstado,
   labelVinculacion,
   toneEstado,
   type Teacher,
 } from '../../../content/teachers'
+import { Link } from 'react-router-dom'
 import { Card } from '../../atoms/Card'
-import { TextLink } from '../../atoms/TextLink'
+import { PencilIcon, UserIcon } from '../../atoms/icons'
 import { Pagination } from '../../molecules/Pagination'
 import { StatusLabel } from '../../molecules/StatusLabel'
 import styles from './TeachersTable.module.css'
 
+export type CatalogoAreasTabla =
+  | { estado: 'cargando' }
+  | { estado: 'error' }
+  | { estado: 'listo'; porId: Record<string, string> }
+
 export type TeachersTableProps = {
   rows: Teacher[]
+  summaries: Record<string, ResumenAcademicoDocente>
+  areas: CatalogoAreasTabla
   page: number
   pageSize: number
   total: number
@@ -22,12 +34,91 @@ export type TeachersTableProps = {
   onPageSizeChange: (pageSize: number) => void
 }
 
-function PendingValue() {
-  return <span className={styles.pending}>{PENDING_BACKEND_LABEL}</span>
+function TeacherRowActions({ teacher }: { teacher: Teacher }) {
+  const name = formatTeacherName(teacher)
+
+  return (
+    <span className={styles.rowActions}>
+      <Link
+        to={`/dashboard/docentes/${teacher.id}/editar`}
+        className={styles.iconAction}
+        aria-label={`Editar a ${name}`}
+        title="Editar"
+      >
+        <PencilIcon />
+      </Link>
+      <Link
+        to={`/dashboard/docentes/${teacher.id}`}
+        className={`${styles.iconAction} ${styles.iconActionProfile}`}
+        aria-label={`Ver perfil de ${name}`}
+        title="Ver perfil"
+      >
+        <UserIcon size={18} />
+      </Link>
+    </span>
+  )
+}
+
+function UnavailableValue() {
+  return <span className={styles.pending}>No disponible</span>
+}
+
+function LoadingValue() {
+  return <span className={styles.pending}>Cargando...</span>
+}
+
+function TitlesValue({ summary }: { summary?: ResumenAcademicoDocente }) {
+  if (!summary) {
+    return <LoadingValue />
+  }
+
+  if (summary.titulos.estado === 'error') {
+    return <UnavailableValue />
+  }
+
+  return labelConteoTitulos(summary.titulos.cantidad)
+}
+
+function SuitabilityValue({ summary }: { summary?: ResumenAcademicoDocente }) {
+  if (!summary) {
+    return <LoadingValue />
+  }
+
+  if (summary.idoneidad.estado === 'error') {
+    return <UnavailableValue />
+  }
+
+  return labelResumenIdoneidad(summary.idoneidad)
+}
+
+function AreaValue({
+  teacher,
+  areas,
+}: {
+  teacher: Teacher
+  areas: CatalogoAreasTabla
+}) {
+  if (areas.estado === 'cargando') {
+    return <LoadingValue />
+  }
+
+  if (areas.estado === 'error') {
+    return <UnavailableValue />
+  }
+
+  const nombre = areas.porId[teacher.areaNombramientoId]
+
+  if (!nombre) {
+    return teacher.areaNombramientoId ? <UnavailableValue /> : 'Sin área'
+  }
+
+  return nombre
 }
 
 export function TeachersTable({
   rows,
+  summaries,
+  areas,
   page,
   pageSize,
   total,
@@ -59,9 +150,8 @@ export function TeachersTable({
                   {teacher.tipoDocumento} {teacher.numeroDocumento}
                 </td>
                 <td className={styles.name}>{formatTeacherName(teacher)}</td>
-                {/* Próximamente: DocenteResponse solo trae areaNombramientoId. */}
                 <td>
-                  <PendingValue />
+                  <AreaValue teacher={teacher} areas={areas} />
                 </td>
                 <td>{labelVinculacion(teacher.tipoVinculacion)}</td>
                 <td>
@@ -76,23 +166,14 @@ export function TeachersTable({
                     tone={toneEstado(teacher.estado)}
                   />
                 </td>
-                {/* Próximamente: el listado de docentes no incluye conteo de títulos. */}
                 <td>
-                  <PendingValue />
-                </td>
-                {/* Próximamente: el listado de docentes no incluye resumen de idoneidad. */}
-                <td>
-                  <PendingValue />
+                  <TitlesValue summary={summaries[teacher.id]} />
                 </td>
                 <td>
-                  <span className={styles.rowActions}>
-                    <TextLink to={`/dashboard/docentes/${teacher.id}/editar`}>
-                      Editar
-                    </TextLink>
-                    <TextLink to={`/dashboard/docentes/${teacher.id}`}>
-                      Ver perfil
-                    </TextLink>
-                  </span>
+                  <SuitabilityValue summary={summaries[teacher.id]} />
+                </td>
+                <td>
+                  <TeacherRowActions teacher={teacher} />
                 </td>
               </tr>
             ))}
@@ -114,7 +195,9 @@ export function TeachersTable({
               {teacher.tipoDocumento} {teacher.numeroDocumento}
             </p>
             <p>
-              {PENDING_BACKEND_LABEL} · {labelVinculacion(teacher.tipoVinculacion)}
+              <AreaValue teacher={teacher} areas={areas} />
+              {' · '}
+              {labelVinculacion(teacher.tipoVinculacion)}
             </p>
             <p>
               {teacher.correoInstitucional}
@@ -122,16 +205,11 @@ export function TeachersTable({
               {teacher.telefono}
             </p>
             <p>
-              {PENDING_BACKEND_LABEL} · {PENDING_BACKEND_LABEL}
+              <TitlesValue summary={summaries[teacher.id]} />
+              {' · '}
+              <SuitabilityValue summary={summaries[teacher.id]} />
             </p>
-            <span className={styles.rowActions}>
-              <TextLink to={`/dashboard/docentes/${teacher.id}/editar`}>
-                Editar
-              </TextLink>
-              <TextLink to={`/dashboard/docentes/${teacher.id}`}>
-                Ver perfil
-              </TextLink>
-            </span>
+            <TeacherRowActions teacher={teacher} />
           </li>
         ))}
       </ul>

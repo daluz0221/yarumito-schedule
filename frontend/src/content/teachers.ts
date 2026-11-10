@@ -73,10 +73,10 @@ export function teacherStatsFromCounts(counts: {
   retired: number
 }): StatItemData[] {
   return [
-    { id: 'total', value: String(counts.total), label: 'Total docentes' },
-    { id: 'active', value: String(counts.active), label: 'Docentes activos' },
-    { id: 'license', value: String(counts.license), label: 'En licencia' },
-    { id: 'retired', value: String(counts.retired), label: 'Retirados' },
+    { id: 'total', value: String(counts.total), label: 'Total docentes', wash: 'total' },
+    { id: 'active', value: String(counts.active), label: 'Docentes activos', wash: 'active' },
+    { id: 'license', value: String(counts.license), label: 'En licencia', wash: 'license' },
+    { id: 'retired', value: String(counts.retired), label: 'Retirados', wash: 'retired' },
   ]
 }
 
@@ -92,11 +92,6 @@ export const teacherContractOptions = [
   { value: 'PLANTA', label: 'Planta' },
   { value: 'PROVISIONAL', label: 'Provisional' },
   { value: 'CONTRATO', label: 'Contrato' },
-]
-
-// El backend filtra por areaId, pero no hay GET /areas ni nombre en DocenteResponse.
-export const teacherAreaOptions = [
-  { value: '', label: PENDING_BACKEND_LABEL },
 ]
 
 export const documentTypeOptions = [
@@ -129,6 +124,10 @@ export const registerStatusOptions = [
   { value: 'LICENCIA', label: 'Licencia' },
   { value: 'RETIRADO', label: 'Retirado' },
 ]
+
+export function hintCambioEstado() {
+  return 'El cambio se aplica al guardar. Puede pasar entre activo, licencia y retirado.'
+}
 
 // Forma del formulario de registro, alineada con CrearDocenteRequest.
 export type CrearDocenteForm = {

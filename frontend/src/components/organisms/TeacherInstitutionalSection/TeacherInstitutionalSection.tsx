@@ -1,3 +1,10 @@
+import { useEffect, useState } from 'react'
+import {
+  listarEscalafones,
+  listarRegimenesDocentes,
+  regimenDesdeEscalafon,
+} from '../../../api'
+import type { OpcionCatalogo } from '../../../api/catalogos'
 import {
   registerContractOptions,
   sanitizeDigits,
@@ -36,6 +43,78 @@ export function TeacherInstitutionalSection({
   errors = {},
   onChange,
 }: TeacherInstitutionalSectionProps) {
+  const [regimen, setRegimen] = useState(() => regimenDesdeEscalafon(values.escalafon))
+  const [regimenes, setRegimenes] = useState<OpcionCatalogo[]>([])
+  const [escalafones, setEscalafones] = useState<OpcionCatalogo[]>([])
+  const [escalafonesError, setEscalafonesError] = useState('')
+  const sinEscalafon = regimen === 'ETNO_AFRO' || regimen === 'NO_APLICA'
+
+  useEffect(() => {
+    const inferido = regimenDesdeEscalafon(values.escalafon)
+    if (inferido) {
+      setRegimen((current) => current || inferido)
+    }
+  }, [values.escalafon])
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    listarRegimenesDocentes(controller.signal)
+      .then((items) => {
+        if (!controller.signal.aborted) {
+          setRegimenes(items ?? [])
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setRegimenes([])
+        }
+      })
+
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    if (!regimen) {
+      setEscalafones([])
+      setEscalafonesError('')
+      return
+    }
+
+    const controller = new AbortController()
+    setEscalafonesError('')
+    if (regimen === 'ETNO_AFRO' || regimen === 'NO_APLICA') {
+      setEscalafones([])
+    }
+
+    listarEscalafones(regimen, controller.signal)
+      .then((items) => {
+        if (!controller.signal.aborted) {
+          setEscalafones(items ?? [])
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setEscalafones([])
+          setEscalafonesError('No se pudieron cargar los escalafones.')
+        }
+      })
+
+    return () => controller.abort()
+  }, [regimen])
+
+  const escalafonActual = values.escalafon.trim()
+  const escalafonConocido = escalafones.some((item) => item.codigo === escalafonActual)
+  const escalafonOptions = [
+    { value: '', label: sinEscalafon ? 'Sin escalafón' : 'Seleccionar escalafón' },
+    ...(escalafonActual && !escalafonConocido && !sinEscalafon
+      ? [{ value: escalafonActual, label: `${escalafonActual} (valor actual)` }]
+      : []),
+    ...(sinEscalafon
+      ? []
+      : escalafones.map((item) => ({ value: item.codigo, label: item.nombre }))),
+  ]
+
   return (
     <FormSection
       title="Información institucional"
@@ -84,14 +163,39 @@ export function TeacherInstitutionalSection({
         error={errors.fechaDecreto}
         onChange={(event) => onChange('fechaDecreto', event.target.value)}
       />
-      <TextField
+      <SelectField
+        id="regimen"
+        name="regimen"
+        label="Régimen docente"
+        value={regimen}
+        options={[
+          { value: '', label: regimenes.length ? 'Seleccionar régimen' : 'Cargando regímenes...' },
+          ...regimenes.map((item) => ({ value: item.codigo, label: item.nombre })),
+        ]}
+        hint="El régimen define las opciones de escalafón. No se guarda aparte del escalafón."
+        onChange={(codigo) => {
+          setRegimen(codigo)
+          onChange('escalafon', '')
+        }}
+      />
+      <SelectField
         id="escalafon"
         name="escalafon"
         label="Escalafón"
-        placeholder="Ej. 2A"
-        value={values.escalafon}
+        value={sinEscalafon ? '' : values.escalafon}
+        options={escalafonOptions}
+        disabled={!regimen || sinEscalafon}
+        hint={
+          sinEscalafon
+            ? 'Este régimen no asigna un escalafón.'
+            : escalafonesError
+              ? escalafonesError
+              : !regimen
+                ? 'Elige primero el régimen docente.'
+                : undefined
+        }
         error={errors.escalafon}
-        onChange={(event) => onChange('escalafon', event.target.value)}
+        onChange={(codigo) => onChange('escalafon', codigo)}
       />
       <TextField
         id="fechaVinculacion"

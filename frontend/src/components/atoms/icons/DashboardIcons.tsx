@@ -108,11 +108,61 @@ export function SearchIcon() {
   )
 }
 
-export function UserIcon() {
+export function UserIcon({ size = 20 }: { size?: number } = {}) {
   return (
-    <IconFrame>
+    <IconFrame size={size}>
       <circle cx="12" cy="8.2" r="3.2" {...stroke} />
       <path d="M5.5 19.2c.8-3 3.2-4.6 6.5-4.6s5.7 1.6 6.5 4.6" {...stroke} />
+    </IconFrame>
+  )
+}
+
+export function TrashIcon({ size = 18 }: { size?: number } = {}) {
+  return (
+    <IconFrame size={size}>
+      <path d="M4.5 7.5h15" {...stroke} />
+      <path d="M9.2 7.4V5.8A1.3 1.3 0 0 1 10.5 4.5h3a1.3 1.3 0 0 1 1.3 1.3v1.6" {...stroke} />
+      <path d="M7.2 7.5 8 18.2a1.4 1.4 0 0 0 1.4 1.3h5.2a1.4 1.4 0 0 0 1.4-1.3l.8-10.7" {...stroke} />
+      <path d="M10.2 11.2v5.2M13.8 11.2v5.2" {...stroke} />
+    </IconFrame>
+  )
+}
+
+export function PencilIcon({ size = 18 }: { size?: number } = {}) {
+  return (
+    <IconFrame size={size}>
+      <path
+        d="M4 20h4.2L19.1 9.1a1.7 1.7 0 0 0 0-2.4l-1.8-1.8a1.7 1.7 0 0 0-2.4 0L4 15.8V20Z"
+        {...stroke}
+      />
+      <path d="m12.6 6.7 4.7 4.7" {...stroke} />
+    </IconFrame>
+  )
+}
+
+export function FilterOffIcon({ size = 18 }: { size?: number } = {}) {
+  return (
+    <IconFrame size={size}>
+      <path d="M3.5 5.2h11.6L11 10.2v4.1l-2.8 1.2v-5.3L3.5 5.2Z" {...stroke} />
+      <path d="m15.6 14.6 4.4 4.4M20 14.6l-4.4 4.4" {...stroke} />
+    </IconFrame>
+  )
+}
+
+export function BanIcon({ size = 18 }: { size?: number } = {}) {
+  return (
+    <IconFrame size={size}>
+      <circle cx="12" cy="12" r="7.2" {...stroke} />
+      <path d="m7.2 16.8 9.6-9.6" {...stroke} />
+    </IconFrame>
+  )
+}
+
+export function CheckIcon({ size = 18 }: { size?: number } = {}) {
+  return (
+    <IconFrame size={size}>
+      <circle cx="12" cy="12" r="7.2" {...stroke} />
+      <path d="m8.4 12.2 2.3 2.3 4.9-5" {...stroke} />
     </IconFrame>
   )
 }
@@ -154,6 +204,15 @@ export function PlusIcon() {
   return (
     <IconFrame size={18}>
       <path d="M12 5v14M5 12h14" {...stroke} />
+    </IconFrame>
+  )
+}
+
+export function PublishIcon() {
+  return (
+    <IconFrame>
+      <path d="M12 15.5V5.5M8.2 9.2 12 5.5l3.8 3.7" {...stroke} />
+      <path d="M5 15v3.2A1.3 1.3 0 0 0 6.3 19.5h11.4a1.3 1.3 0 0 0 1.3-1.3V15" {...stroke} />
     </IconFrame>
   )
 }

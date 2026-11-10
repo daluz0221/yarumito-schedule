@@ -1,0 +1,36 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.note,
+.warning {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.note {
+  color: var(--color-text-muted);
+}
+
+.warning {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fff7e8;
+  color: #8a5a12;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .links,
+  .links button {
+    width: 100%;
+  }
+}

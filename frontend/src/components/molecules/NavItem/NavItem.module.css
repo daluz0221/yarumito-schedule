@@ -5,7 +5,7 @@
   width: 100%;
   padding: 8px 10px;
   border-radius: 8px;
-  color: #3f3f3f;
+  color: var(--color-sidebar-text);
   text-decoration: none;
 }
 
@@ -19,7 +19,7 @@
 
 .icon {
   display: inline-flex;
-  color: #5c5c5c;
+  color: #d7ecc0;
 }
 
 .item:hover:not(.disabled) {
@@ -28,12 +28,12 @@
 
 .active {
   background: var(--color-nav-active);
-  color: var(--color-text);
+  color: var(--color-accent-ink);
   font-weight: 600;
 }
 
 .active .icon {
-  color: var(--color-text);
+  color: var(--color-accent-ink);
 }
 
 .indented {

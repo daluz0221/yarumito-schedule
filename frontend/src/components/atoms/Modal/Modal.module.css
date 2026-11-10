@@ -40,6 +40,10 @@
   margin-top: 18px;
 }
 
+.lg {
+  width: min(720px, 100%);
+}
+
 .header {
   display: flex;
   flex-direction: column;

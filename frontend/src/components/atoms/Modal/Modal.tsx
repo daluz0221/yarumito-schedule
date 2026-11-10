@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Text } from '../Text'
 import styles from './Modal.module.css'
 
-export type ModalSize = 'md' | 'sm'
+export type ModalSize = 'md' | 'sm' | 'lg'
 
 export type ModalProps = {
   open: boolean
@@ -53,7 +53,11 @@ export function Modal({
   return createPortal(
     <div className={styles.overlay} onClick={onClose} role="presentation">
       <div
-        className={[styles.dialog, size === 'sm' ? styles.sm : '']
+        className={[
+          styles.dialog,
+          size === 'sm' ? styles.sm : '',
+          size === 'lg' ? styles.lg : '',
+        ]
           .filter(Boolean)
           .join(' ')}
         role="dialog"
