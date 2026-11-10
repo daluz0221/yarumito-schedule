@@ -19,7 +19,7 @@
   margin: 0;
   padding: 14px 16px;
   border-radius: 10px;
-  background: #f3f3f3;
+  background: var(--color-input);
 }
 
 .summary div {

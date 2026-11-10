@@ -16,3 +16,61 @@
 .card .warning {
   color: #c47d12;
 }
+
+.card.washTotal,
+.card.washActive,
+.card.washLicense,
+.card.washRetired,
+.card.washDanger {
+  border-style: solid;
+}
+
+.card.washTotal {
+  background: #e7f0fa;
+  border-color: #c5d8ee;
+  border-top-color: #014998;
+}
+
+.card.washActive {
+  background: #eef6d8;
+  border-color: #d3e4b0;
+  border-top-color: #004f0f;
+}
+
+.card.washLicense {
+  background: #fff6e5;
+  border-color: #f0e0bf;
+  border-top-color: #e2b340;
+}
+
+.card.washRetired {
+  background: #eef1f4;
+  border-color: #d5dbe2;
+  border-top-color: #9aa3ad;
+}
+
+.card.washTotal .figure {
+  color: #014998;
+}
+
+.card.washActive .figure {
+  color: #004f0f;
+}
+
+.card.washLicense .figure {
+  color: #8a5a12;
+}
+
+.card.washRetired .figure {
+  color: #4e5966;
+}
+
+.card.washDanger {
+  background: #fdecec;
+  border-color: #f3c4c4;
+  border-top-color: #c23b3b;
+}
+
+.card.washDanger .figure {
+  color: #8a1f1f;
+}

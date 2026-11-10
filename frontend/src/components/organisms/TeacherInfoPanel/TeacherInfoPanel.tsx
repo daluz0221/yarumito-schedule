@@ -17,7 +17,7 @@ export function TeacherInfoPanel() {
       <div className={styles.content}>
         <div className={styles.chips}>
           {associatedTopics.map((topic) => (
-            <Badge key={topic} tone="outline">
+            <Badge key={topic} tone="soft">
               {topic}
             </Badge>
           ))}

@@ -23,7 +23,7 @@
 }
 
 .hint {
-  color: #5a5a5a;
+  color: var(--color-text-muted);
 }
 
 .actions {

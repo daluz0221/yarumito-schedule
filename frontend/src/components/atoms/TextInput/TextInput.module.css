@@ -20,7 +20,7 @@
 
 .input:focus {
   border-color: var(--color-focus);
-  box-shadow: 0 0 0 3px rgb(47 91 255 / 12%);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 .md {

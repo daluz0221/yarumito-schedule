@@ -18,8 +18,8 @@
 }
 
 .table th {
-  background: #f7f7f7;
-  color: #5a5a5a;
+  background: var(--color-accent-soft);
+  color: var(--color-text-muted);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -34,11 +34,11 @@
 }
 
 .selected {
-  background: #f3f7ff;
+  background: var(--color-info-soft);
 }
 
 .row:hover {
-  background: #fafafa;
+  background: var(--color-bg);
 }
 
 .code {
@@ -56,14 +56,9 @@
 }
 
 .selectedLabel {
-  color: #5a5a5a;
+  color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 500;
-}
-
-.positive {
-  color: var(--color-success);
-  font-weight: 600;
 }
 
 .pending {
@@ -74,7 +69,53 @@
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 14px;
+  gap: 8px;
+}
+
+.iconAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #c3de96;
+  border-radius: 8px;
+  background: #e3f2c4;
+  color: var(--color-brand);
+  cursor: pointer;
+}
+
+.iconAction:hover {
+  background: #d0e9a8;
+  border-color: #b3d484;
+}
+
+.iconAction:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.iconActionOff {
+  border-color: #f0e0bf;
+  background: #fff6e5;
+  color: #8a5a12;
+}
+
+.iconActionOff:hover {
+  background: #f8e8c4;
+  border-color: #e2cf9a;
+}
+
+.iconActionOn {
+  border-color: #b9d0ea;
+  background: #d9e8f8;
+  color: var(--color-primary);
+}
+
+.iconActionOn:hover {
+  background: #c5daf3;
+  border-color: #a4c2e4;
 }
 
 .cards {
@@ -108,28 +149,43 @@
   .mobileCardSelected {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    width: 100%;
+    gap: 12px;
     padding: 14px;
     border: 1px solid var(--color-border-subtle);
     border-radius: 10px;
     background: var(--color-surface);
+  }
+
+  .mobileCardSelected {
+    border-color: #2457d6;
+    background: var(--color-info-soft);
+  }
+
+  .mobileSelect {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
     text-align: left;
     cursor: pointer;
     font: inherit;
     color: inherit;
   }
 
-  .mobileCardSelected {
-    border-color: #2457d6;
-    background: #f3f7ff;
+  .mobileSelect p {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 13px;
   }
 
-  .mobileCard p,
-  .mobileCardSelected p {
-    margin: 0;
-    color: #5a5a5a;
-    font-size: 13px;
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
   }
 
   .mobileHeader {
@@ -139,8 +195,7 @@
     gap: 12px;
   }
 
-  .mobileActions {
-    display: flex;
-    padding: 0 4px 4px;
+  .mobileHeader strong {
+    font-size: 15px;
   }
 }

@@ -6,7 +6,8 @@ import {
   labelEstadoArea,
 } from '../../../content/areas'
 import { PENDING_BACKEND_LABEL } from '../../../content/teachers'
-import { TextLink } from '../../atoms/TextLink'
+import { Badge, type BadgeTone } from '../../atoms/Badge'
+import { BanIcon, CheckIcon, PencilIcon } from '../../atoms/icons'
 import styles from './AcademicAreasTable.module.css'
 
 export type AcademicAreasTableProps = {
@@ -64,15 +65,26 @@ export function AcademicAreasTable({
                     <AreaName nombre={area.nombre} selected={selected} />
                   </td>
                   <td>
-                    {renderFlag(
-                      labelClasificacion(area.obligatoria),
-                      area.obligatoria === true,
-                    )}
+                    <AreaValue
+                      label={labelClasificacion(area.obligatoria)}
+                      tone={area.obligatoria ? 'success' : 'muted'}
+                    />
                   </td>
-                  <td>{renderFlag(labelAplicacion(area.soloMedia), false)}</td>
-                  <td>{renderFlag(labelEstadoArea(area.activa), area.activa === true)}</td>
+                  <td>
+                    <AreaValue
+                      label={labelAplicacion(area.soloMedia)}
+                      tone={area.soloMedia ? 'amber' : 'info'}
+                    />
+                  </td>
+                  <td>
+                    <AreaValue
+                      label={labelEstadoArea(area.activa)}
+                      tone={area.activa === true ? 'success' : 'muted'}
+                    />
+                  </td>
                   <td>
                     <AreaActions
+                      nombre={area.nombre}
                       activa={area.activa}
                       onEdit={() => onEdit(area)}
                       onDeactivate={() => onDeactivate(area)}
@@ -90,34 +102,38 @@ export function AcademicAreasTable({
           const selected = area.id === selectedId
 
           return (
-            <li key={area.id}>
+            <li className={selected ? styles.mobileCardSelected : styles.mobileCard}>
               <button
                 type="button"
-                className={selected ? styles.mobileCardSelected : styles.mobileCard}
+                className={styles.mobileSelect}
                 aria-pressed={selected}
                 onClick={() => onSelect(area.id)}
               >
                 <div className={styles.mobileHeader}>
                   <AreaName nombre={area.nombre} selected={selected} />
-                  {renderFlag(labelEstadoArea(area.activa), area.activa === true)}
+                  <AreaValue
+                    label={labelEstadoArea(area.activa)}
+                    tone={area.activa === true ? 'success' : 'muted'}
+                  />
                 </div>
                 <p className={styles.code}>{area.codigo}</p>
-                <p>
-                  {renderFlag(
-                    labelClasificacion(area.obligatoria),
-                    area.obligatoria === true,
-                  )}
-                  {' · '}
-                  {renderFlag(labelAplicacion(area.soloMedia), false)}
+                <p className={styles.meta}>
+                  <AreaValue
+                    label={labelClasificacion(area.obligatoria)}
+                    tone={area.obligatoria ? 'success' : 'muted'}
+                  />
+                  <AreaValue
+                    label={labelAplicacion(area.soloMedia)}
+                    tone={area.soloMedia ? 'amber' : 'info'}
+                  />
                 </p>
               </button>
-              <div className={styles.mobileActions}>
-                <AreaActions
-                  activa={area.activa}
-                  onEdit={() => onEdit(area)}
-                  onDeactivate={() => onDeactivate(area)}
-                />
-              </div>
+              <AreaActions
+                nombre={area.nombre}
+                activa={area.activa}
+                onEdit={() => onEdit(area)}
+                onDeactivate={() => onDeactivate(area)}
+              />
             </li>
           )
         })}
@@ -138,30 +154,49 @@ function AreaName({ nombre, selected }: { nombre: string; selected: boolean }) {
 }
 
 function AreaActions({
+  nombre,
   activa,
   onEdit,
   onDeactivate,
 }: {
+  nombre: string
   activa?: boolean
   onEdit: () => void
   onDeactivate: () => void
 }) {
+  const inactive = activa === false
+  const toggleLabel = inactive ? 'Activar' : 'Inactivar'
+
   return (
     <span className={styles.actions}>
-      <TextLink onClick={onEdit}>Editar</TextLink>
-      <TextLink onClick={onDeactivate}>
-        {activa === false ? 'Activar' : 'Inactivar'}
-      </TextLink>
+      <button
+        type="button"
+        className={styles.iconAction}
+        onClick={onEdit}
+        aria-label={`Editar ${nombre}`}
+        title="Editar"
+      >
+        <PencilIcon />
+      </button>
+      <button
+        type="button"
+        className={`${styles.iconAction} ${inactive ? styles.iconActionOn : styles.iconActionOff}`}
+        onClick={onDeactivate}
+        aria-label={`${toggleLabel} ${nombre}`}
+        title={toggleLabel}
+      >
+        {inactive ? <CheckIcon /> : <BanIcon />}
+      </button>
     </span>
   )
 }
 
-function renderFlag(label: string | null, positive: boolean) {
+function AreaValue({ label, tone }: { label: string | null; tone: BadgeTone }) {
   if (!label) {
     return <span className={styles.pending}>{PENDING_BACKEND_LABEL}</span>
   }
 
-  return <span className={positive ? styles.positive : undefined}>{label}</span>
+  return <Badge tone={tone}>{label}</Badge>
 }
 
 function selectOnKey(event: KeyboardEvent<HTMLTableRowElement>, select: () => void) {

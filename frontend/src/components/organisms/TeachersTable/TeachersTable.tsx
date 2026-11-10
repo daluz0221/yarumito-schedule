@@ -10,8 +10,9 @@ import {
   toneEstado,
   type Teacher,
 } from '../../../content/teachers'
+import { Link } from 'react-router-dom'
 import { Card } from '../../atoms/Card'
-import { TextLink } from '../../atoms/TextLink'
+import { PencilIcon, UserIcon } from '../../atoms/icons'
 import { Pagination } from '../../molecules/Pagination'
 import { StatusLabel } from '../../molecules/StatusLabel'
 import styles from './TeachersTable.module.css'
@@ -31,6 +32,31 @@ export type TeachersTableProps = {
   emptyMessage?: string
   onPageChange: (page: number) => void
   onPageSizeChange: (pageSize: number) => void
+}
+
+function TeacherRowActions({ teacher }: { teacher: Teacher }) {
+  const name = formatTeacherName(teacher)
+
+  return (
+    <span className={styles.rowActions}>
+      <Link
+        to={`/dashboard/docentes/${teacher.id}/editar`}
+        className={styles.iconAction}
+        aria-label={`Editar a ${name}`}
+        title="Editar"
+      >
+        <PencilIcon />
+      </Link>
+      <Link
+        to={`/dashboard/docentes/${teacher.id}`}
+        className={`${styles.iconAction} ${styles.iconActionProfile}`}
+        aria-label={`Ver perfil de ${name}`}
+        title="Ver perfil"
+      >
+        <UserIcon size={18} />
+      </Link>
+    </span>
+  )
 }
 
 function UnavailableValue() {
@@ -147,14 +173,7 @@ export function TeachersTable({
                   <SuitabilityValue summary={summaries[teacher.id]} />
                 </td>
                 <td>
-                  <span className={styles.rowActions}>
-                    <TextLink to={`/dashboard/docentes/${teacher.id}/editar`}>
-                      Editar
-                    </TextLink>
-                    <TextLink to={`/dashboard/docentes/${teacher.id}`}>
-                      Ver perfil
-                    </TextLink>
-                  </span>
+                  <TeacherRowActions teacher={teacher} />
                 </td>
               </tr>
             ))}
@@ -190,14 +209,7 @@ export function TeachersTable({
               {' · '}
               <SuitabilityValue summary={summaries[teacher.id]} />
             </p>
-            <span className={styles.rowActions}>
-              <TextLink to={`/dashboard/docentes/${teacher.id}/editar`}>
-                Editar
-              </TextLink>
-              <TextLink to={`/dashboard/docentes/${teacher.id}`}>
-                Ver perfil
-              </TextLink>
-            </span>
+            <TeacherRowActions teacher={teacher} />
           </li>
         ))}
       </ul>
