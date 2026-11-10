@@ -1,5 +1,6 @@
 import { etiquetaTipoAula, type AulaResponse } from '../../../api/aulas'
 import { Badge } from '../../atoms/Badge'
+import { IconAction, IconActions } from '../../atoms/IconAction'
 import { TextLink } from '../../atoms/TextLink'
 import styles from './AulasTable.module.css'
 
@@ -48,9 +49,18 @@ export function AulasTable({ rows, emptyMessage, onEdit, onVersion, onDelete }: 
                 </td>
                 <td>
                   <div className={styles.actions}>
-                    <TextLink onClick={() => onEdit(aula)}>Editar</TextLink>
+                    <IconActions>
+                      <IconAction
+                        label={`Editar ${aula.nombre}`}
+                        onClick={() => onEdit(aula)}
+                      />
+                      <IconAction
+                        tone="danger"
+                        label={`Eliminar ${aula.nombre}`}
+                        onClick={() => onDelete(aula)}
+                      />
+                    </IconActions>
                     <TextLink onClick={() => onVersion(aula)}>Nueva versión</TextLink>
-                    <TextLink onClick={() => onDelete(aula)}>Eliminar</TextLink>
                   </div>
                 </td>
               </tr>
@@ -68,9 +78,18 @@ export function AulasTable({ rows, emptyMessage, onEdit, onVersion, onDelete }: 
             </p>
             <p>Capacidad: {capacidad(aula)}</p>
             <div className={styles.actions}>
-              <TextLink onClick={() => onEdit(aula)}>Editar</TextLink>
+              <IconActions>
+                <IconAction
+                  label={`Editar ${aula.nombre}`}
+                  onClick={() => onEdit(aula)}
+                />
+                <IconAction
+                  tone="danger"
+                  label={`Eliminar ${aula.nombre}`}
+                  onClick={() => onDelete(aula)}
+                />
+              </IconActions>
               <TextLink onClick={() => onVersion(aula)}>Nueva versión</TextLink>
-              <TextLink onClick={() => onDelete(aula)}>Eliminar</TextLink>
             </div>
           </li>
         ))}

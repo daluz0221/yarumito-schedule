@@ -4,6 +4,7 @@ import {
 } from '../../../content/teacherProfile'
 import { Button } from '../../atoms/Button'
 import { Card } from '../../atoms/Card'
+import { IconAction } from '../../atoms/IconAction'
 import { PlusIcon } from '../../atoms/icons'
 import { Table } from '../../atoms/Table'
 import { Text } from '../../atoms/Text'
@@ -93,7 +94,10 @@ export function TeacherTitlesSection({
                     {onEdit ? (
                       <td>
                         <RowActions>
-                          <TextLink onClick={() => onEdit(item)}>Editar</TextLink>
+                          <IconAction
+                            label={`Editar ${item.name || 'título'}`}
+                            onClick={() => onEdit(item)}
+                          />
                         </RowActions>
                       </td>
                     ) : null}
@@ -116,7 +120,10 @@ export function TeacherTitlesSection({
                   </Text>
                   {onEdit ? (
                     <RowActions>
-                      <TextLink onClick={() => onEdit(item)}>Editar</TextLink>
+                      <IconAction
+                        label={`Editar ${item.name || 'título'}`}
+                        onClick={() => onEdit(item)}
+                      />
                     </RowActions>
                   ) : null}
                 </li>

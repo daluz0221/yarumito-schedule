@@ -1,5 +1,5 @@
 import { horaCorta, type TurnoResponse } from '../../../api/turnos'
-import { TextLink } from '../../atoms/TextLink'
+import { IconAction } from '../../atoms/IconAction'
 import styles from './TurnosTable.module.css'
 
 export type TurnosTableProps = {
@@ -40,7 +40,10 @@ export function TurnosTable({ rows, emptyMessage, onEdit }: TurnosTableProps) {
                 <td>{turno.clasesAntesDeDescanso}</td>
                 <td>{turno.duracionDescansoMinutos} min</td>
                 <td>
-                  <TextLink onClick={() => onEdit(turno)}>Editar</TextLink>
+                  <IconAction
+                    label={`Editar ${turno.nombre}`}
+                    onClick={() => onEdit(turno)}
+                  />
                 </td>
               </tr>
             ))}
@@ -59,7 +62,10 @@ export function TurnosTable({ rows, emptyMessage, onEdit }: TurnosTableProps) {
               {turno.clasesPorDia} clases de {turno.duracionClaseMinutos} min · descanso{' '}
               {turno.duracionDescansoMinutos} min
             </p>
-            <TextLink onClick={() => onEdit(turno)}>Editar</TextLink>
+            <IconAction
+              label={`Editar ${turno.nombre}`}
+              onClick={() => onEdit(turno)}
+            />
           </li>
         ))}
       </ul>

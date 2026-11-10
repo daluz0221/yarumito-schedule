@@ -1,5 +1,5 @@
 import type { StudyPlanEntry } from '../../../content/studyPlan'
-import { TextLink } from '../../atoms/TextLink'
+import { IconAction, IconActions } from '../../atoms/IconAction'
 import styles from './GradeSubjectsTable.module.css'
 
 export type GradeSubjectsTableProps = {
@@ -77,9 +77,13 @@ function EntryActions({
   onRemove: (entry: StudyPlanEntry) => void
 }) {
   return (
-    <span className={styles.actions}>
-      <TextLink onClick={() => onEdit(entry)}>Editar</TextLink>
-      <TextLink onClick={() => onRemove(entry)}>Quitar del plan</TextLink>
-    </span>
+    <IconActions>
+      <IconAction label={`Editar ${entry.subject}`} onClick={() => onEdit(entry)} />
+      <IconAction
+        tone="danger"
+        label={`Quitar ${entry.subject} del plan`}
+        onClick={() => onRemove(entry)}
+      />
+    </IconActions>
   )
 }

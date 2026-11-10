@@ -1,6 +1,6 @@
 import { etiquetaGrado, type GradoResponse } from '../../../api/grados'
 import { Badge } from '../../atoms/Badge'
-import { TextLink } from '../../atoms/TextLink'
+import { IconAction } from '../../atoms/IconAction'
 import styles from './GradosTable.module.css'
 
 export type GradosTableProps = {
@@ -39,7 +39,10 @@ export function GradosTable({ rows, emptyMessage, onEdit }: GradosTableProps) {
                 <td>{grado.prioridadAsignacion}</td>
                 <td>{grado.horasSemanalesEsperadas}</td>
                 <td>
-                  <TextLink onClick={() => onEdit(grado)}>Editar</TextLink>
+                  <IconAction
+                    label={`Editar ${etiquetaGrado(grado.nombre)}`}
+                    onClick={() => onEdit(grado)}
+                  />
                 </td>
               </tr>
             ))}
@@ -57,7 +60,10 @@ export function GradosTable({ rows, emptyMessage, onEdit }: GradosTableProps) {
               {grado.esMedia ? 'Media' : 'Básica'} · Prioridad {grado.prioridadAsignacion} ·{' '}
               {grado.horasSemanalesEsperadas} h
             </p>
-            <TextLink onClick={() => onEdit(grado)}>Editar</TextLink>
+            <IconAction
+              label={`Editar ${etiquetaGrado(grado.nombre)}`}
+              onClick={() => onEdit(grado)}
+            />
           </li>
         ))}
       </ul>

@@ -1,7 +1,7 @@
 import { horaCorta } from '../../../api/turnos'
 import type { FranjaHorariaResponse } from '../../../api/franjasHorarias'
 import { Badge } from '../../atoms/Badge'
-import { TextLink } from '../../atoms/TextLink'
+import { IconAction } from '../../atoms/IconAction'
 import styles from './FranjasTable.module.css'
 
 export type FranjasTableProps = {
@@ -52,7 +52,10 @@ export function FranjasTable({ rows, emptyMessage, onEdit }: FranjasTableProps) 
                 </td>
                 <td>{etiquetaHoras(franja.horasAcademicasEquivalentes)}</td>
                 <td>
-                  <TextLink onClick={() => onEdit(franja)}>Editar</TextLink>
+                  <IconAction
+                    label={`Editar franja ${franja.orden}`}
+                    onClick={() => onEdit(franja)}
+                  />
                 </td>
               </tr>
             ))}
@@ -71,7 +74,10 @@ export function FranjasTable({ rows, emptyMessage, onEdit }: FranjasTableProps) 
               {horaCorta(franja.horaInicio)} – {horaCorta(franja.horaFin)}
             </p>
             <p>{etiquetaHoras(franja.horasAcademicasEquivalentes)} h académicas</p>
-            <TextLink onClick={() => onEdit(franja)}>Editar</TextLink>
+            <IconAction
+              label={`Editar franja ${franja.orden}`}
+              onClick={() => onEdit(franja)}
+            />
           </li>
         ))}
       </ul>

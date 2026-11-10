@@ -3,6 +3,7 @@ import {
   type AssignmentRow,
 } from '../../../content/academicAssignment'
 import { Button } from '../../atoms/Button'
+import { IconAction, IconActions } from '../../atoms/IconAction'
 import styles from './AssignmentTable.module.css'
 
 export type AssignmentTableProps = {
@@ -129,14 +130,16 @@ function RowActions({
     )
   }
 
+  const subject = row.subject || 'asignación'
+
   return (
-    <span className={styles.actions}>
-      <Button variant="outline" size="sm" onClick={() => onEdit(row)}>
-        Editar
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => onRemove(row)}>
-        Quitar asignación
-      </Button>
-    </span>
+    <IconActions>
+      <IconAction label={`Editar ${subject}`} onClick={() => onEdit(row)} />
+      <IconAction
+        tone="danger"
+        label={`Quitar asignación de ${subject}`}
+        onClick={() => onRemove(row)}
+      />
+    </IconActions>
   )
 }

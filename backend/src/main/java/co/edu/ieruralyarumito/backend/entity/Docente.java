@@ -49,7 +49,7 @@ public class Docente {
 
     // Información institucional del docente.
     @Enumerated(EnumType.STRING) // Guarda PLANTA, PROVISIONAL o CONTRATO como texto
-    @Column(name = "tipo_vinculacion", nullable = false) // Campo obligatorio; mapea tipo_vinculacion
+    @Column(name = "tipo_vinculacion", nullable = false, length = 20) // Campo obligatorio; mapea tipo_vinculacion
     private TipoVinculacion tipoVinculacion; // Tipo de vinculación del docente
 
     // Área de nombramiento obligatoria del docente.

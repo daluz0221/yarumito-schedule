@@ -117,6 +117,17 @@ export function UserIcon({ size = 20 }: { size?: number } = {}) {
   )
 }
 
+export function TrashIcon({ size = 18 }: { size?: number } = {}) {
+  return (
+    <IconFrame size={size}>
+      <path d="M4.5 7.5h15" {...stroke} />
+      <path d="M9.2 7.4V5.8A1.3 1.3 0 0 1 10.5 4.5h3a1.3 1.3 0 0 1 1.3 1.3v1.6" {...stroke} />
+      <path d="M7.2 7.5 8 18.2a1.4 1.4 0 0 0 1.4 1.3h5.2a1.4 1.4 0 0 0 1.4-1.3l.8-10.7" {...stroke} />
+      <path d="M10.2 11.2v5.2M13.8 11.2v5.2" {...stroke} />
+    </IconFrame>
+  )
+}
+
 export function PencilIcon({ size = 18 }: { size?: number } = {}) {
   return (
     <IconFrame size={size}>

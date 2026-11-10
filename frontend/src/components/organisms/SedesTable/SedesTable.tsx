@@ -1,6 +1,6 @@
 import type { SedeResponse } from '../../../api/sedes'
 import { Badge } from '../../atoms/Badge'
-import { TextLink } from '../../atoms/TextLink'
+import { IconAction } from '../../atoms/IconAction'
 import styles from './SedesTable.module.css'
 
 export type SedesTableProps = {
@@ -41,7 +41,10 @@ export function SedesTable({ rows, emptyMessage, onEdit }: SedesTableProps) {
                   )}
                 </td>
                 <td>
-                  <TextLink onClick={() => onEdit(sede)}>Editar</TextLink>
+                  <IconAction
+                    label={`Editar ${sede.nombre}`}
+                    onClick={() => onEdit(sede)}
+                  />
                 </td>
               </tr>
             ))}
@@ -58,7 +61,10 @@ export function SedesTable({ rows, emptyMessage, onEdit }: SedesTableProps) {
               {sede.esPrincipal ? ' · Principal' : ''}
             </p>
             <p>{sede.direccion?.trim() || 'Sin dirección'}</p>
-            <TextLink onClick={() => onEdit(sede)}>Editar</TextLink>
+            <IconAction
+              label={`Editar ${sede.nombre}`}
+              onClick={() => onEdit(sede)}
+            />
           </li>
         ))}
       </ul>

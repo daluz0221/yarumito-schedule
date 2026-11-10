@@ -23,6 +23,7 @@ export {
   PublishIcon,
   SearchIcon,
   ShieldIcon,
+  TrashIcon,
   UserIcon,
   UsersIcon,
 } from './DashboardIcons'

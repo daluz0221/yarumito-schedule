@@ -5,7 +5,7 @@ import {
   type SchoolGroupStatus,
 } from '../../../content/academicYear'
 import { Card } from '../../atoms/Card'
-import { TextLink } from '../../atoms/TextLink'
+import { IconAction } from '../../atoms/IconAction'
 import styles from './SchoolGroupsTable.module.css'
 
 export type SchoolGroupsTableProps = {
@@ -54,7 +54,10 @@ export function SchoolGroupsTable({
                   {labelGroupStatus(item.status)}
                 </td>
                 <td>
-                  <TextLink onClick={() => onEdit(item)}>Editar</TextLink>
+                  <IconAction
+                    label={`Editar grupo ${item.code}`}
+                    onClick={() => onEdit(item)}
+                  />
                 </td>
               </tr>
             ))}
@@ -85,7 +88,10 @@ export function SchoolGroupsTable({
                 <span className={styles.unassigned}>Sin asignar</span>
               )}
             </p>
-            <TextLink onClick={() => onEdit(item)}>Editar</TextLink>
+            <IconAction
+              label={`Editar grupo ${item.code}`}
+              onClick={() => onEdit(item)}
+            />
           </li>
         ))}
       </ul>

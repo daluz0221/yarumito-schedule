@@ -8,6 +8,7 @@ import {
 } from '../../../content/teacherProfile'
 import { Button } from '../../atoms/Button'
 import { Card } from '../../atoms/Card'
+import { IconAction } from '../../atoms/IconAction'
 import { PlusIcon } from '../../atoms/icons'
 import { Table } from '../../atoms/Table'
 import { Text } from '../../atoms/Text'
@@ -93,7 +94,10 @@ export function TeacherSuitabilitySection({
                 </td>
                 <td>
                   <RowActions>
-                    <TextLink onClick={() => onEdit(item)}>Editar</TextLink>
+                    <IconAction
+                      label={`Editar idoneidad de ${areaNameById(item.areaId)}`}
+                      onClick={() => onEdit(item)}
+                    />
                     {isIdoneidadVigente(item) ? (
                       <TextLink onClick={() => onEnd(item)}>
                         Finalizar vigencia
@@ -119,7 +123,10 @@ export function TeacherSuitabilitySection({
                 since={formatVigencia(item)}
               />
               <RowActions>
-                <TextLink onClick={() => onEdit(item)}>Editar</TextLink>
+                <IconAction
+                  label={`Editar idoneidad de ${areaNameById(item.areaId)}`}
+                  onClick={() => onEdit(item)}
+                />
                 {isIdoneidadVigente(item) ? (
                   <TextLink onClick={() => onEnd(item)}>
                     Finalizar vigencia
