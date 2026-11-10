@@ -1,0 +1,145 @@
+.card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 14px 12px;
+  text-align: left;
+  vertical-align: top;
+  font-size: 13px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.table th {
+  background: var(--color-accent-soft);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table td {
+  color: #3a3a3a;
+}
+
+.name {
+  font-weight: 600;
+  min-width: 180px;
+}
+
+.contact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--color-text-muted);
+}
+
+.pending {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.iconAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #c3de96;
+  border-radius: 8px;
+  background: #e3f2c4;
+  color: var(--color-brand);
+  text-decoration: none;
+}
+
+.iconAction:hover {
+  background: #d0e9a8;
+  border-color: #b3d484;
+}
+
+.iconAction:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.iconActionProfile {
+  border-color: #b9d0ea;
+  background: #d9e8f8;
+  color: var(--color-primary);
+}
+
+.iconActionProfile:hover {
+  background: #c5daf3;
+  border-color: #a4c2e4;
+}
+
+.cards {
+  display: none;
+}
+
+.empty {
+  margin: 0;
+  padding: 24px 16px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+@media (max-width: 860px) {
+  .scroll {
+    display: none;
+  }
+
+  .cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    padding: 12px;
+    list-style: none;
+  }
+
+  .mobileCard {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 10px;
+    background: var(--color-surface);
+  }
+
+  .mobileCard p {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 13px;
+  }
+
+  .mobileHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .mobileHeader strong {
+    font-size: 15px;
+  }
+}

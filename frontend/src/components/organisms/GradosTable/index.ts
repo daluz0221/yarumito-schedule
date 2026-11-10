@@ -1,0 +1,1 @@
+export { GradosTable } from './GradosTable'

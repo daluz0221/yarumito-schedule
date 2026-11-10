@@ -1,0 +1,1 @@
+export { AulasTable } from './AulasTable'

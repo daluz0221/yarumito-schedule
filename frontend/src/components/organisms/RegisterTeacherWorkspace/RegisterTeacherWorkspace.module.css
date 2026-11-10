@@ -1,0 +1,12 @@
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 640px;
+}

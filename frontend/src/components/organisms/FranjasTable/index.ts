@@ -1,0 +1,1 @@
+export { FranjasTable } from './FranjasTable'

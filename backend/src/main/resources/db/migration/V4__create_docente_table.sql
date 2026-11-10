@@ -1,5 +1,5 @@
 create table accesopersonas.docente(
-	id uuid primary key default gen_random_uuid(),
+	id uuid primary key not null default gen_random_uuid(),
 	usuario_id uuid unique,
 	nombres varchar(100) not null,
 	apellidos varchar(100) not null,
@@ -8,7 +8,7 @@ create table accesopersonas.docente(
 	telefono varchar(20),
 	correo_institucional varchar(100),
 	tipo_vinculacion varchar(10) not null check (tipo_vinculacion in ('PLANTA','PROVISIONAL','CONTRATO')),
-	area_nombramiento_id uuid,
+	area_nombramiento_id uuid not null,
 	numero_decreto varchar(20),
 	fecha_decreto date,
 	escalafon varchar(5) check (escalafon in ('G1A', 'G1B', 'G1C', 'G1D', 'G2A', 'G2B', 'G2C', 'G2D', 'G3')),

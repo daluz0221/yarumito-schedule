@@ -1,0 +1,24 @@
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-top: 3px solid var(--color-accent);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 18px rgb(0 79 15 / 6%);
+}
+
+.sm {
+  padding: 16px 18px;
+}
+
+.md {
+  padding: 20px;
+}
+
+.lg {
+  padding: 24px;
+}
+
+.highlighted {
+  border-color: var(--color-brand);
+  box-shadow: 0 8px 18px rgb(0 79 15 / 10%);
+}

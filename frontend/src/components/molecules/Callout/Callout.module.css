@@ -1,0 +1,12 @@
+.callout {
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--color-accent-soft);
+  color: var(--color-text-label);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.callout p {
+  margin: 0;
+}

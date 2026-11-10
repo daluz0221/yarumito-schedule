@@ -1,0 +1,20 @@
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.current {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.closed {
+  color: #8a8a8a;
+  font-weight: 600;
+}
+
+.since {
+  color: #6a6a6a;
+}

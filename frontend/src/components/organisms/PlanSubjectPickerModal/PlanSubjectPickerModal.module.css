@@ -1,0 +1,21 @@
+.choices {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.choices button {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+@media (max-width: 640px) {
+  .choices button {
+    white-space: normal;
+    height: auto;
+    min-height: 40px;
+    padding-block: 10px;
+    text-align: left;
+  }
+}

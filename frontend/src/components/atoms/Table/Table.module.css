@@ -1,0 +1,28 @@
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table :global(th),
+.table :global(td) {
+  padding: 14px 12px;
+  text-align: left;
+  vertical-align: top;
+  font-size: 13px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.table :global(th) {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-ink);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table :global(td) {
+  color: var(--color-text);
+}

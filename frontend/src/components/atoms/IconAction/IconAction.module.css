@@ -1,0 +1,41 @@
+.group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #c3de96;
+  border-radius: 8px;
+  background: #e3f2c4;
+  color: var(--color-brand);
+  cursor: pointer;
+}
+
+.action:hover {
+  background: #d0e9a8;
+  border-color: #b3d484;
+}
+
+.action:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.danger {
+  border-color: #f0c4bc;
+  background: #fdecea;
+  color: #9b2c2c;
+}
+
+.danger:hover {
+  background: #f8d6d1;
+  border-color: #e4ada4;
+}

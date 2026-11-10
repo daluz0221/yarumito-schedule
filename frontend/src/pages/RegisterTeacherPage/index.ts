@@ -1,0 +1,1 @@
+export { RegisterTeacherPage } from './RegisterTeacherPage'

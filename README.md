@@ -1,73 +1,139 @@
-# yarumito-schedule
+# Yarumito Schedule
 
-Proyecto desarrollado.
+Sistema de gestión de docentes y horarios del I.E. Rural Yarumito.
 
-Actualmente el proyecto cuenta únicamente con un frontend básico desarrollado con **React + Vite**, ejecutándose mediante **Docker Compose**.
+El proyecto incluye:
+
+- **Frontend:** React + Vite (puerto `5173`)
+- **Backend:** Spring Boot + PostgreSQL (puerto `8080`)
+- **Base de datos:** PostgreSQL 16 (puerto `5432`)
+
+Todo se levanta con Docker Compose. No hace falta instalar Node, Java ni PostgreSQL en la máquina.
+
+---
 
 ## Requisitos
 
-Antes de comenzar, asegúrate de tener instalado:
+Antes de clonar, instala:
 
-- [Docker](https://www.docker.com/)
-- Docker Compose (incluido actualmente en Docker Desktop)
+1. [Git](https://git-scm.com/)
+2. [Docker Desktop](https://www.docker.com/products/docker-desktop/) (incluye Docker Compose)
 
-Puedes comprobar que Docker está instalado ejecutando:
+Comprueba que estén disponibles:
 
 ```bash
+git --version
 docker --version
+docker compose version
 ```
 
-# Cómo levantar el proyecto
+Deja Docker Desktop **en ejecución** antes del siguiente paso.
 
-## Requisitos
+---
 
-- Docker
-- Docker Compose
-
-Puedes verificar que estén instalados con:
-
-### 1. Clonar el repositorio
+## 1. Clonar el repositorio
 
 ```bash
 git clone https://github.com/daluz0221/yarumito-schedule.git
 cd yarumito-schedule
 ```
 
-### 2. Levantar el proyecto
-```bash
-docker compose up --build
-```
-
-
-#### Comandos útiles
+Si ya tienes el repo y quieres actualizarlo:
 
 ```bash
-# Detener el proyecto
-docker compose down
-
-# Levantar normalmente
-docker compose up
-
-# Levantar y construir
-docker compose up --build
-
-# Levantar en segundo plano
-docker compose up -d
-
-
+git pull
 ```
-### Configurar variables de entorno
+
+---
+
+## 2. Levantar el proyecto
+
+La primera vez (o cuando cambie el backend o el frontend) construye las imágenes:
+
+```bash
+docker compose --profile app up --build
+```
+
+Cuando los tres servicios estén listos:
+
+| Servicio   | URL                         |
+|------------|-----------------------------|
+| Frontend   | http://localhost:5173       |
+| Backend    | http://localhost:8080       |
+| PostgreSQL | `localhost:5432` (interno)  |
+
+El frontend espera a que el backend responda. El primer arranque puede tardar 1–2 minutos.
+
+Para dejarlo en segundo plano:
+
+```bash
+docker compose --profile app up --build -d
+```
+
+---
+
+## 3. Iniciar sesión
+
+Abre http://localhost:5173 e ingresa con el rector de desarrollo (se crea solo al arrancar el backend):
+
+| Campo        | Valor                      |
+|--------------|----------------------------|
+| Correo       | `rector@yarumito.edu.co`   |
+| Contraseña   | `Admin123!`                |
+
+---
+
+## 4. (Opcional) Cargar docentes de prueba
+
+El arranque normal **no** crea docentes de demostración. Si quieres ~15 docentes y áreas para explorar el listado y el perfil:
+
+```bash
+docker compose --profile seed run --rm seed
+```
+
+El comando es idempotente: si los datos ya existen, no los duplica.
+
+Si cambiaste el código del seed y la imagen está cacheada, reconstruye esa imagen:
+
+```bash
+docker compose --profile seed build seed
+docker compose --profile seed run --rm seed
+```
+
+---
+
+## Comandos útiles
+
+```bash
+# Ver logs en vivo
+docker compose --profile app logs -f
+
+# Detener los contenedores (conserva la base de datos)
+docker compose --profile app down
+
+# Detener y borrar el volumen de PostgreSQL (base limpia)
+docker compose --profile app down -v
+
+# Volver a levantar sin reconstruir
+docker compose --profile app up
+```
+
+Después de `down -v`, el rector se vuelve a crear al arrancar. Si quieres otra vez los docentes de demo, vuelve a ejecutar el seed.
+
+---
+
+## Puertos ocupados
 
 
-1. Copia el archivo `.env.example` a `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-2. Completa con las credenciales locales
+Si `5173`, `8080` o `5432` ya están en uso, detén el otro proceso o cambia el mapeo en `docker-compose.yml`.
 
-    ```
-    
-    ```
+## Configurar variables de entorno
+
+Antes de levantar los contenedores, copia el ejemplo. Esos valores son los de desarrollo local y coinciden con los que usa el backend fuera de Docker.
+
+```bash
+cp .env.example .env
+```
 
 
 
@@ -154,3 +220,4 @@ src/
                         └── repository/
                             └── UsuarioRepositoryTest.java
 ```
+

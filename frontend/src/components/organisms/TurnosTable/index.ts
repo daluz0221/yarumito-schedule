@@ -1,0 +1,1 @@
+export { TurnosTable } from './TurnosTable'

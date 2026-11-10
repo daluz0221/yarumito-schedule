@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Endpoints con error 500 — catálogo académico</title>
+  <style>
+    :root {
+      --ink: #1c2430;
+      --muted: #5c6b7a;
+      --line: #d8e0e8;
+      --paper: #f4f7f6;
+      --card: #ffffff;
+      --accent: #0f6e56;
+      --accent-soft: #e7f4ef;
+      --warn: #8a3d12;
+      --warn-soft: #fff1e8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.45;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.7rem;
+      letter-spacing: -0.02em;
+    }
+
+    h2 {
+      margin: 28px 0 10px;
+      font-size: 1.15rem;
+    }
+
+    p { margin: 0 0 12px; }
+
+    .lede, .note {
+      color: var(--muted);
+      max-width: 78ch;
+    }
+
+    .stats {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+      min-width: 160px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.6rem;
+      color: var(--accent);
+    }
+
+    .stat span { color: var(--muted); font-size: 0.92rem; }
+
+    .solutions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    article {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    article h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    code, pre {
+      font-family: Consolas, "Cascadia Code", monospace;
+      font-size: 0.86rem;
+    }
+
+    pre {
+      background: #10231d;
+      color: #e7f6f1;
+      border-radius: 8px;
+      padding: 12px;
+      overflow: auto;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin: 16px 0;
+      flex-wrap: wrap;
+    }
+
+    label { font-size: 0.92rem; color: var(--muted); }
+
+    input, select {
+      font: inherit;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: var(--card);
+      color: var(--ink);
+    }
+
+    input { min-width: 260px; }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 860px;
+    }
+
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      background: #eef3f1;
+      font-size: 0.82rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .method {
+      display: inline-block;
+      min-width: 3.2rem;
+      font-weight: 700;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+    }
+
+    .method.get { color: #0b6b4a; }
+    .method.post { color: #0d4f8b; }
+    .method.put { color: #8a5a00; }
+
+    .error {
+      color: var(--warn);
+      background: var(--warn-soft);
+      border-radius: 6px;
+      padding: 6px 8px;
+      display: inline-block;
+    }
+
+    .empty {
+      padding: 20px;
+      color: var(--muted);
+    }
+
+    .ok {
+      background: var(--accent-soft);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Endpoints con error 500</h1>
+    <p class="lede">
+      De los 35 endpoints que el frontend todavía no consumía, 20 fallan en el backend
+      porque sus tablas viven en el esquema PostgreSQL <code>catalogoacademico</code> y ese esquema no existe.
+      Hibernate está en <code>ddl-auto: update</code> y no crea esquemas: <code>hibernate.hbm2ddl.create_namespaces</code> viene apagado.
+      Los otros 15 (áreas, asignaturas, estado de docente, títulos e idoneidades) no usan ese esquema y no fallan por esta causa.
+    </p>
+
+    <div class="stats">
+      <div class="stat"><strong>20</strong><span>responden 500</span></div>
+      <div class="stat"><strong>15</strong><span>no dependen de este esquema</span></div>
+      <div class="stat"><strong>1</strong><span>causa compartida</span></div>
+    </div>
+
+    <h2>Soluciones</h2>
+    <div class="solutions">
+      <article>
+        <h3>1. Dejar que Hibernate cree las tablas</h3>
+        <p>Crear el esquema a mano y permitir que el arranque genere las tablas que ya están mapeadas.</p>
+        <pre>CREATE SCHEMA IF NOT EXISTS catalogoacademico;</pre>
+        <p>En <code>backend/src/main/resources/application.yaml</code>:</p>
+        <pre>spring.jpa.properties.hibernate.hbm2ddl.create_namespaces: true</pre>
+        <p>Reiniciar el backend con la base vacía de ese esquema. <code>ddl-auto: update</code> crea <code>sede</code>, <code>grado</code>, <code>anio_escolar</code>, <code>plan_estudios</code> y <code>grupo</code>.</p>
+      </article>
+      <article>
+        <h3>2. Migración explícita</h3>
+        <p>Un script SQL o Flyway que cree el esquema y las cinco tablas, con las claves foráneas de grupo y plan de estudios. Después cambiar <code>ddl-auto</code> a <code>validate</code> para que un esquema ausente falle al arrancar y no en cada petición.</p>
+        <p>Esta opción deja el esquema versionado en el repositorio, en lugar de depender de que Hibernate lo invente en cada máquina.</p>
+      </article>
+    </div>
+
+    <h2>Los 20 que responden 500</h2>
+    <div class="toolbar">
+      <label>
+        Buscar
+        <input id="q" type="search" placeholder="sede, grado, GET…">
+      </label>
+      <label>
+        Recurso
+        <select id="recurso">
+          <option value="">Todos</option>
+          <option>Sedes</option>
+          <option>Grados</option>
+          <option>Años escolares</option>
+          <option>Plan de estudios</option>
+          <option>Grupos</option>
+        </select>
+      </label>
+      <span id="count"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Endpoint</th>
+            <th>Error</th>
+            <th>Solución 1</th>
+            <th>Solución 2</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <p id="empty" class="empty" hidden>Ningún endpoint coincide con el filtro.</p>
+    </div>
+
+    <div class="ok">
+      <strong>Sin este 500.</strong>
+      <code>POST/PUT/PATCH</code> de áreas y asignaturas, <code>PATCH</code> de estado de docente,
+      el alta, la edición y el listado de títulos, y los <code>GET</code> por id de título, área, asignatura e idoneidad,
+      más <code>GET /api/v1/idoneidades</code>. Esas entidades no declaran el esquema <code>catalogoacademico</code>.
+    </div>
+  </main>
+
+  <script>
+    const solucionHibernate = "Crear el esquema catalogoacademico y activar hibernate.hbm2ddl.create_namespaces para que el arranque cree la tabla."
+    const solucionMigracion = "Migración SQL del esquema y de esta tabla, y pasar ddl-auto a validate."
+
+    const filas = [
+      ["GET", "/api/v1/sedes", "Sedes", "catalogoacademico.sede"],
+      ["POST", "/api/v1/sedes", "Sedes", "catalogoacademico.sede"],
+      ["PUT", "/api/v1/sedes/{id}", "Sedes", "catalogoacademico.sede"],
+      ["GET", "/api/v1/sedes/{id}", "Sedes", "catalogoacademico.sede"],
+      ["GET", "/api/v1/grados", "Grados", "catalogoacademico.grado"],
+      ["POST", "/api/v1/grados", "Grados", "catalogoacademico.grado"],
+      ["PUT", "/api/v1/grados/{id}", "Grados", "catalogoacademico.grado"],
+      ["GET", "/api/v1/grados/{id}", "Grados", "catalogoacademico.grado"],
+      ["GET", "/api/v1/anios-escolares", "Años escolares", "catalogoacademico.anio_escolar"],
+      ["POST", "/api/v1/anios-escolares", "Años escolares", "catalogoacademico.anio_escolar"],
+      ["PUT", "/api/v1/anios-escolares/{id}", "Años escolares", "catalogoacademico.anio_escolar"],
+      ["GET", "/api/v1/anios-escolares/{id}", "Años escolares", "catalogoacademico.anio_escolar"],
+      ["GET", "/api/v1/planes-estudio", "Plan de estudios", "catalogoacademico.plan_estudios"],
+      ["POST", "/api/v1/planes-estudio", "Plan de estudios", "catalogoacademico.plan_estudios"],
+      ["PUT", "/api/v1/planes-estudio/{id}", "Plan de estudios", "catalogoacademico.plan_estudios"],
+      ["GET", "/api/v1/planes-estudio/{id}", "Plan de estudios", "catalogoacademico.plan_estudios"],
+      ["GET", "/api/v1/grupos", "Grupos", "catalogoacademico.grupo"],
+      ["POST", "/api/v1/grupos", "Grupos", "catalogoacademico.grupo"],
+      ["PUT", "/api/v1/grupos/{id}", "Grupos", "catalogoacademico.grupo"],
+      ["GET", "/api/v1/grupos/{id}", "Grupos", "catalogoacademico.grupo"]
+    ]
+
+    const tbody = document.getElementById("rows")
+    const q = document.getElementById("q")
+    const recurso = document.getElementById("recurso")
+    const count = document.getElementById("count")
+    const empty = document.getElementById("empty")
+
+    function pintar() {
+      const texto = q.value.trim().toLowerCase()
+      const filtro = recurso.value
+      tbody.replaceChildren()
+      let visibles = 0
+
+      for (const [metodo, ruta, grupo, relacion] of filas) {
+        const blob = `${metodo} ${ruta} ${grupo} ${relacion}`.toLowerCase()
+        if (filtro && grupo !== filtro) continue
+        if (texto && !blob.includes(texto)) continue
+        visibles += 1
+
+        const tr = document.createElement("tr")
+        tr.innerHTML = `
+          <td><span class="method ${metodo.toLowerCase()}">${metodo}</span> ${ruta}</td>
+          <td><span class="error">500: relation "${relacion}" does not exist</span></td>
+          <td>${solucionHibernate}</td>
+          <td>${solucionMigracion}</td>
+        `
+        tbody.appendChild(tr)
+      }
+
+      count.textContent = `${visibles} de ${filas.length}`
+      empty.hidden = visibles !== 0
+    }
+
+    q.addEventListener("input", pintar)
+    recurso.addEventListener("change", pintar)
+    pintar()
+  </script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+export { FranjaFormModal } from './FranjaFormModal'

@@ -1,0 +1,35 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.content p {
+  max-width: 420px;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .content p {
+    max-width: none;
+  }
+}

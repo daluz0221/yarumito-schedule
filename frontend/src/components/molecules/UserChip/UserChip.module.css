@@ -1,0 +1,55 @@
+.chip {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 10px 8px 8px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 12px;
+  background: var(--color-surface);
+  text-align: left;
+}
+
+.chip:hover {
+  border-color: #d4d4d4;
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.copy :global(span),
+.copy :global(p) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  display: inline-flex;
+  color: #8a8a8a;
+}
+
+@media (max-width: 720px) {
+  .copy {
+    display: none;
+  }
+
+  .chevron {
+    display: none;
+  }
+
+  .chip {
+    padding: 6px;
+    border-radius: 999px;
+  }
+}
