@@ -14,24 +14,26 @@ function isAbortError(error: unknown) {
 export function EditTeacherWorkspace() {
   const { teacherId } = useParams()
   const [teacher, setTeacher] = useState<Teacher | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loadedId, setLoadedId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const loading = Boolean(teacherId) && loadedId !== teacherId
+  const visibleTeacher = teacher?.id === teacherId ? teacher : null
+  const visibleError = teacherId ? (loadedId === teacherId ? error : '') : 'No se indicó el docente a editar.'
 
   useEffect(() => {
     if (!teacherId) {
-      setTeacher(null)
-      setError('No se indicó el docente a editar.')
-      setLoading(false)
       return
     }
 
     const controller = new AbortController()
+    const requestedId = teacherId
 
-    setLoading(true)
-    setError('')
-
-    consultarDocente(teacherId, controller.signal)
-      .then(setTeacher)
+    consultarDocente(requestedId, controller.signal)
+      .then((nextTeacher) => {
+        setTeacher(nextTeacher)
+        setError('')
+        setLoadedId(requestedId)
+      })
       .catch((cause) => {
         if (isAbortError(cause)) {
           return
@@ -43,11 +45,7 @@ export function EditTeacherWorkspace() {
             ? cause.message
             : 'No se pudo cargar el docente.',
         )
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false)
-        }
+        setLoadedId(requestedId)
       })
 
     return () => controller.abort()
@@ -64,16 +62,16 @@ export function EditTeacherWorkspace() {
 
       {loading ? (
         <p className={styles.status}>Cargando docente...</p>
-      ) : error || !teacher ? (
+      ) : visibleError || !visibleTeacher ? (
         <p className={styles.error} role="alert">
-          {error || 'El docente no existe.'}{' '}
+          {visibleError || 'El docente no existe.'}{' '}
           <TextLink to="/dashboard/docentes">Volver al listado</TextLink>
         </p>
       ) : (
         <RegisterTeacherForm
           mode="edit"
-          teacherId={teacher.id}
-          initialValues={teacherToForm(teacher)}
+          teacherId={visibleTeacher.id}
+          initialValues={teacherToForm(visibleTeacher)}
         />
       )}
     </section>

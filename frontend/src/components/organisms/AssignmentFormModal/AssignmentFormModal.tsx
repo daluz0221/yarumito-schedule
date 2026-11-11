@@ -113,7 +113,7 @@ export function AssignmentFormModal({
   }))
   const [attempted, setAttempted] = useState(false)
   const [kindOpen, setKindOpen] = useState(false)
-  const [hasValidIdoneidad, setHasValidIdoneidad] = useState(false)
+  const [idoneidad, setIdoneidad] = useState({ key: '', valid: false })
   const formId = `assignment-${mode}-form`
   const selected = subjects.find((item) => item.key === values.subjectKey)
   const hoursValue = Number(values.hours)
@@ -129,6 +129,8 @@ export function AssignmentFormModal({
     : values.teacherValue.startsWith('name:')
       ? countRestrictions(yearId, parseTeacherSelection(values.teacherValue).teacherName)
       : 0
+  const idoneidadKey = `${parseTeacherSelection(values.teacherValue).teacherId}|${selected?.area ?? ''}`
+  const hasValidIdoneidad = idoneidad.key === idoneidadKey && idoneidad.valid
   const teacherHint = selectedTeacher
     ? [
         teacherCompatibilityHint(
@@ -146,15 +148,16 @@ export function AssignmentFormModal({
   useEffect(() => {
     const teacherId = parseTeacherSelection(values.teacherValue).teacherId
     if (!teacherId || !selected?.area) {
-      setHasValidIdoneidad(false)
       return
     }
 
     const controller = new AbortController()
+    const key = `${teacherId}|${selected.area}`
     listarIdoneidadesPorDocente(teacherId, controller.signal)
       .then((items) => {
-        setHasValidIdoneidad(
-          items.some((item) => {
+        setIdoneidad({
+          key,
+          valid: items.some((item) => {
             if (!isIdoneidadVigente(item)) {
               return false
             }
@@ -162,11 +165,11 @@ export function AssignmentFormModal({
             const areaName = resolveAreaName(item.areaId, areas)
             return areaName.toLowerCase() === selected.area.toLowerCase()
           }),
-        )
+        })
       })
       .catch((cause) => {
         if (!isAbortError(cause)) {
-          setHasValidIdoneidad(false)
+          setIdoneidad({ key, valid: false })
         }
       })
 

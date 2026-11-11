@@ -141,11 +141,21 @@ export function TeacherProfileWorkspace() {
   const [items, setItems] = useState<Idoneidad[]>([])
   const [titles, setTitles] = useState<ProfessionalTitle[]>([])
   const [titlesError, setTitlesError] = useState('')
+  const [loadedId, setLoadedId] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState('')
+  const loading = Boolean(teacherId) && loadedId !== teacherId
+  const error = teacherId
+    ? loadedId === teacherId
+      ? fetchError
+      : ''
+    : 'No se indicó el docente.'
+  const visibleTeacher = loadedId === teacherId ? teacher : null
+  const visibleItems = loadedId === teacherId ? items : []
+  const visibleTitles = loadedId === teacherId ? titles : []
+  const visibleTitlesError = loadedId === teacherId ? titlesError : ''
   const [titlesLoading, setTitlesLoading] = useState(false)
   const [areas, setAreas] = useState<AreaResponse[]>([])
   const [subjectNames, setSubjectNames] = useState<Record<string, string>>({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [modal, setModal] = useState<ProfileModal>({ name: 'closed' })
   const [editingTitle, setEditingTitle] = useState<ProfessionalTitle | null>(null)
   const [titleDetailLoading, setTitleDetailLoading] = useState(false)
@@ -198,34 +208,40 @@ export function TeacherProfileWorkspace() {
         ),
       ])
 
-      setTeacher(nextTeacher)
-      setItems(nextItems)
-      setAreas(nextAreas)
-      setTitles(nextTitles.items)
-      setTitlesError(nextTitles.error)
+      return {
+        teacher: nextTeacher,
+        items: nextItems,
+        areas: nextAreas,
+        titles: nextTitles,
+      }
     },
     [],
   )
 
   useEffect(() => {
     if (!teacherId) {
-      setTeacher(null)
-      setItems([])
-      setTitles([])
-      setTitlesError('')
-      setError('No se indicó el docente.')
-      setLoading(false)
       return
     }
 
     const controller = new AbortController()
+    const requestedId = teacherId
 
-    setLoading(true)
-    setError('')
+    loadProfile(requestedId, controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) {
+          return
+        }
 
-    loadProfile(teacherId, controller.signal)
+        setTeacher(result.teacher)
+        setItems(result.items)
+        setAreas(result.areas)
+        setTitles(result.titles.items)
+        setTitlesError(result.titles.error)
+        setFetchError('')
+        setLoadedId(requestedId)
+      })
       .catch((cause) => {
-        if (isAbortError(cause)) {
+        if (isAbortError(cause) || controller.signal.aborted) {
           return
         }
 
@@ -233,22 +249,22 @@ export function TeacherProfileWorkspace() {
         setItems([])
         setTitles([])
         setTitlesError('')
-        setError(
+        setFetchError(
           cause instanceof ApiError
             ? cause.message
             : 'No se pudo cargar el perfil del docente.',
         )
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false)
-        }
+        setLoadedId(requestedId)
       })
 
     return () => controller.abort()
   }, [loadProfile, teacherId])
 
   useEffect(() => {
+    if (loadedId !== teacherId) {
+      return
+    }
+
     const ids = [
       ...new Set(items.map((item) => item.asignaturaId).filter(Boolean)),
     ]
@@ -295,7 +311,7 @@ export function TeacherProfileWorkspace() {
       })
 
     return () => controller.abort()
-  }, [items])
+  }, [items, loadedId, teacherId])
 
   const loadTitleDetail = useCallback(
     async (id: string) => {
@@ -582,8 +598,8 @@ export function TeacherProfileWorkspace() {
     }
   }
 
-  const documentLabel = teacher
-    ? `${teacher.tipoDocumento} ${formatDocumentNumber(teacher.numeroDocumento)}`
+  const documentLabel = visibleTeacher
+    ? `${visibleTeacher.tipoDocumento} ${formatDocumentNumber(visibleTeacher.numeroDocumento)}`
     : ''
   const areaOptions = areas.map((area) => ({
     value: area.id,
@@ -602,7 +618,7 @@ export function TeacherProfileWorkspace() {
 
       {loading ? (
         <p className={styles.status}>Cargando perfil...</p>
-      ) : error || !teacher ? (
+      ) : error || !visibleTeacher ? (
         <p className={styles.error} role="alert">
           {error || 'El docente no existe.'}{' '}
           <TextLink to="/dashboard/docentes">Volver al listado</TextLink>
@@ -610,14 +626,14 @@ export function TeacherProfileWorkspace() {
       ) : (
         <>
           <TeacherSummaryCard
-            teacher={teacher}
+            teacher={visibleTeacher}
             documentLabel={documentLabel}
-            areaNombre={resolveAreaName(teacher.areaNombramientoId, areas)}
+            areaNombre={resolveAreaName(visibleTeacher.areaNombramientoId, areas)}
           />
           <TeacherTitlesSection
-            items={titles}
+            items={visibleTitles}
             loading={titlesLoading}
-            error={titlesError}
+            error={visibleTitlesError}
             onRetry={retryTitles}
             onAdd={() => {
               setModalError('')
@@ -630,9 +646,9 @@ export function TeacherProfileWorkspace() {
             }}
           />
           <TeacherSuitabilitySection
-            items={items}
-            titles={titles}
-            titlesUnavailable={Boolean(titlesError)}
+            items={visibleItems}
+            titles={visibleTitles}
+            titlesUnavailable={Boolean(visibleTitlesError)}
             areaNameById={(areaId) => resolveAreaName(areaId, areas)}
             subjectNameById={(asignaturaId) => subjectNames[asignaturaId] ?? ''}
             onAdd={() => {
@@ -675,8 +691,8 @@ export function TeacherProfileWorkspace() {
         mode={modal.name === 'editSuitability' ? 'edit' : 'add'}
         item={modal.name === 'editSuitability' ? editingIdoneidad ?? undefined : undefined}
         areaOptions={areaOptions}
-        titles={titles}
-        titlesError={titlesError}
+        titles={visibleTitles}
+        titlesError={visibleTitlesError}
         loading={modal.name === 'editSuitability' && idoneidadDetailLoading}
         loadError={modal.name === 'editSuitability' ? idoneidadDetailError : ''}
         submitting={modalSubmitting}

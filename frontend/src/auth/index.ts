@@ -1,4 +1,5 @@
-export { AuthProvider, useAuth } from './AuthContext'
+export { AuthProvider } from './AuthContext'
+export { useAuth } from './useAuth'
 export { GuestRoute } from './GuestRoute'
 export { HomeRedirect } from './HomeRedirect'
 export { ProtectedRoute } from './ProtectedRoute'
