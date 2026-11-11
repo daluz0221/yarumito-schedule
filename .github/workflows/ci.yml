@@ -57,4 +57,5 @@ jobs:
           script: |
             set -e
             cd "${{ secrets.EC2_APP_DIR }}"
+            chmod +x deploy.sh
             ./deploy.sh
