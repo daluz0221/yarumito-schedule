@@ -175,30 +175,18 @@ export function StudyPlanWorkspace() {
     return () => controller.abort()
   }, [])
 
-  useEffect(() => {
-    if (!catalogo?.length) {
-      return
-    }
-
-    setYearId((current) =>
-      catalogo.some((year) => year.id === current)
-        ? current
-        : (anioEscolarVisible(catalogo)?.id ?? ''),
-    )
-  }, [catalogo])
-
-  useEffect(() => {
-    if (!grados?.length) {
-      return
-    }
-
-    setGradeId((current) =>
-      grados.some((grado) => grado.id === current) ? current : grados[0].id,
-    )
-  }, [grados])
-
-  const year = catalogo?.find((item) => item.id === yearId) ?? null
-  const grado = grados?.find((item) => item.id === gradeId) ?? null
+  const selectedYearId = catalogo?.some((year) => year.id === yearId)
+    ? yearId
+    : catalogo?.length
+      ? (anioEscolarVisible(catalogo)?.id ?? '')
+      : ''
+  const selectedGradeId = grados?.some((grado) => grado.id === gradeId)
+    ? gradeId
+    : grados?.length
+      ? grados[0].id
+      : ''
+  const year = catalogo?.find((item) => item.id === selectedYearId) ?? null
+  const grado = grados?.find((item) => item.id === selectedGradeId) ?? null
   const grade = grado ? vistaGrado(grado) : null
   const planesLoading = planes === null && !planesError
   const entriesDelAnio = (planes ?? [])

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import {
   emptyCrearTituloForm,
   titleLevelOptions,
@@ -40,25 +40,34 @@ export function TitleFormModal({
 }: TitleFormModalProps) {
   const [values, setValues] = useState<CrearTituloForm>(emptyCrearTituloForm)
   const [localError, setLocalError] = useState('')
+  const [formSnapshot, setFormSnapshot] = useState<{
+    open: boolean
+    mode: TitleFormModalProps['mode']
+    title?: ProfessionalTitle
+  } | null>(null)
 
-  useEffect(() => {
-    if (!open) {
-      return
+  if (
+    !formSnapshot ||
+    formSnapshot.open !== open ||
+    formSnapshot.mode !== mode ||
+    formSnapshot.title !== title
+  ) {
+    setFormSnapshot({ open, mode, title })
+    if (open) {
+      setLocalError('')
+      setValues(
+        mode === 'edit' && title
+          ? {
+              level: title.level,
+              name: title.name,
+              institution: title.institution,
+              year: title.year,
+              supportFile: title.supportFile ?? '',
+            }
+          : emptyCrearTituloForm,
+      )
     }
-
-    setLocalError('')
-    setValues(
-      mode === 'edit' && title
-        ? {
-            level: title.level,
-            name: title.name,
-            institution: title.institution,
-            year: title.year,
-            supportFile: title.supportFile ?? '',
-          }
-        : emptyCrearTituloForm,
-    )
-  }, [mode, open, title])
+  }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()

@@ -28,7 +28,13 @@ export type ApiRequestOptions<TBody = unknown> = {
 
 function getBaseUrl() {
   const configured = import.meta.env.VITE_API_BASE_URL
-  return configured?.trim() || DEFAULT_BASE_URL
+  if (typeof configured === 'string' && configured.trim()) {
+    return configured.trim()
+  }
+  if (import.meta.env.PROD) {
+    return ''
+  }
+  return DEFAULT_BASE_URL
 }
 
 function joinUrl(path: string) {

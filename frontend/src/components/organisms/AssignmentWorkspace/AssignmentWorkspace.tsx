@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ApiError, listarCatalogoAreas, listarDocentes } from '../../../api'
 import type { AreaResponse } from '../../../api/areas'
 import {
@@ -100,12 +100,8 @@ export function AssignmentWorkspace() {
   const planEntries = group ? planEntriesForGroup(year.id, group) : []
   const teachers = catalog?.teachers ?? []
   const areas = catalog?.areas ?? []
-  const scopedAssignments = useMemo(
-    () =>
-      assignments.filter(
-        (item) => item.yearId === year.id && item.groupId === (group?.id ?? ''),
-      ),
-    [assignments, group?.id, year.id],
+  const scopedAssignments = assignments.filter(
+    (item) => item.yearId === year.id && item.groupId === (group?.id ?? ''),
   )
   const curricularRows = buildAssignmentRows(
     curricularSubjects(planEntries),

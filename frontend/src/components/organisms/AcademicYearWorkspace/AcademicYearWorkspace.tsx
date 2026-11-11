@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   aAcademicYear,
   anioEscolarVisible,
@@ -33,24 +33,17 @@ export function AcademicYearWorkspace() {
   const { grados } = useCatalogoGrados()
   const catalogo = error ? academicYears : anios
   const [yearId, setYearId] = useState('')
+  const selectedYearId = catalogo?.some((year) => year.id === yearId)
+    ? yearId
+    : catalogo?.length
+      ? (anioEscolarVisible(catalogo)?.id ?? '')
+      : ''
   const [grade, setGrade] = useState('')
   const [status, setStatus] = useState('')
   const [query, setQuery] = useState('')
   const [crear, setCrear] = useState(false)
 
-  useEffect(() => {
-    if (!catalogo?.length) {
-      return
-    }
-
-    setYearId((current) =>
-      catalogo.some((year) => year.id === current)
-        ? current
-        : (anioEscolarVisible(catalogo)?.id ?? ''),
-    )
-  }, [catalogo])
-
-  const year = catalogo?.find((item) => item.id === yearId) ?? null
+  const year = catalogo?.find((item) => item.id === selectedYearId) ?? null
   const fuenteGrupos = gruposError
     ? schoolGroups
     : grupos === null

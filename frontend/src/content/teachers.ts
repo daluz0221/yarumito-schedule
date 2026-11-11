@@ -323,7 +323,8 @@ export function validateActualizarDocenteForm(form: CrearDocenteForm) {
 export function toActualizarDocenteRequest(
   form: CrearDocenteForm,
 ): ActualizarDocenteRequest {
-  const { estado: _estado, ...payload } = toCrearDocenteRequest(form)
+  const { estado, ...payload } = toCrearDocenteRequest(form)
+  void estado
   return payload
 }
 
