@@ -5,7 +5,7 @@ import co.edu.ieruralyarumito.backend.dto.FranjaHorariaResponse;
 import co.edu.ieruralyarumito.backend.dto.HorarioGrupoResponse;
 import co.edu.ieruralyarumito.backend.dto.InformeHorariosFiltroRequest;
 import co.edu.ieruralyarumito.backend.entity.enums.DiasSemana;
-import co.edu.ieruralyarumito.backend.entity.enums.EstadoAsignacionAcademica;
+import co.edu.ieruralyarumito.backend.entity.enums.EstadoHorario;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
@@ -104,7 +104,7 @@ class InformeHorarioDescansoOficialExcelTest {
         tablero.setTurnoNombre("Mañana");
 
         tablero.setEstadoHorario(
-                EstadoAsignacionAcademica.BORRADOR
+                EstadoHorario.BORRADOR
         );
 
         tablero.setClasesProgramadas(

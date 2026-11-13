@@ -195,7 +195,9 @@ public class HorarioService {
             response.setTurnoNombre(turno.getNombre());
         }
 
-        response.setEstadoHorario(determinarEstadoHorario(asignaciones));
+        response.setEstadoHorario(determinarEstadoHorario(
+                horarioActual.orElse(null),
+                asignaciones));
         response.setResumen(resumen);
         response.setFranjas(franjas);
         response.setClasesProgramadas(clasesProgramadas);
@@ -499,21 +501,30 @@ public class HorarioService {
                 .orElse(null);
     }
 
-    // El tablero se confirma sólo cuando todas las asignaciones del grupo
-    // están confirmadas. De lo contrario permanece en BORRADOR.
-    private EstadoAsignacionAcademica determinarEstadoHorario(
+    // El tablero se publica cuando todas las asignaciones del grupo están
+    // confirmadas. Mientras falte alguna, permanece en BORRADOR. Un horario
+    // archivado conserva ese estado y uno ya publicado no vuelve a borrador.
+    static EstadoHorario determinarEstadoHorario(
+            Horario horario,
             List<AsignacionAcademica> asignaciones) {
 
-        if (asignaciones.isEmpty()) {
-            return EstadoAsignacionAcademica.BORRADOR;
+        if (horario != null
+                && horario.getEstado() == EstadoHorario.ARCHIVADO) {
+            return EstadoHorario.ARCHIVADO;
         }
 
-        boolean todasConfirmadas = asignaciones.stream()
-                .allMatch(asignacion -> asignacion.getEstado()
-                        == EstadoAsignacionAcademica.CONFIRMADA);
+        boolean todasConfirmadas = asignaciones != null
+                && !asignaciones.isEmpty()
+                && asignaciones.stream()
+                        .allMatch(asignacion -> asignacion.getEstado()
+                                == EstadoAsignacionAcademica.CONFIRMADA);
 
-        return todasConfirmadas
-                ? EstadoAsignacionAcademica.CONFIRMADA
-                : EstadoAsignacionAcademica.BORRADOR;
+        if (todasConfirmadas
+                || (horario != null
+                        && horario.getEstado() == EstadoHorario.PUBLICADO)) {
+            return EstadoHorario.PUBLICADO;
+        }
+
+        return EstadoHorario.BORRADOR;
     }
 }

@@ -2,7 +2,7 @@ package co.edu.ieruralyarumito.backend.service;
 
 import co.edu.ieruralyarumito.backend.dto.HorarioGrupoResponse;
 import co.edu.ieruralyarumito.backend.dto.InformeHorariosFiltroRequest;
-import co.edu.ieruralyarumito.backend.entity.enums.EstadoAsignacionAcademica;
+import co.edu.ieruralyarumito.backend.entity.enums.EstadoHorario;
 
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +22,7 @@ import java.util.function.Function;
 class InformeHorarioJuanCamiloBridgeServiceTest {
 
     @Test
-    void debeConsultarElGestorYRechazarConfirmadaComoPublicado() {
+    void debeConsultarElGestorYEnviarHorarioPublicado() {
 
         UUID grupoId = UUID.randomUUID();
 
@@ -46,27 +46,28 @@ class InformeHorarioJuanCamiloBridgeServiceTest {
         HorarioGrupoResponse tablero =
                 crearTablero(
                         grupoId,
-                        EstadoAsignacionAcademica.CONFIRMADA);
+                        EstadoHorario.PUBLICADO);
 
         when(horarioService.obtenerTablero(grupoId))
                 .thenReturn(tablero);
 
-        IllegalArgumentException error = assertThrows(
-                IllegalArgumentException.class,
-                () -> puente.generarPublicados(
-                        List.of(grupoId),
-                        "I.E. Rural Yarumito",
-                        filtros)
-        );
-
-        assertTrue(
-                error.getMessage().contains("CONFIRMADA")
+        puente.generarPublicados(
+                List.of(grupoId),
+                "I.E. Rural Yarumito",
+                filtros
         );
 
         verify(horarioService, times(1))
                 .obtenerTablero(grupoId);
 
-        verifyNoInteractions(informesService);
+        verify(informesService).construirInforme(
+                eq(tablero.getAnioEscolarId()),
+                eq("2026"),
+                eq("I.E. Rural Yarumito"),
+                eq("Sede Principal"),
+                same(filtros),
+                argThat(detalle -> detalle.isEmpty())
+        );
     }
 
     @Test
@@ -94,7 +95,7 @@ class InformeHorarioJuanCamiloBridgeServiceTest {
         when(horarioService.obtenerTablero(grupoId))
                 .thenReturn(crearTablero(
                         grupoId,
-                        EstadoAsignacionAcademica.BORRADOR));
+                        EstadoHorario.BORRADOR));
 
         IllegalStateException error = assertThrows(
                 IllegalStateException.class,
@@ -116,7 +117,7 @@ class InformeHorarioJuanCamiloBridgeServiceTest {
 
     private HorarioGrupoResponse crearTablero(
             UUID grupoId,
-            EstadoAsignacionAcademica estado) {
+            EstadoHorario estado) {
 
         HorarioGrupoResponse tablero =
                 new HorarioGrupoResponse();
@@ -188,7 +189,7 @@ class InformeHorarioJuanCamiloBridgeServiceTest {
         tablero.setSedeNombre("Sede Principal");
         tablero.setTurnoNombre("Mañana");
         tablero.setEstadoHorario(
-                EstadoAsignacionAcademica.BORRADOR);
+                EstadoHorario.BORRADOR);
         tablero.setClasesProgramadas(List.of(clase));
 
         when(horarioService.obtenerTablero(grupoId))

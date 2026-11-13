@@ -5,7 +5,7 @@ import co.edu.ieruralyarumito.backend.dto.FranjaHorariaResponse;
 import co.edu.ieruralyarumito.backend.dto.HorarioGrupoResponse;
 import co.edu.ieruralyarumito.backend.dto.InformeHorariosFiltroRequest;
 import co.edu.ieruralyarumito.backend.entity.enums.DiasSemana;
-import co.edu.ieruralyarumito.backend.entity.enums.EstadoAsignacionAcademica;
+import co.edu.ieruralyarumito.backend.entity.enums.EstadoHorario;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -110,7 +110,7 @@ class InformeHorarioDescansoOficialPdfTest {
         tablero.setTurnoNombre("Mañana");
 
         tablero.setEstadoHorario(
-                EstadoAsignacionAcademica.BORRADOR
+                EstadoHorario.BORRADOR
         );
 
         tablero.setClasesProgramadas(

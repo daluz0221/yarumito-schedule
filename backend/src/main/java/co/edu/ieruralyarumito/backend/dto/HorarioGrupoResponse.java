@@ -1,6 +1,6 @@
 package co.edu.ieruralyarumito.backend.dto;
 
-import co.edu.ieruralyarumito.backend.entity.enums.EstadoAsignacionAcademica;
+import co.edu.ieruralyarumito.backend.entity.enums.EstadoHorario;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,7 +26,7 @@ public class HorarioGrupoResponse {
     private UUID turnoId;
     private String turnoNombre;
 
-    private EstadoAsignacionAcademica estadoHorario;
+    private EstadoHorario estadoHorario;
 
     private ResumenHorarioResponse resumen;
 
@@ -130,11 +130,11 @@ public class HorarioGrupoResponse {
         this.turnoNombre = turnoNombre;
     }
 
-    public EstadoAsignacionAcademica getEstadoHorario() {
+    public EstadoHorario getEstadoHorario() {
         return estadoHorario;
     }
 
-    public void setEstadoHorario(EstadoAsignacionAcademica estadoHorario) {
+    public void setEstadoHorario(EstadoHorario estadoHorario) {
         this.estadoHorario = estadoHorario;
     }
 
