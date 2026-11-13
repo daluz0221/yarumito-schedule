@@ -57,12 +57,13 @@ public class Docente {
     @JoinColumn(name = "area_nombramiento_id", nullable = false) // FK obligatoria hacia Area
     private Area areaNombramiento; // Área de nombramiento del docente
 
-    @Column(name = "numero_decreto") // Mapea la columna numero_decreto
+    @Column(name = "numero_decreto", length = 20) // Mapea la columna numero_decreto
     private String numeroDecreto; // Número del decreto de vinculación
 
     @Column(name = "fecha_decreto") // Mapea la columna fecha_decreto
     private LocalDate fechaDecreto; // Fecha del decreto de vinculación
 
+    @Column(name = "escalafon", length = 5)
     private String escalafon; // Escalafón docente
 
     // Parámetros de carga laboral del docente.
