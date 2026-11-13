@@ -280,6 +280,8 @@ class InformePlantaDocenteIntegrationTest {
         docente.setTipoDocumento("CC");
         docente.setNumeroDocumento(
                 UUID.randomUUID().toString()
+                        .replace("-", "")
+                        .substring(0, 20)
         );
 
         docente.setAreaNombramiento(area);

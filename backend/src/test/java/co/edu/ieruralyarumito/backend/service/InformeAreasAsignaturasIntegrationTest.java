@@ -9,6 +9,7 @@ import co.edu.ieruralyarumito.backend.repository.AsignaturaRepository;
 
 import jakarta.persistence.EntityManager;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -56,6 +57,19 @@ class InformeAreasAsignaturasIntegrationTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    /**
+     * La migración V31 carga el catálogo institucional (8 áreas y 24
+     * asignaturas). Estas pruebas validan el informe con datos propios,
+     * así que se parte de un catálogo vacío. El borrado ocurre dentro de
+     * la transacción de la prueba y se revierte al finalizar.
+     */
+    @BeforeEach
+    void limpiarCatalogoAcademico() {
+
+        asignaturaRepository.deleteAllInBatch();
+        areaRepository.deleteAllInBatch();
+    }
 
     @Test
     void debeContarAreasYAsignaturasReales() {
