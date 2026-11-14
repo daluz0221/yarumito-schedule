@@ -1,15 +1,44 @@
 package co.edu.ieruralyarumito.backend.repository;
 
-import java.util.UUID;
-import java.util.List;
 import co.edu.ieruralyarumito.backend.entity.AsignacionAcademica;
-import org.springframework.data.repository.Repository;
+import co.edu.ieruralyarumito.backend.entity.enums.EstadoAsignacionAcademica;
+import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+import java.util.UUID;
 
-public interface AsignacionAcademicaRepository extends Repository<AsignacionAcademica, UUID> {
+// Gestiona la persistencia de las asignaciones académicas.
+public interface AsignacionAcademicaRepository
+        extends JpaRepository<AsignacionAcademica, UUID> {
 
-    //Filtrar por anio escolar y grupo
-    List<AsignacionAcademica> findByAnioEscolarAndGrupo(UUID anioEscolarId, UUID grupoId);
+    // Lista las asignaciones que se encuentran en un estado determinado.
+    List<AsignacionAcademica> findByEstado(
+            EstadoAsignacionAcademica estado);
 
+    // Lista las asignaciones de un docente.
+    List<AsignacionAcademica> findByDocente_Id(
+            UUID docenteId);
 
+    // Lista las asignaciones de un grupo.
+    List<AsignacionAcademica> findByGrupo_Id(
+            UUID grupoId);
+
+    // Lista las asignaciones de un grupo dentro de un año escolar.
+    List<AsignacionAcademica> findByAnioEscolar_IdAndGrupo_Id(
+            UUID anioEscolarId,
+            UUID grupoId);
+
+    // Lista las asignaciones de una asignatura dentro de un grado
+    // para un año escolar. Permite validar la continuidad docente (CA-09).
+    List<AsignacionAcademica> findByAnioEscolar_IdAndGrupo_Grado_IdAndAsignatura_Id(
+            UUID anioEscolarId,
+            UUID gradoId,
+            UUID asignaturaId);
+
+    // Verifica si ya existe una asignación para el mismo año escolar,
+    // grupo y asignatura.
+    boolean existsByAnioEscolar_IdAndGrupo_IdAndAsignatura_Id(
+            UUID anioEscolarId,
+            UUID grupoId,
+            UUID asignaturaId);
 }
