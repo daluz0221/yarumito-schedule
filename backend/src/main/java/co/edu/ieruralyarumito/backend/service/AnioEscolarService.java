@@ -23,10 +23,14 @@ import java.util.UUID;
 public class AnioEscolarService {
 
     private final AnioEscolarRepository anioEscolarRepository;
+    private final ParametroInstitucionalService parametroInstitucionalService;
 
-    // Inyección de dependencias mediante constructor.
-    public AnioEscolarService(AnioEscolarRepository anioEscolarRepository) {
+    public AnioEscolarService(
+            AnioEscolarRepository anioEscolarRepository,
+            ParametroInstitucionalService parametroInstitucionalService) {
+
         this.anioEscolarRepository = anioEscolarRepository;
+        this.parametroInstitucionalService = parametroInstitucionalService;
     }
 
     // RN-12.01: valida que no exista otro año lectivo con el mismo número.
@@ -177,6 +181,9 @@ public class AnioEscolarService {
 
         AnioEscolar anioEscolarGuardado =
                 anioEscolarRepository.save(anioEscolar);
+
+        parametroInstitucionalService
+                .inicializarParametrosParaAnio(anioEscolarGuardado);
 
         return convertirAResponse(anioEscolarGuardado);
     }
