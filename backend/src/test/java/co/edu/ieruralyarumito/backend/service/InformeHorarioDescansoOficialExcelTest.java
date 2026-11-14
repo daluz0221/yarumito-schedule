@@ -144,18 +144,13 @@ class InformeHorarioDescansoOficialExcelTest {
 
         InformeHorarioGestorIntegracionService integracion =
                 new InformeHorarioGestorIntegracionService(
-                        informes
-                );
-
-        InformeHorarioJuanCamiloBridgeService puente =
-                new InformeHorarioJuanCamiloBridgeService(
                         gestor,
-                        integracion
+                        informes
                 );
 
         InformeHorarioGestorExportacionService exportacion =
                 new InformeHorarioGestorExportacionService(
-                        puente,
+                        integracion,
                         new InformeHorariosPdfService(),
                         new InformeHorariosExcelService()
                 );

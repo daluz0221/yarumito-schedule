@@ -18,26 +18,16 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-/**
- * HU-04 / SCRUM-31.
- *
- * Pruebas de integracion de exportaciones PDF y Excel
- * con el Gestor de Horarios de Juan Camilo.
- *
- * Ambas exportaciones reciben descansos oficiales.
- *
- * No modifica PostgreSQL ni el Gestor.
- */
 class InformeHorarioGestorExportacionServiceTest {
 
     @Test
-    void debeConectarGestorConExportacionPdf() {
+    void debeConectarIntegracionConExportacionPdf() {
 
         UUID grupoId = UUID.randomUUID();
         String institucion = "I.E. Rural Yarumito";
 
-        var puente = mock(
-                InformeHorarioJuanCamiloBridgeService.class
+        var integracion = mock(
+                InformeHorarioGestorIntegracionService.class
         );
 
         var pdf = mock(InformeHorariosPdfService.class);
@@ -48,23 +38,15 @@ class InformeHorarioGestorExportacionServiceTest {
 
         byte[] contenidoPdf = {1, 2, 3};
 
-        when(puente.generarInstitucional(
+        when(integracion.generarInstitucional(
                 List.of(grupoId),
                 institucion,
                 filtros
         )).thenReturn(informe);
 
-        /*
-         * El Gestor no informa descansos en esta prueba.
-         * No se deben inventar descansos.
-         */
-        when(puente.obtenerDescansosOficiales(grupoId))
+        when(integracion.obtenerDescansosOficiales(grupoId))
                 .thenReturn(List.of());
 
-        /*
-         * PDF ahora recibe el informe junto con
-         * la lista de descansos oficiales.
-         */
         when(pdf.exportarHorarioSemanalPorGrupo(
                 informe,
                 List.of()
@@ -72,7 +54,7 @@ class InformeHorarioGestorExportacionServiceTest {
 
         var servicio =
                 new InformeHorarioGestorExportacionService(
-                        puente,
+                        integracion,
                         pdf,
                         excel
                 );
@@ -86,13 +68,13 @@ class InformeHorarioGestorExportacionServiceTest {
 
         assertArrayEquals(contenidoPdf, resultado);
 
-        verify(puente).generarInstitucional(
+        verify(integracion).generarInstitucional(
                 List.of(grupoId),
                 institucion,
                 filtros
         );
 
-        verify(puente)
+        verify(integracion)
                 .obtenerDescansosOficiales(grupoId);
 
         verify(pdf).exportarHorarioSemanalPorGrupo(
@@ -104,13 +86,13 @@ class InformeHorarioGestorExportacionServiceTest {
     }
 
     @Test
-    void debeConectarGestorConExportacionExcel() {
+    void debeConectarIntegracionConExportacionExcel() {
 
         UUID grupoId = UUID.randomUUID();
         String institucion = "I.E. Rural Yarumito";
 
-        var puente = mock(
-                InformeHorarioJuanCamiloBridgeService.class
+        var integracion = mock(
+                InformeHorarioGestorIntegracionService.class
         );
 
         var pdf = mock(InformeHorariosPdfService.class);
@@ -121,22 +103,15 @@ class InformeHorarioGestorExportacionServiceTest {
 
         byte[] contenidoExcel = {4, 5, 6};
 
-        when(puente.generarInstitucional(
+        when(integracion.generarInstitucional(
                 List.of(grupoId),
                 institucion,
                 filtros
         )).thenReturn(informe);
 
-        /*
-         * El Gestor no informa descansos en esta prueba.
-         * Una lista vacia no autoriza inventar horarios.
-         */
-        when(puente.obtenerDescansosOficiales(grupoId))
+        when(integracion.obtenerDescansosOficiales(grupoId))
                 .thenReturn(List.of());
 
-        /*
-         * Excel recibe las franjas oficiales.
-         */
         when(excel.exportarHorarioSemanalPorGrupo(
                 informe,
                 List.of()
@@ -144,7 +119,7 @@ class InformeHorarioGestorExportacionServiceTest {
 
         var servicio =
                 new InformeHorarioGestorExportacionService(
-                        puente,
+                        integracion,
                         pdf,
                         excel
                 );
@@ -158,13 +133,13 @@ class InformeHorarioGestorExportacionServiceTest {
 
         assertArrayEquals(contenidoExcel, resultado);
 
-        verify(puente).generarInstitucional(
+        verify(integracion).generarInstitucional(
                 List.of(grupoId),
                 institucion,
                 filtros
         );
 
-        verify(puente)
+        verify(integracion)
                 .obtenerDescansosOficiales(grupoId);
 
         verify(excel).exportarHorarioSemanalPorGrupo(
@@ -181,12 +156,6 @@ class InformeHorarioGestorExportacionServiceTest {
         UUID grupoId = UUID.randomUUID();
         UUID anioId = UUID.randomUUID();
 
-        /*
-         * Solo se simula el servicio del Gestor.
-         *
-         * La construccion del informe y las
-         * exportaciones PDF y Excel son reales.
-         */
         HorarioService gestor =
                 mock(HorarioService.class);
 
@@ -200,7 +169,6 @@ class InformeHorarioGestorExportacionServiceTest {
         clase.setAsignaturaNombre("Matematicas");
 
         clase.setDia(DiasSemana.LUNES);
-
         clase.setHoraInicio(LocalTime.of(7, 0));
         clase.setHoraFin(LocalTime.of(7, 55));
 
@@ -225,13 +193,6 @@ class InformeHorarioGestorExportacionServiceTest {
         tablero.setSedeNombre("Sede Principal");
         tablero.setTurnoNombre("Mañana");
 
-        /*
-         * BORRADOR permite comprobar el informe
-         * institucional sin simular una publicacion
-         * que el Gestor todavia no proporciona.
-         *
-         * No sustituye el estado PUBLICADO.
-         */
         tablero.setEstadoHorario(
                 EstadoHorario.BORRADOR
         );
@@ -263,28 +224,17 @@ class InformeHorarioGestorExportacionServiceTest {
 
         InformeHorarioGestorIntegracionService integracion =
                 new InformeHorarioGestorIntegracionService(
-                        informes
-                );
-
-        InformeHorarioJuanCamiloBridgeService puente =
-                new InformeHorarioJuanCamiloBridgeService(
                         gestor,
-                        integracion
+                        informes
                 );
 
         InformeHorarioGestorExportacionService exportacion =
                 new InformeHorarioGestorExportacionService(
-                        puente,
+                        integracion,
                         new InformeHorariosPdfService(),
                         new InformeHorariosExcelService()
                 );
 
-        /*
-         * Exportaciones reales.
-         *
-         * Ambas consultan los descansos oficiales
-         * por medio del puente de integracion.
-         */
         byte[] pdf =
                 exportacion.exportarPdfInstitucionalPorGrupo(
                         grupoId,
@@ -299,9 +249,6 @@ class InformeHorarioGestorExportacionServiceTest {
                         filtros
                 );
 
-        /*
-         * Comprobacion del archivo PDF real.
-         */
         assertNotNull(pdf);
         assertTrue(pdf.length > 5);
 
@@ -315,25 +262,12 @@ class InformeHorarioGestorExportacionServiceTest {
                 )
         );
 
-        /*
-         * XLSX es un archivo ZIP.
-         * Se comprueba su firma inicial.
-         */
         assertNotNull(excel);
         assertTrue(excel.length > 2);
 
         assertEquals('P', (char) excel[0]);
         assertEquals('K', (char) excel[1]);
 
-        /*
-         * Consulta 1: generar PDF institucional.
-         * Consulta 2: obtener descansos para PDF.
-         * Consulta 3: generar Excel institucional.
-         * Consulta 4: obtener descansos para Excel.
-         *
-         * Cada exportacion consulta el tablero
-         * y posteriormente sus descansos oficiales.
-         */
         verify(gestor, times(4))
                 .obtenerTablero(grupoId);
     }
