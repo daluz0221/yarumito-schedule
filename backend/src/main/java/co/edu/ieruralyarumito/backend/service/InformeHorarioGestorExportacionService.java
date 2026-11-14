@@ -1,4 +1,3 @@
-
 package co.edu.ieruralyarumito.backend.service;
 
 import co.edu.ieruralyarumito.backend.dto.FranjaHorariaResponse;
@@ -14,38 +13,32 @@ import java.util.UUID;
 /**
  * HU-04 / SCRUM-31.
  *
- * Conecta los horarios obtenidos del Gestor
- * con los exportadores existentes de informes.
+ * Exporta los horarios institucionales obtenidos
+ * directamente desde la integración oficial
+ * con el Gestor de Horarios.
  *
- * Los descansos oficiales se obtienen mediante
- * el puente de integracion con Juan Camilo.
- *
- * No modifica PostgreSQL ni genera persistencia.
+ * No modifica PostgreSQL ni duplica lógica
+ * del Gestor.
  */
 @Service
 public class InformeHorarioGestorExportacionService {
 
-    private final InformeHorarioJuanCamiloBridgeService puente;
+    private final InformeHorarioGestorIntegracionService integracion;
     private final InformeHorariosPdfService pdfService;
     private final InformeHorariosExcelService excelService;
 
     public InformeHorarioGestorExportacionService(
-            InformeHorarioJuanCamiloBridgeService puente,
+            InformeHorarioGestorIntegracionService integracion,
             InformeHorariosPdfService pdfService,
             InformeHorariosExcelService excelService) {
 
-        this.puente = Objects.requireNonNull(puente);
+        this.integracion = Objects.requireNonNull(integracion);
         this.pdfService = Objects.requireNonNull(pdfService);
         this.excelService = Objects.requireNonNull(excelService);
     }
 
     /**
      * Exporta el horario institucional de un grupo en PDF.
-     *
-     * Integra los descansos oficiales proporcionados
-     * por el Gestor de Horarios.
-     *
-     * No calcula ni inventa descansos.
      */
     public byte[] exportarPdfInstitucionalPorGrupo(
             UUID grupoId,
@@ -53,14 +46,16 @@ public class InformeHorarioGestorExportacionService {
             InformeHorariosFiltroRequest filtros) {
 
         InformeHorariosResponse informe =
-                puente.generarInstitucional(
+                integracion.generarInstitucional(
                         List.of(grupoId),
                         nombreInstitucion,
                         filtros
                 );
 
         List<FranjaHorariaResponse> descansos =
-                puente.obtenerDescansosOficiales(grupoId);
+                integracion.obtenerDescansosOficiales(
+                        grupoId
+                );
 
         return pdfService.exportarHorarioSemanalPorGrupo(
                 informe,
@@ -70,11 +65,6 @@ public class InformeHorarioGestorExportacionService {
 
     /**
      * Exporta el horario institucional de un grupo en Excel.
-     *
-     * Integra las franjas oficiales de descanso
-     * proporcionadas por el Gestor de Horarios.
-     *
-     * No calcula ni inventa descansos.
      */
     public byte[] exportarExcelInstitucionalPorGrupo(
             UUID grupoId,
@@ -82,14 +72,16 @@ public class InformeHorarioGestorExportacionService {
             InformeHorariosFiltroRequest filtros) {
 
         InformeHorariosResponse informe =
-                puente.generarInstitucional(
+                integracion.generarInstitucional(
                         List.of(grupoId),
                         nombreInstitucion,
                         filtros
                 );
 
         List<FranjaHorariaResponse> descansos =
-                puente.obtenerDescansosOficiales(grupoId);
+                integracion.obtenerDescansosOficiales(
+                        grupoId
+                );
 
         return excelService.exportarHorarioSemanalPorGrupo(
                 informe,
@@ -98,16 +90,7 @@ public class InformeHorarioGestorExportacionService {
     }
 
     /**
-     * Exporta el horario PUBLICADO de un grupo en PDF.
-     *
-     * No admite horarios en BORRADOR ni confirmaciones
-     * de asignaciones academicas como sustituto
-     * del estado PUBLICADO.
-     *
-     * Primero valida la publicacion mediante el puente.
-     * Despues obtiene los descansos oficiales.
-     *
-     * No modifica PostgreSQL.
+     * Exporta exclusivamente un horario PUBLICADO en PDF.
      */
     public byte[] exportarPdfPublicadoPorGrupo(
             UUID grupoId,
@@ -115,14 +98,16 @@ public class InformeHorarioGestorExportacionService {
             InformeHorariosFiltroRequest filtros) {
 
         InformeHorariosResponse informe =
-                puente.generarPublicados(
+                integracion.generarPublicados(
                         List.of(grupoId),
                         nombreInstitucion,
                         filtros
                 );
 
         List<FranjaHorariaResponse> descansos =
-                puente.obtenerDescansosOficiales(grupoId);
+                integracion.obtenerDescansosOficiales(
+                        grupoId
+                );
 
         return pdfService.exportarHorarioSemanalPorGrupo(
                 informe,
@@ -131,13 +116,7 @@ public class InformeHorarioGestorExportacionService {
     }
 
     /**
-     * Exporta el horario PUBLICADO de un grupo en Excel.
-     *
-     * Primero valida la publicacion mediante el puente.
-     * Despues obtiene los descansos oficiales.
-     *
-     * No modifica el estado del horario ni
-     * crea registros en la base de datos.
+     * Exporta exclusivamente un horario PUBLICADO en Excel.
      */
     public byte[] exportarExcelPublicadoPorGrupo(
             UUID grupoId,
@@ -145,14 +124,16 @@ public class InformeHorarioGestorExportacionService {
             InformeHorariosFiltroRequest filtros) {
 
         InformeHorariosResponse informe =
-                puente.generarPublicados(
+                integracion.generarPublicados(
                         List.of(grupoId),
                         nombreInstitucion,
                         filtros
                 );
 
         List<FranjaHorariaResponse> descansos =
-                puente.obtenerDescansosOficiales(grupoId);
+                integracion.obtenerDescansosOficiales(
+                        grupoId
+                );
 
         return excelService.exportarHorarioSemanalPorGrupo(
                 informe,
