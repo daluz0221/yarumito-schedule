@@ -10,12 +10,19 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-// Representa un registro histórico de auditoría sobre cambios relevantes del sistema.
+// Representa un registro histórico de auditoría
+// sobre cambios relevantes del sistema.
 @Entity
-@Table(name = "registro_auditoria", schema = "controlyauditoria")
+@Table(
+        name = "registro_auditoria",
+        schema = "controlyauditoria"
+)
 public class RegistroAuditoria {
 
     // Identificador único del registro de auditoría.
@@ -24,8 +31,14 @@ public class RegistroAuditoria {
     private UUID id;
 
     // Usuario autenticado que ejecutó la acción.
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "usuario_id", nullable = false)
+    @ManyToOne(
+            fetch = FetchType.LAZY,
+            optional = false
+    )
+    @JoinColumn(
+            name = "usuario_id",
+            nullable = false
+    )
     private Usuario usuario;
 
     // Acción realizada sobre la entidad.
@@ -37,15 +50,28 @@ public class RegistroAuditoria {
     private String entidad;
 
     // Identificador del registro afectado.
-    @Column(name = "id_entidad", nullable = false)
+    @Column(
+            name = "id_entidad",
+            nullable = false
+    )
     private UUID idEntidad;
 
     // Estado de la entidad antes del cambio.
-    @Column(name = "datos_antes", columnDefinition = "jsonb")
+    // Hibernate debe enviarlo como JSON a PostgreSQL.
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(
+            name = "datos_antes",
+            columnDefinition = "jsonb"
+    )
     private String datosAntes;
 
     // Estado de la entidad después del cambio.
-    @Column(name = "datos_despues", columnDefinition = "jsonb")
+    // Hibernate debe enviarlo como JSON a PostgreSQL.
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(
+            name = "datos_despues",
+            columnDefinition = "jsonb"
+    )
     private String datosDespues;
 
     // Momento en que se registró la acción.

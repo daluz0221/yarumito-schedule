@@ -36,6 +36,8 @@ import co.edu.ieruralyarumito.backend.repository.RestriccionDocenteRepository;
 import co.edu.ieruralyarumito.backend.repository.UsuarioRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -65,6 +68,8 @@ public class HorarioService {
     private final HorarioMapper horarioMapper;
     private final ConflictoHorarioRegistroService conflictoHorarioRegistroService;
     private final RestriccionDocenteRepository restriccionDocenteRepository;
+
+    private RegistroAuditoriaService registroAuditoriaService;
 
     @Autowired
     public HorarioService(
@@ -95,7 +100,7 @@ public class HorarioService {
                 Objects.requireNonNull(restriccionDocenteRepository);
     }
 
-    // Compatibilidad con pruebas antiguas.
+    // Constructor conservado para compatibilidad con pruebas existentes.
     HorarioService(
             GrupoRepository grupoRepository,
             AsignacionAcademicaRepository asignacionAcademicaRepository,
@@ -121,6 +126,19 @@ public class HorarioService {
                 conflictoHorarioRegistroService;
         this.restriccionDocenteRepository = null;
     }
+
+    // HU-14: integración con el servicio de auditoría.
+    @Autowired
+    public void configurarAuditoria(
+            RegistroAuditoriaService servicio) {
+
+        this.registroAuditoriaService =
+                Objects.requireNonNull(servicio);
+    }
+
+    // =====================================================
+    // CONSULTA DEL TABLERO DEL GRUPO
+    // =====================================================
 
     @Transactional(readOnly = true)
     public HorarioGrupoResponse obtenerTablero(UUID grupoId) {
@@ -180,16 +198,19 @@ public class HorarioService {
                 .mapToInt(AsignacionPendienteResponse::getHorasPendientes)
                 .sum();
 
-        int asignacionesProgramadas = (int) asignaciones.stream()
-                .filter(asignacion -> {
-                    int programadas = bloquesPorAsignacion
-                            .getOrDefault(asignacion.getId(), 0L)
-                            .intValue();
+        int asignacionesProgramadas =
+                (int) asignaciones.stream()
+                        .filter(asignacion -> {
+                            int programadas = bloquesPorAsignacion
+                                    .getOrDefault(
+                                            asignacion.getId(),
+                                            0L)
+                                    .intValue();
 
-                    return programadas >=
-                            asignacion.getHorasSemanales();
-                })
-                .count();
+                            return programadas >=
+                                    asignacion.getHorasSemanales();
+                        })
+                        .count();
 
         int advertencias = (int) clases.stream()
                 .filter(clase -> haySobreaforo(
@@ -211,13 +232,15 @@ public class HorarioService {
 
         Turno turno = resolverTurno(grupo);
 
-        List<FranjaHorariaResponse> franjas = turno == null
-                ? List.of()
-                : franjaHorariaRepository
-                .findByTurno_IdOrderByOrdenAsc(turno.getId())
-                .stream()
-                .map(horarioMapper::toFranjaResponse)
-                .toList();
+        List<FranjaHorariaResponse> franjas =
+                turno == null
+                        ? List.of()
+                        : franjaHorariaRepository
+                        .findByTurno_IdOrderByOrdenAsc(
+                                turno.getId())
+                        .stream()
+                        .map(horarioMapper::toFranjaResponse)
+                        .toList();
 
         List<ClaseProgramadaResponse> clasesProgramadas =
                 clases.stream()
@@ -265,6 +288,10 @@ public class HorarioService {
         return response;
     }
 
+    // =====================================================
+    // CREAR CLASE PROGRAMADA
+    // =====================================================
+
     @Transactional(
             noRollbackFor = ConflictoHorarioException.class)
     public ClaseProgramadaResponse crearClaseProgramada(
@@ -283,24 +310,24 @@ public class HorarioService {
 
         Aula aula = obtenerAula(request.getAulaId());
 
-        // H-08: impedir aulas inactivas o de otra sede.
+        // H-08: aulas activas y pertenecientes a la sede.
         validarAulaParaGrupo(grupo, aula);
 
         Horario horario = obtenerOCrearHorario(
                 grupo,
                 correoUsuario);
 
-        // H-10: impedir añadir clases a horarios cerrados.
+        // H-10: proteger horarios publicados o archivados.
         validarHorarioEditable(horario);
 
-        // H-02: máximo dos bloques diarios.
+        // H-02: máximo dos clases de una asignatura por día.
         validarMaximoDiarioAsignatura(
                 horario,
                 asignacion,
                 request.getDia(),
                 null);
 
-        // H-01: ocupación del grupo.
+        // H-01: grupo ocupado.
         validarGrupoDisponible(
                 horario,
                 grupo,
@@ -308,7 +335,7 @@ public class HorarioService {
                 franja,
                 null);
 
-        // Ocupación del docente.
+        // Docente ocupado.
         validarDocenteDisponible(
                 horario,
                 asignacion,
@@ -316,14 +343,14 @@ public class HorarioService {
                 franja,
                 null);
 
-        // H-06B: restricciones de disponibilidad.
+        // H-06B: disponibilidad docente.
         validarRestriccionDocente(
                 horario,
                 asignacion,
                 request.getDia(),
                 franja);
 
-        // Ocupación del aula.
+        // Aula ocupada.
         validarAulaDisponible(
                 horario,
                 aula,
@@ -331,12 +358,13 @@ public class HorarioService {
                 franja,
                 null);
 
-        // H-07: carga semanal de todos los grupos del docente.
+        // H-07: carga máxima semanal.
         long cargaActual = obtenerCargaSemanalVigente(
                 horario.getAnioEscolarId().getId(),
                 asignacion.getDocente().getId()).size();
 
         if (cargaActual >= 32) {
+
             throw new RelacionAcademicaInvalidaException(
                     "El docente alcanzó el máximo de 32 bloques "
                             + "semanales (22 ordinarios y 10 extra)");
@@ -367,8 +395,24 @@ public class HorarioService {
                 grupo,
                 aula));
 
+        // HU-14: registrar creación exitosa.
+        if (registroAuditoriaService != null) {
+
+            auditarClase(
+                    RegistroAuditoriaService.ACCION_CREATE,
+                    guardada.getId(),
+                    null,
+                    datosClase(guardada),
+                    correoUsuario
+            );
+        }
+
         return response;
     }
+
+    // =====================================================
+    // ACTUALIZAR CLASE PROGRAMADA
+    // =====================================================
 
     @Transactional(
             noRollbackFor = ConflictoHorarioException.class)
@@ -378,7 +422,13 @@ public class HorarioService {
 
         ClaseProgramada clase = obtenerClase(id);
 
-        // H-10: impedir modificación de clases protegidas.
+        // HU-14: conservar el estado anterior.
+        Map<String, Object> datosAntesAuditoria =
+                registroAuditoriaService == null
+                        ? null
+                        : datosClase(clase);
+
+        // H-10: proteger clases bloqueadas o de horarios cerrados.
         validarClaseEditable(clase);
 
         FranjaHoraria franja = obtenerFranja(
@@ -393,9 +443,12 @@ public class HorarioService {
 
         Horario horario = clase.getHorarioId();
 
-        // H-08: verificar aula activa y sede.
-        validarAulaParaGrupo(asignacion.getGrupo(), aula);
+        // H-08: validar aula.
+        validarAulaParaGrupo(
+                asignacion.getGrupo(),
+                aula);
 
+        // H-01: grupo ocupado.
         validarGrupoDisponible(
                 horario,
                 asignacion.getGrupo(),
@@ -403,6 +456,7 @@ public class HorarioService {
                 franja,
                 clase.getId());
 
+        // Docente ocupado.
         validarDocenteDisponible(
                 horario,
                 asignacion,
@@ -410,12 +464,14 @@ public class HorarioService {
                 franja,
                 clase.getId());
 
+        // Restricción del docente.
         validarRestriccionDocente(
                 horario,
                 asignacion,
                 request.getDia(),
                 franja);
 
+        // Aula ocupada.
         validarAulaDisponible(
                 horario,
                 aula,
@@ -423,6 +479,7 @@ public class HorarioService {
                 franja,
                 clase.getId());
 
+        // H-02: límite diario de asignatura.
         validarMaximoDiarioAsignatura(
                 horario,
                 asignacion,
@@ -436,7 +493,7 @@ public class HorarioService {
         ClaseProgramada guardada =
                 claseProgramadaRepository.save(clase);
 
-        // H-07: mover una clase no aumenta la carga semanal.
+        // H-07: mantener carga semanal.
         recalcularHorasExtrasVigentes(
                 horario.getAnioEscolarId().getId(),
                 asignacion.getDocente().getId());
@@ -449,39 +506,72 @@ public class HorarioService {
                 asignacion.getGrupo(),
                 aula));
 
+        // HU-14: registrar actualización.
+        if (registroAuditoriaService != null) {
+
+            auditarClase(
+                    RegistroAuditoriaService.ACCION_UPDATE,
+                    guardada.getId(),
+                    datosAntesAuditoria,
+                    datosClase(guardada),
+                    null
+            );
+        }
+
         return response;
     }
+
+    // =====================================================
+    // ELIMINAR CLASE PROGRAMADA
+    // =====================================================
 
     @Transactional
     public void eliminarClaseProgramada(UUID id) {
 
         ClaseProgramada clase = obtenerClase(id);
 
-        // H-10: impedir eliminación de clases protegidas.
+        Map<String, Object> datosAntesAuditoria =
+                registroAuditoriaService == null
+                        ? null
+                        : datosClase(clase);
+
+        // H-10: impedir eliminar clases protegidas.
         validarClaseEditable(clase);
 
         UUID anioEscolarId =
-                clase.getHorarioId().getAnioEscolarId().getId();
+                clase.getHorarioId()
+                        .getAnioEscolarId()
+                        .getId();
 
         UUID docenteId =
                 clase.getAsignacionAcademicaId()
-                        .getDocente().getId();
+                        .getDocente()
+                        .getId();
 
         claseProgramadaRepository.delete(clase);
 
-        // H-07: redistribuir las horas ordinarias y extra.
+        // H-07: redistribuir horas extras.
         recalcularHorasExtrasVigentes(
                 anioEscolarId,
                 docenteId);
+
+        // HU-14: registrar eliminación.
+        if (registroAuditoriaService != null) {
+
+            auditarClase(
+                    RegistroAuditoriaService.ACCION_DELETE,
+                    id,
+                    datosAntesAuditoria,
+                    null,
+                    null
+            );
+        }
     }
 
-    /**
-     * H-07: obtiene los bloques semanales del docente.
-     *
-     * Incluye todos sus grupos y sedes en el año escolar,
-     * pero evita sumar las versiones históricas de horarios.
-     * Los descansos no forman parte de la carga académica.
-     */
+    // =====================================================
+    // H-07: CARGA SEMANAL VIGENTE
+    // =====================================================
+
     private List<ClaseProgramada> obtenerCargaSemanalVigente(
             UUID anioEscolarId,
             UUID docenteId) {
@@ -530,10 +620,13 @@ public class HorarioService {
                                         sedeId);
 
                 if (ultimo.isPresent()) {
+
                     horarioVigentePorSede.put(
                             sedeId,
                             ultimo.get().getId());
+
                 } else {
+
                     sedesSinHorario.add(sedeId);
                 }
             }
@@ -549,13 +642,10 @@ public class HorarioService {
         return vigentes;
     }
 
-    /**
-     * H-07: clasifica los primeros 22 bloques como
-     * ordinarios y los siguientes 10 como extra.
-     *
-     * El orden por día y franja permite recalcular
-     * las horas al mover o eliminar clases.
-     */
+    // =====================================================
+    // H-07: RECALCULAR HORAS EXTRAS
+    // =====================================================
+
     private void recalcularHorasExtrasVigentes(
             UUID anioEscolarId,
             UUID docenteId) {
@@ -572,13 +662,15 @@ public class HorarioService {
                                 ? 99
                                 : clase.getDia().ordinal())
                 .thenComparing(
-                        clase -> clase.getFranjaHorariaId().getOrden(),
+                        clase ->
+                                clase.getFranjaHorariaId().getOrden(),
                         Comparator.nullsLast(
                                 Comparator.naturalOrder()))
                 .thenComparing(
-                        clase -> clase.getId() == null
-                                ? ""
-                                : clase.getId().toString()));
+                        clase ->
+                                clase.getId() == null
+                                        ? ""
+                                        : clase.getId().toString()));
 
         for (int i = 0; i < clases.size(); i++) {
 
@@ -593,6 +685,10 @@ public class HorarioService {
             }
         }
     }
+
+    // =====================================================
+    // CONSULTAS DE ENTIDADES
+    // =====================================================
 
     private Grupo obtenerGrupo(UUID grupoId) {
 
@@ -636,17 +732,22 @@ public class HorarioService {
                                 "La clase programada no existe"));
     }
 
+    // =====================================================
+    // VALIDACIONES ACADÉMICAS
+    // =====================================================
+
     private void validarFranjaProgramable(
             FranjaHoraria franja) {
 
         if (franja.isEsDescanso()) {
+
             throw new RelacionAcademicaInvalidaException(
                     "La franja seleccionada corresponde "
                             + "a un descanso y no es programable");
         }
     }
 
-    // H-02: máximo dos bloques diarios de una asignatura por grupo.
+    // H-02: máximo dos bloques diarios de una asignatura.
     private void validarMaximoDiarioAsignatura(
             Horario horario,
             AsignacionAcademica asignacion,
@@ -689,7 +790,7 @@ public class HorarioService {
         }
     }
 
-    // H-10: protege horarios publicados y archivados.
+    // H-10: proteger horarios publicados y archivados.
     private void validarHorarioEditable(Horario horario) {
 
         EstadoHorario estado = horario.getEstado();
@@ -703,8 +804,9 @@ public class HorarioService {
         }
     }
 
-    // H-10: protege clases bloqueadas individualmente.
-    private void validarClaseEditable(ClaseProgramada clase) {
+    // H-10: proteger clases bloqueadas.
+    private void validarClaseEditable(
+            ClaseProgramada clase) {
 
         validarHorarioEditable(clase.getHorarioId());
 
@@ -716,7 +818,7 @@ public class HorarioService {
         }
     }
 
-    // H-08: validar aula activa y misma sede del grupo.
+    // H-08: validar aula activa y sede correcta.
     private void validarAulaParaGrupo(
             Grupo grupo,
             Aula aula) {
@@ -740,7 +842,7 @@ public class HorarioService {
         }
     }
 
-    // H-01: un grupo no puede ocupar dos veces la misma franja.
+    // H-01: grupo ocupado en una franja.
     private void validarGrupoDisponible(
             Horario horario,
             Grupo grupo,
@@ -772,7 +874,7 @@ public class HorarioService {
         }
     }
 
-    // H-06B: NO_DISPONIBLE bloquea; PREFERENTE no.
+    // H-06B: restricciones del docente.
     private void validarRestriccionDocente(
             Horario horario,
             AsignacionAcademica asignacion,
@@ -806,6 +908,7 @@ public class HorarioService {
         }
     }
 
+    // Docente ocupado.
     private void validarDocenteDisponible(
             Horario horario,
             AsignacionAcademica asignacion,
@@ -853,6 +956,7 @@ public class HorarioService {
         }
     }
 
+    // Aula ocupada.
     private void validarAulaDisponible(
             Horario horario,
             Aula aula,
@@ -896,6 +1000,7 @@ public class HorarioService {
         }
     }
 
+    // Advertencia no bloqueante por capacidad.
     private List<String> calcularAdvertencias(
             Horario horario,
             Grupo grupo,
@@ -932,6 +1037,10 @@ public class HorarioService {
                 && cantidadEstudiantes > capacidad;
     }
 
+    // =====================================================
+    // CREACIÓN Y CONSULTA DEL HORARIO
+    // =====================================================
+
     private Horario obtenerOCrearHorario(
             Grupo grupo,
             String correoUsuario) {
@@ -951,18 +1060,19 @@ public class HorarioService {
             String correoUsuario) {
 
         Usuario usuario =
-                usuarioRepository.findByCorreo(correoUsuario)
+                usuarioRepository
+                        .findByCorreo(correoUsuario)
                         .orElseThrow(() ->
                                 new RecursoNoEncontradoException(
-                                        "El usuario autenticado "
-                                                + "no existe"));
+                                        "El usuario autenticado no existe"));
 
         Horario horario = new Horario();
 
         horario.setAnioEscolarId(
                 grupo.getAnioEscolar());
 
-        horario.setSedeId(grupo.getSede());
+        horario.setSedeId(
+                grupo.getSede());
 
         horario.setVersion(1);
 
@@ -979,7 +1089,8 @@ public class HorarioService {
         return horarioRepository.save(horario);
     }
 
-    private Turno resolverTurno(Grupo grupo) {
+    private Turno resolverTurno(
+            Grupo grupo) {
 
         return planEstudiosRepository
                 .findByAnioEscolar_IdAndGrado_Id(
@@ -1004,5 +1115,106 @@ public class HorarioService {
         }
 
         return horario.getEstado();
+    }
+
+    // =====================================================
+    // HU-14: REGISTRO AUTOMÁTICO DE AUDITORÍA
+    // =====================================================
+
+    /**
+     * Registra cambios de clases programadas
+     * dentro de la transacción de negocio.
+     */
+    private void auditarClase(
+            String accion,
+            UUID id,
+            Object antes,
+            Object despues,
+            String correoUsuario) {
+
+        // Compatibilidad con las pruebas unitarias existentes.
+        if (registroAuditoriaService == null) {
+            return;
+        }
+
+        String correo = correoUsuario;
+
+        if (correo == null) {
+
+            Authentication auth =
+                    SecurityContextHolder
+                            .getContext()
+                            .getAuthentication();
+
+            if (auth == null
+                    || !auth.isAuthenticated()) {
+
+                throw new IllegalStateException(
+                        "No hay usuario autenticado para auditar");
+            }
+
+            correo = auth.getName();
+        }
+
+        Usuario usuario =
+                usuarioRepository
+                        .findByCorreo(correo)
+                        .orElseThrow(() ->
+                                new IllegalStateException(
+                                        "Usuario autenticado no identificado "
+                                                + "para auditoria"));
+
+        registroAuditoriaService.registrar(
+                usuario,
+                accion,
+                "ClaseProgramada",
+                id,
+                antes,
+                despues,
+                null
+        );
+    }
+
+    /**
+     * Obtiene una instantánea mínima de la clase.
+     * No serializa entidades ni relaciones JPA completas.
+     */
+    private Map<String, Object> datosClase(
+            ClaseProgramada clase) {
+
+        Map<String, Object> datos =
+                new LinkedHashMap<>();
+
+        datos.put(
+                "id",
+                clase.getId());
+
+        datos.put(
+                "horarioId",
+                clase.getHorarioId().getId());
+
+        datos.put(
+                "asignacionAcademicaId",
+                clase.getAsignacionAcademicaId().getId());
+
+        datos.put(
+                "dia",
+                clase.getDia() == null
+                        ? null
+                        : clase.getDia().name());
+
+        datos.put(
+                "franjaHorariaId",
+                clase.getFranjaHorariaId().getId());
+
+        datos.put(
+                "aulaId",
+                clase.getAulaId().getId());
+
+        datos.put(
+                "esHoraExtra",
+                clase.isEsHoraExtra());
+
+        return datos;
     }
 }
