@@ -2,6 +2,7 @@ package co.edu.ieruralyarumito.backend.repository;
 
 import co.edu.ieruralyarumito.backend.entity.ClaseProgramada;
 import co.edu.ieruralyarumito.backend.entity.enums.DiasSemana;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -9,13 +10,10 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.UUID;
 
-// Gestiona la persistencia de las clases ubicadas en la rejilla.
 public interface ClaseProgramadaRepository
         extends JpaRepository<ClaseProgramada, UUID> {
 
     // Lista las clases de un grupo dentro de un horario.
-    // La entidad nombra las relaciones como "horarioId" y "asignacionAcademicaId".
-    // Se traen las asociaciones usadas por el tablero para evitar consultas N+1.
     @Query("""
             select clase
               from ClaseProgramada clase
@@ -32,8 +30,25 @@ public interface ClaseProgramadaRepository
             @Param("horarioId") UUID horarioId,
             @Param("grupoId") UUID grupoId);
 
-    // Verifica si el docente ya tiene otra clase en el mismo día y franja
-    // dentro del año escolar. Se usa al crear una clase.
+    // H-07: recupera las clases del docente en el año escolar.
+    // Incluye todos sus grupos y sedes.
+    // El servicio deberá excluir las versiones históricas
+    // antes de calcular su carga semanal vigente.
+    @Query("""
+            select clase
+              from ClaseProgramada clase
+              join fetch clase.horarioId horario
+              join fetch clase.asignacionAcademicaId asignacion
+              join fetch asignacion.docente
+              join fetch clase.franjaHorariaId
+             where horario.anioEscolarId.id = :anioEscolarId
+               and asignacion.docente.id = :docenteId
+            """)
+    List<ClaseProgramada> findByDocenteAndAnioEscolar(
+            @Param("anioEscolarId") UUID anioEscolarId,
+            @Param("docenteId") UUID docenteId);
+
+    // Verifica si el docente está ocupado.
     @Query("""
             select count(clase) > 0
               from ClaseProgramada clase
@@ -48,7 +63,7 @@ public interface ClaseProgramadaRepository
             @Param("dia") DiasSemana dia,
             @Param("franjaHorariaId") UUID franjaHorariaId);
 
-    // Verifica el conflicto de docente al editar, excluyendo la clase actual.
+    // Verifica ocupación docente excluyendo la clase editada.
     @Query("""
             select count(clase) > 0
               from ClaseProgramada clase
@@ -65,8 +80,7 @@ public interface ClaseProgramadaRepository
             @Param("franjaHorariaId") UUID franjaHorariaId,
             @Param("claseId") UUID claseId);
 
-    // Verifica si el aula ya está ocupada en el mismo día y franja
-    // dentro del horario. Se usa al crear una clase.
+    // Verifica si el aula está ocupada.
     @Query("""
             select count(clase) > 0
               from ClaseProgramada clase
@@ -81,7 +95,7 @@ public interface ClaseProgramadaRepository
             @Param("dia") DiasSemana dia,
             @Param("franjaHorariaId") UUID franjaHorariaId);
 
-    // Verifica el conflicto de aula al editar, excluyendo la clase actual.
+    // Verifica ocupación del aula excluyendo la clase editada.
     @Query("""
             select count(clase) > 0
               from ClaseProgramada clase
@@ -94,6 +108,40 @@ public interface ClaseProgramadaRepository
     boolean existeAulaOcupadaExcluyendo(
             @Param("horarioId") UUID horarioId,
             @Param("aulaId") UUID aulaId,
+            @Param("dia") DiasSemana dia,
+            @Param("franjaHorariaId") UUID franjaHorariaId,
+            @Param("claseId") UUID claseId);
+
+    // H-01: evita programar dos asignaturas del mismo grupo
+    // en el mismo día y franja dentro del horario.
+    @Query("""
+            select count(clase) > 0
+              from ClaseProgramada clase
+             where clase.horarioId.id = :horarioId
+               and clase.asignacionAcademicaId.grupo.id = :grupoId
+               and clase.dia = :dia
+               and clase.franjaHorariaId.id = :franjaHorariaId
+            """)
+    boolean existeGrupoOcupado(
+            @Param("horarioId") UUID horarioId,
+            @Param("grupoId") UUID grupoId,
+            @Param("dia") DiasSemana dia,
+            @Param("franjaHorariaId") UUID franjaHorariaId);
+
+    // H-01: permite mover una clase sin detectarse
+    // a sí misma como conflicto.
+    @Query("""
+            select count(clase) > 0
+              from ClaseProgramada clase
+             where clase.horarioId.id = :horarioId
+               and clase.asignacionAcademicaId.grupo.id = :grupoId
+               and clase.dia = :dia
+               and clase.franjaHorariaId.id = :franjaHorariaId
+               and clase.id <> :claseId
+            """)
+    boolean existeGrupoOcupadoExcluyendo(
+            @Param("horarioId") UUID horarioId,
+            @Param("grupoId") UUID grupoId,
             @Param("dia") DiasSemana dia,
             @Param("franjaHorariaId") UUID franjaHorariaId,
             @Param("claseId") UUID claseId);

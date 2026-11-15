@@ -14,11 +14,13 @@ import co.edu.ieruralyarumito.backend.entity.FranjaHoraria;
 import co.edu.ieruralyarumito.backend.entity.Grupo;
 import co.edu.ieruralyarumito.backend.entity.Horario;
 import co.edu.ieruralyarumito.backend.entity.PlanEstudios;
+import co.edu.ieruralyarumito.backend.entity.RestriccionDocente;
 import co.edu.ieruralyarumito.backend.entity.Turno;
 import co.edu.ieruralyarumito.backend.entity.Usuario;
+import co.edu.ieruralyarumito.backend.entity.enums.DiaSemana;
 import co.edu.ieruralyarumito.backend.entity.enums.DiasSemana;
-import co.edu.ieruralyarumito.backend.entity.enums.EstadoAsignacionAcademica;
 import co.edu.ieruralyarumito.backend.entity.enums.EstadoHorario;
+import co.edu.ieruralyarumito.backend.entity.enums.TipoRestriccionDocente;
 import co.edu.ieruralyarumito.backend.exception.ConflictoHorarioException;
 import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
 import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
@@ -30,20 +32,25 @@ import co.edu.ieruralyarumito.backend.repository.FranjaHorariaRepository;
 import co.edu.ieruralyarumito.backend.repository.GrupoRepository;
 import co.edu.ieruralyarumito.backend.repository.HorarioRepository;
 import co.edu.ieruralyarumito.backend.repository.PlanEstudiosRepository;
+import co.edu.ieruralyarumito.backend.repository.RestriccionDocenteRepository;
 import co.edu.ieruralyarumito.backend.repository.UsuarioRepository;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-// Contiene la lógica de construcción del horario (M-11).
-// Valida conflictos de docente y aula, y genera advertencias de aforo.
 @Service
 public class HorarioService {
 
@@ -57,8 +64,39 @@ public class HorarioService {
     private final PlanEstudiosRepository planEstudiosRepository;
     private final HorarioMapper horarioMapper;
     private final ConflictoHorarioRegistroService conflictoHorarioRegistroService;
+    private final RestriccionDocenteRepository restriccionDocenteRepository;
 
+    @Autowired
     public HorarioService(
+            GrupoRepository grupoRepository,
+            AsignacionAcademicaRepository asignacionAcademicaRepository,
+            ClaseProgramadaRepository claseProgramadaRepository,
+            HorarioRepository horarioRepository,
+            FranjaHorariaRepository franjaHorariaRepository,
+            AulaRepository aulaRepository,
+            UsuarioRepository usuarioRepository,
+            PlanEstudiosRepository planEstudiosRepository,
+            HorarioMapper horarioMapper,
+            ConflictoHorarioRegistroService conflictoHorarioRegistroService,
+            RestriccionDocenteRepository restriccionDocenteRepository) {
+
+        this.grupoRepository = grupoRepository;
+        this.asignacionAcademicaRepository = asignacionAcademicaRepository;
+        this.claseProgramadaRepository = claseProgramadaRepository;
+        this.horarioRepository = horarioRepository;
+        this.franjaHorariaRepository = franjaHorariaRepository;
+        this.aulaRepository = aulaRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.planEstudiosRepository = planEstudiosRepository;
+        this.horarioMapper = horarioMapper;
+        this.conflictoHorarioRegistroService =
+                conflictoHorarioRegistroService;
+        this.restriccionDocenteRepository =
+                Objects.requireNonNull(restriccionDocenteRepository);
+    }
+
+    // Compatibilidad con pruebas antiguas.
+    HorarioService(
             GrupoRepository grupoRepository,
             AsignacionAcademicaRepository asignacionAcademicaRepository,
             ClaseProgramadaRepository claseProgramadaRepository,
@@ -79,11 +117,11 @@ public class HorarioService {
         this.usuarioRepository = usuarioRepository;
         this.planEstudiosRepository = planEstudiosRepository;
         this.horarioMapper = horarioMapper;
-        this.conflictoHorarioRegistroService = conflictoHorarioRegistroService;
+        this.conflictoHorarioRegistroService =
+                conflictoHorarioRegistroService;
+        this.restriccionDocenteRepository = null;
     }
 
-    // Construye el tablero completo de un grupo: rejilla, contadores y
-    // panel de asignaciones con horas pendientes.
     @Transactional(readOnly = true)
     public HorarioGrupoResponse obtenerTablero(UUID grupoId) {
 
@@ -108,22 +146,27 @@ public class HorarioService {
                                 grupo.getId()))
                 .orElse(List.of());
 
-        // Cada bloque de la rejilla representa una hora académica.
         Map<UUID, Long> bloquesPorAsignacion = clases.stream()
                 .collect(Collectors.groupingBy(
                         clase -> clase.getAsignacionAcademicaId().getId(),
                         Collectors.counting()));
 
-        List<AsignacionPendienteResponse> pendientes = asignaciones.stream()
-                .map(asignacion -> horarioMapper.toPendienteResponse(
-                        asignacion,
-                        bloquesPorAsignacion
-                                .getOrDefault(asignacion.getId(), 0L)
-                                .intValue()))
-                .filter(pendiente -> pendiente.getHorasPendientes() > 0)
-                .sorted(Comparator.comparing(
-                        AsignacionPendienteResponse::getAsignaturaNombre))
-                .toList();
+        List<AsignacionPendienteResponse> pendientes =
+                asignaciones.stream()
+                        .map(asignacion ->
+                                horarioMapper.toPendienteResponse(
+                                        asignacion,
+                                        bloquesPorAsignacion
+                                                .getOrDefault(
+                                                        asignacion.getId(),
+                                                        0L)
+                                                .intValue()))
+                        .filter(pendiente ->
+                                pendiente.getHorasPendientes() > 0)
+                        .sorted(Comparator.comparing(
+                                AsignacionPendienteResponse::
+                                        getAsignaturaNombre))
+                        .toList();
 
         int totalAsignaciones = asignaciones.size();
 
@@ -137,15 +180,14 @@ public class HorarioService {
                 .mapToInt(AsignacionPendienteResponse::getHorasPendientes)
                 .sum();
 
-        // Se considera programada la asignación cuyas horas ya fueron
-        // ubicadas por completo en la rejilla.
         int asignacionesProgramadas = (int) asignaciones.stream()
                 .filter(asignacion -> {
                     int programadas = bloquesPorAsignacion
                             .getOrDefault(asignacion.getId(), 0L)
                             .intValue();
 
-                    return programadas >= asignacion.getHorasSemanales();
+                    return programadas >=
+                            asignacion.getHorasSemanales();
                 })
                 .count();
 
@@ -155,8 +197,11 @@ public class HorarioService {
                         clase.getAulaId()))
                 .count();
 
-        ResumenHorarioResponse resumen = new ResumenHorarioResponse();
-        resumen.setAsignacionesProgramadas(asignacionesProgramadas);
+        ResumenHorarioResponse resumen =
+                new ResumenHorarioResponse();
+
+        resumen.setAsignacionesProgramadas(
+                asignacionesProgramadas);
         resumen.setTotalAsignaciones(totalAsignaciones);
         resumen.setHorasProgramadas(horasProgramadas);
         resumen.setTotalHoras(totalHoras);
@@ -174,22 +219,27 @@ public class HorarioService {
                 .map(horarioMapper::toFranjaResponse)
                 .toList();
 
-        List<ClaseProgramadaResponse> clasesProgramadas = clases.stream()
-                .sorted(Comparator
-                        .comparing(ClaseProgramada::getDia)
-                        .thenComparing(clase ->
-                                clase.getFranjaHorariaId().getOrden()))
-                .map(horarioMapper::toClaseResponse)
-                .toList();
+        List<ClaseProgramadaResponse> clasesProgramadas =
+                clases.stream()
+                        .sorted(Comparator
+                                .comparing(ClaseProgramada::getDia)
+                                .thenComparing(clase ->
+                                        clase.getFranjaHorariaId()
+                                                .getOrden()))
+                        .map(horarioMapper::toClaseResponse)
+                        .toList();
 
-        HorarioGrupoResponse response = new HorarioGrupoResponse();
+        HorarioGrupoResponse response =
+                new HorarioGrupoResponse();
 
         response.setGrupoId(grupo.getId());
         response.setGrupoCodigo(grupo.getCodigo());
         response.setGradoId(grupo.getGrado().getId());
         response.setGradoNombre(grupo.getGrado().getNombre());
-        response.setAnioEscolarId(grupo.getAnioEscolar().getId());
-        response.setAnioEscolar(grupo.getAnioEscolar().getAnio());
+        response.setAnioEscolarId(
+                grupo.getAnioEscolar().getId());
+        response.setAnioEscolar(
+                grupo.getAnioEscolar().getAnio());
         response.setSedeId(grupo.getSede().getId());
         response.setSedeNombre(grupo.getSede().getNombre());
 
@@ -215,7 +265,6 @@ public class HorarioService {
         return response;
     }
 
-    // Ubica una asignación académica en un día, franja y aula.
     @Transactional(
             noRollbackFor = ConflictoHorarioException.class)
     public ClaseProgramadaResponse crearClaseProgramada(
@@ -234,11 +283,32 @@ public class HorarioService {
 
         Aula aula = obtenerAula(request.getAulaId());
 
+        // H-08: impedir aulas inactivas o de otra sede.
+        validarAulaParaGrupo(grupo, aula);
+
         Horario horario = obtenerOCrearHorario(
                 grupo,
                 correoUsuario);
 
-        // Validaciones bloqueantes antes de persistir.
+        // H-10: impedir añadir clases a horarios cerrados.
+        validarHorarioEditable(horario);
+
+        // H-02: máximo dos bloques diarios.
+        validarMaximoDiarioAsignatura(
+                horario,
+                asignacion,
+                request.getDia(),
+                null);
+
+        // H-01: ocupación del grupo.
+        validarGrupoDisponible(
+                horario,
+                grupo,
+                request.getDia(),
+                franja,
+                null);
+
+        // Ocupación del docente.
         validarDocenteDisponible(
                 horario,
                 asignacion,
@@ -246,12 +316,31 @@ public class HorarioService {
                 franja,
                 null);
 
+        // H-06B: restricciones de disponibilidad.
+        validarRestriccionDocente(
+                horario,
+                asignacion,
+                request.getDia(),
+                franja);
+
+        // Ocupación del aula.
         validarAulaDisponible(
                 horario,
                 aula,
                 request.getDia(),
                 franja,
                 null);
+
+        // H-07: carga semanal de todos los grupos del docente.
+        long cargaActual = obtenerCargaSemanalVigente(
+                horario.getAnioEscolarId().getId(),
+                asignacion.getDocente().getId()).size();
+
+        if (cargaActual >= 32) {
+            throw new RelacionAcademicaInvalidaException(
+                    "El docente alcanzó el máximo de 32 bloques "
+                            + "semanales (22 ordinarios y 10 extra)");
+        }
 
         ClaseProgramada clase = new ClaseProgramada();
 
@@ -260,11 +349,18 @@ public class HorarioService {
         clase.setDia(request.getDia());
         clase.setFranjaHorariaId(franja);
         clase.setAulaId(aula);
-        clase.setEsHoraExtra(false);
+        clase.setEsHoraExtra(cargaActual >= 22);
         clase.setBloqueada(false);
 
-        ClaseProgramadaResponse response = horarioMapper.toClaseResponse(
-                claseProgramadaRepository.save(clase));
+        ClaseProgramada guardada =
+                claseProgramadaRepository.save(clase);
+
+        recalcularHorasExtrasVigentes(
+                horario.getAnioEscolarId().getId(),
+                asignacion.getDocente().getId());
+
+        ClaseProgramadaResponse response =
+                horarioMapper.toClaseResponse(guardada);
 
         response.setWarnings(calcularAdvertencias(
                 horario,
@@ -274,7 +370,6 @@ public class HorarioService {
         return response;
     }
 
-    // Mueve un bloque existente. No modifica la asignación académica.
     @Transactional(
             noRollbackFor = ConflictoHorarioException.class)
     public ClaseProgramadaResponse actualizarClaseProgramada(
@@ -282,6 +377,9 @@ public class HorarioService {
             ActualizarClaseProgramadaRequest request) {
 
         ClaseProgramada clase = obtenerClase(id);
+
+        // H-10: impedir modificación de clases protegidas.
+        validarClaseEditable(clase);
 
         FranjaHoraria franja = obtenerFranja(
                 request.getFranjaHorariaId());
@@ -295,14 +393,28 @@ public class HorarioService {
 
         Horario horario = clase.getHorarioId();
 
-        // Validaciones bloqueantes antes de persistir, excluyendo
-        // la clase que se está editando.
+        // H-08: verificar aula activa y sede.
+        validarAulaParaGrupo(asignacion.getGrupo(), aula);
+
+        validarGrupoDisponible(
+                horario,
+                asignacion.getGrupo(),
+                request.getDia(),
+                franja,
+                clase.getId());
+
         validarDocenteDisponible(
                 horario,
                 asignacion,
                 request.getDia(),
                 franja,
                 clase.getId());
+
+        validarRestriccionDocente(
+                horario,
+                asignacion,
+                request.getDia(),
+                franja);
 
         validarAulaDisponible(
                 horario,
@@ -311,12 +423,26 @@ public class HorarioService {
                 franja,
                 clase.getId());
 
+        validarMaximoDiarioAsignatura(
+                horario,
+                asignacion,
+                request.getDia(),
+                clase.getId());
+
         clase.setDia(request.getDia());
         clase.setFranjaHorariaId(franja);
         clase.setAulaId(aula);
 
-        ClaseProgramadaResponse response = horarioMapper.toClaseResponse(
-                claseProgramadaRepository.save(clase));
+        ClaseProgramada guardada =
+                claseProgramadaRepository.save(clase);
+
+        // H-07: mover una clase no aumenta la carga semanal.
+        recalcularHorasExtrasVigentes(
+                horario.getAnioEscolarId().getId(),
+                asignacion.getDocente().getId());
+
+        ClaseProgramadaResponse response =
+                horarioMapper.toClaseResponse(guardada);
 
         response.setWarnings(calcularAdvertencias(
                 horario,
@@ -326,65 +452,360 @@ public class HorarioService {
         return response;
     }
 
-    // Elimina el bloque. La hora vuelve a quedar pendiente porque los
-    // contadores se calculan a partir de las clases programadas.
     @Transactional
     public void eliminarClaseProgramada(UUID id) {
 
-        claseProgramadaRepository.delete(obtenerClase(id));
+        ClaseProgramada clase = obtenerClase(id);
+
+        // H-10: impedir eliminación de clases protegidas.
+        validarClaseEditable(clase);
+
+        UUID anioEscolarId =
+                clase.getHorarioId().getAnioEscolarId().getId();
+
+        UUID docenteId =
+                clase.getAsignacionAcademicaId()
+                        .getDocente().getId();
+
+        claseProgramadaRepository.delete(clase);
+
+        // H-07: redistribuir las horas ordinarias y extra.
+        recalcularHorasExtrasVigentes(
+                anioEscolarId,
+                docenteId);
     }
 
-    // Obtiene el grupo o lanza el error de no encontrado.
-    private Grupo obtenerGrupo(UUID grupoId) {
+    /**
+     * H-07: obtiene los bloques semanales del docente.
+     *
+     * Incluye todos sus grupos y sedes en el año escolar,
+     * pero evita sumar las versiones históricas de horarios.
+     * Los descansos no forman parte de la carga académica.
+     */
+    private List<ClaseProgramada> obtenerCargaSemanalVigente(
+            UUID anioEscolarId,
+            UUID docenteId) {
 
-        return grupoRepository.findById(grupoId)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "El grupo no existe"));
+        List<ClaseProgramada> todas =
+                claseProgramadaRepository
+                        .findByDocenteAndAnioEscolar(
+                                anioEscolarId,
+                                docenteId);
+
+        if (todas == null || todas.isEmpty()) {
+            return List.of();
+        }
+
+        Map<UUID, UUID> horarioVigentePorSede =
+                new HashMap<>();
+
+        Set<UUID> sedesSinHorario = new HashSet<>();
+
+        List<ClaseProgramada> vigentes =
+                new ArrayList<>();
+
+        for (ClaseProgramada clase : todas) {
+
+            Horario horarioClase = clase.getHorarioId();
+
+            if (horarioClase == null
+                    || horarioClase.getSedeId() == null
+                    || horarioClase.getSedeId().getId() == null
+                    || clase.getFranjaHorariaId() == null
+                    || clase.getFranjaHorariaId().isEsDescanso()) {
+
+                continue;
+            }
+
+            UUID sedeId =
+                    horarioClase.getSedeId().getId();
+
+            if (!horarioVigentePorSede.containsKey(sedeId)
+                    && !sedesSinHorario.contains(sedeId)) {
+
+                Optional<Horario> ultimo =
+                        horarioRepository
+                                .findFirstByAnioEscolarId_IdAndSedeId_IdOrderByVersionDesc(
+                                        anioEscolarId,
+                                        sedeId);
+
+                if (ultimo.isPresent()) {
+                    horarioVigentePorSede.put(
+                            sedeId,
+                            ultimo.get().getId());
+                } else {
+                    sedesSinHorario.add(sedeId);
+                }
+            }
+
+            if (Objects.equals(
+                    horarioVigentePorSede.get(sedeId),
+                    horarioClase.getId())) {
+
+                vigentes.add(clase);
+            }
+        }
+
+        return vigentes;
     }
 
-    // Obtiene la asignación académica o lanza el error de no encontrado.
-    private AsignacionAcademica obtenerAsignacion(UUID asignacionId) {
+    /**
+     * H-07: clasifica los primeros 22 bloques como
+     * ordinarios y los siguientes 10 como extra.
+     *
+     * El orden por día y franja permite recalcular
+     * las horas al mover o eliminar clases.
+     */
+    private void recalcularHorasExtrasVigentes(
+            UUID anioEscolarId,
+            UUID docenteId) {
 
-        return asignacionAcademicaRepository.findById(asignacionId)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "La asignación académica no existe"));
-    }
+        List<ClaseProgramada> clases =
+                new ArrayList<>(
+                        obtenerCargaSemanalVigente(
+                                anioEscolarId,
+                                docenteId));
 
-    // Obtiene la franja horaria o lanza el error de no encontrado.
-    private FranjaHoraria obtenerFranja(UUID franjaId) {
+        clases.sort(Comparator
+                .comparing((ClaseProgramada clase) ->
+                        clase.getDia() == null
+                                ? 99
+                                : clase.getDia().ordinal())
+                .thenComparing(
+                        clase -> clase.getFranjaHorariaId().getOrden(),
+                        Comparator.nullsLast(
+                                Comparator.naturalOrder()))
+                .thenComparing(
+                        clase -> clase.getId() == null
+                                ? ""
+                                : clase.getId().toString()));
 
-        return franjaHorariaRepository.findById(franjaId)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "La franja horaria no existe"));
-    }
+        for (int i = 0; i < clases.size(); i++) {
 
-    // Obtiene el aula o lanza el error de no encontrado.
-    private Aula obtenerAula(UUID aulaId) {
+            ClaseProgramada clase = clases.get(i);
 
-        return aulaRepository.findById(aulaId)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "El aula no existe"));
-    }
+            boolean esExtra = i >= 22;
 
-    // Obtiene la clase programada o lanza el error de no encontrado.
-    private ClaseProgramada obtenerClase(UUID id) {
+            if (clase.isEsHoraExtra() != esExtra) {
 
-        return claseProgramadaRepository.findById(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "La clase programada no existe"));
-    }
-
-    // Regla estricta: los descansos son franjas no programables.
-    private void validarFranjaProgramable(FranjaHoraria franja) {
-
-        if (franja.isEsDescanso()) {
-            throw new RelacionAcademicaInvalidaException(
-                    "La franja seleccionada corresponde a un descanso "
-                            + "y no es programable");
+                clase.setEsHoraExtra(esExtra);
+                claseProgramadaRepository.save(clase);
+            }
         }
     }
 
-    // Valida que el docente no tenga otra clase en el mismo día y franja.
+    private Grupo obtenerGrupo(UUID grupoId) {
+
+        return grupoRepository.findById(grupoId)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "El grupo no existe"));
+    }
+
+    private AsignacionAcademica obtenerAsignacion(
+            UUID asignacionId) {
+
+        return asignacionAcademicaRepository
+                .findById(asignacionId)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "La asignación académica no existe"));
+    }
+
+    private FranjaHoraria obtenerFranja(UUID franjaId) {
+
+        return franjaHorariaRepository.findById(franjaId)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "La franja horaria no existe"));
+    }
+
+    private Aula obtenerAula(UUID aulaId) {
+
+        return aulaRepository.findById(aulaId)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "El aula no existe"));
+    }
+
+    private ClaseProgramada obtenerClase(UUID id) {
+
+        return claseProgramadaRepository.findById(id)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "La clase programada no existe"));
+    }
+
+    private void validarFranjaProgramable(
+            FranjaHoraria franja) {
+
+        if (franja.isEsDescanso()) {
+            throw new RelacionAcademicaInvalidaException(
+                    "La franja seleccionada corresponde "
+                            + "a un descanso y no es programable");
+        }
+    }
+
+    // H-02: máximo dos bloques diarios de una asignatura por grupo.
+    private void validarMaximoDiarioAsignatura(
+            Horario horario,
+            AsignacionAcademica asignacion,
+            DiasSemana dia,
+            UUID claseIdExcluir) {
+
+        List<ClaseProgramada> clases =
+                claseProgramadaRepository
+                        .findByHorarioAndGrupo(
+                                horario.getId(),
+                                asignacion.getGrupo().getId());
+
+        UUID asignaturaId =
+                asignacion.getAsignatura().getId();
+
+        long total = clases.stream()
+                .filter(clase ->
+                        !Objects.equals(
+                                clase.getId(),
+                                claseIdExcluir))
+                .filter(clase ->
+                        clase.getDia() == dia)
+                .filter(clase ->
+                        !clase.getFranjaHorariaId()
+                                .isEsDescanso())
+                .filter(clase ->
+                        Objects.equals(
+                                clase.getAsignacionAcademicaId()
+                                        .getAsignatura()
+                                        .getId(),
+                                asignaturaId))
+                .count();
+
+        if (total >= 2) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "El grupo ya tiene dos clases de esta "
+                            + "asignatura programadas para el "
+                            + "día seleccionado");
+        }
+    }
+
+    // H-10: protege horarios publicados y archivados.
+    private void validarHorarioEditable(Horario horario) {
+
+        EstadoHorario estado = horario.getEstado();
+
+        if (estado == EstadoHorario.PUBLICADO
+                || estado == EstadoHorario.ARCHIVADO) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "No se pueden modificar clases de un "
+                            + "horario publicado o archivado");
+        }
+    }
+
+    // H-10: protege clases bloqueadas individualmente.
+    private void validarClaseEditable(ClaseProgramada clase) {
+
+        validarHorarioEditable(clase.getHorarioId());
+
+        if (clase.isBloqueada()) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "La clase programada está bloqueada "
+                            + "y no puede modificarse ni eliminarse");
+        }
+    }
+
+    // H-08: validar aula activa y misma sede del grupo.
+    private void validarAulaParaGrupo(
+            Grupo grupo,
+            Aula aula) {
+
+        if (!aula.isActiva()) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "No se puede programar una clase "
+                            + "en un aula inactiva");
+        }
+
+        if (aula.getSede() == null
+                || grupo.getSede() == null
+                || !Objects.equals(
+                aula.getSede().getId(),
+                grupo.getSede().getId())) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "El aula seleccionada no pertenece "
+                            + "a la sede del grupo");
+        }
+    }
+
+    // H-01: un grupo no puede ocupar dos veces la misma franja.
+    private void validarGrupoDisponible(
+            Horario horario,
+            Grupo grupo,
+            DiasSemana dia,
+            FranjaHoraria franja,
+            UUID claseId) {
+
+        boolean ocupado = claseId == null
+                ? claseProgramadaRepository
+                .existeGrupoOcupado(
+                        horario.getId(),
+                        grupo.getId(),
+                        dia,
+                        franja.getId())
+                : claseProgramadaRepository
+                .existeGrupoOcupadoExcluyendo(
+                        horario.getId(),
+                        grupo.getId(),
+                        dia,
+                        franja.getId(),
+                        claseId);
+
+        if (ocupado) {
+
+            throw new ConflictoHorarioException(
+                    "GRUPO_OCUPADO",
+                    "El grupo ya tiene una clase "
+                            + "programada en esta misma franja.");
+        }
+    }
+
+    // H-06B: NO_DISPONIBLE bloquea; PREFERENTE no.
+    private void validarRestriccionDocente(
+            Horario horario,
+            AsignacionAcademica asignacion,
+            DiasSemana dia,
+            FranjaHoraria franja) {
+
+        if (restriccionDocenteRepository == null) {
+            return;
+        }
+
+        DiaSemana diaRestriccion =
+                DiaSemana.valueOf(dia.name());
+
+        Optional<RestriccionDocente> restriccion =
+                restriccionDocenteRepository
+                        .findByDocente_IdAndAnioEscolar_IdAndDiaAndFranjaHoraria_Id(
+                                asignacion.getDocente().getId(),
+                                horario.getAnioEscolarId().getId(),
+                                diaRestriccion,
+                                franja.getId());
+
+        if (restriccion.isPresent()
+                && restriccion.get().getTipo()
+                == TipoRestriccionDocente.NO_DISPONIBLE) {
+
+            throw new ConflictoHorarioException(
+                    "DOCENTE_NO_DISPONIBLE",
+                    "El docente tiene registrada una "
+                            + "restricción de no disponibilidad "
+                            + "para el día y la franja seleccionados.");
+        }
+    }
+
     private void validarDocenteDisponible(
             Horario horario,
             AsignacionAcademica asignacion,
@@ -392,31 +813,39 @@ public class HorarioService {
             FranjaHoraria franja,
             UUID claseId) {
 
-        UUID anioEscolarId = horario.getAnioEscolarId().getId();
-        UUID docenteId = asignacion.getDocente().getId();
+        UUID anioEscolarId =
+                horario.getAnioEscolarId().getId();
+
+        UUID docenteId =
+                asignacion.getDocente().getId();
+
         UUID franjaId = franja.getId();
 
         boolean ocupado = claseId == null
-                ? claseProgramadaRepository.existeDocenteOcupado(
-                anioEscolarId,
-                docenteId,
-                dia,
-                franjaId)
-                : claseProgramadaRepository.existeDocenteOcupadoExcluyendo(
-                anioEscolarId,
-                docenteId,
-                dia,
-                franjaId,
-                claseId);
+                ? claseProgramadaRepository
+                .existeDocenteOcupado(
+                        anioEscolarId,
+                        docenteId,
+                        dia,
+                        franjaId)
+                : claseProgramadaRepository
+                .existeDocenteOcupadoExcluyendo(
+                        anioEscolarId,
+                        docenteId,
+                        dia,
+                        franjaId,
+                        claseId);
 
         if (ocupado) {
-            String mensaje =
-                    "El docente ya tiene una clase programada "
-                            + "en esta misma franja.";
 
-            conflictoHorarioRegistroService.registrarDocenteOcupado(
-                    horario,
-                    mensaje);
+            String mensaje =
+                    "El docente ya tiene una clase "
+                            + "programada en esta misma franja.";
+
+            conflictoHorarioRegistroService
+                    .registrarDocenteOcupado(
+                            horario,
+                            mensaje);
 
             throw new ConflictoHorarioException(
                     "DOCENTE_OCUPADO",
@@ -424,7 +853,6 @@ public class HorarioService {
         }
     }
 
-    // Valida que el aula no esté ocupada en el mismo día y franja.
     private void validarAulaDisponible(
             Horario horario,
             Aula aula,
@@ -437,26 +865,30 @@ public class HorarioService {
         UUID franjaId = franja.getId();
 
         boolean ocupada = claseId == null
-                ? claseProgramadaRepository.existeAulaOcupada(
-                horarioId,
-                aulaId,
-                dia,
-                franjaId)
-                : claseProgramadaRepository.existeAulaOcupadaExcluyendo(
-                horarioId,
-                aulaId,
-                dia,
-                franjaId,
-                claseId);
+                ? claseProgramadaRepository
+                .existeAulaOcupada(
+                        horarioId,
+                        aulaId,
+                        dia,
+                        franjaId)
+                : claseProgramadaRepository
+                .existeAulaOcupadaExcluyendo(
+                        horarioId,
+                        aulaId,
+                        dia,
+                        franjaId,
+                        claseId);
 
         if (ocupada) {
+
             String mensaje =
                     "El aula seleccionada ya está ocupada "
                             + "en la franja seleccionada.";
 
-            conflictoHorarioRegistroService.registrarAulaOcupada(
-                    horario,
-                    mensaje);
+            conflictoHorarioRegistroService
+                    .registrarAulaOcupada(
+                            horario,
+                            mensaje);
 
             throw new ConflictoHorarioException(
                     "AULA_OCUPADA",
@@ -464,20 +896,21 @@ public class HorarioService {
         }
     }
 
-    // Genera las advertencias no bloqueantes de la clase.
     private List<String> calcularAdvertencias(
             Horario horario,
             Grupo grupo,
             Aula aula) {
 
         if (haySobreaforo(grupo, aula)) {
+
             String mensaje =
                     "La cantidad de estudiantes supera "
                             + "la capacidad del aula.";
 
-            conflictoHorarioRegistroService.registrarCapacidadAula(
-                    horario,
-                    mensaje);
+            conflictoHorarioRegistroService
+                    .registrarCapacidadAula(
+                            horario,
+                            mensaje);
 
             return List.of(mensaje);
         }
@@ -485,10 +918,13 @@ public class HorarioService {
         return List.of();
     }
 
-    // Compara la cantidad de estudiantes del grupo con la capacidad del aula.
-    private boolean haySobreaforo(Grupo grupo, Aula aula) {
+    private boolean haySobreaforo(
+            Grupo grupo,
+            Aula aula) {
 
-        Integer cantidadEstudiantes = grupo.getCantidadEstudiantes();
+        Integer cantidadEstudiantes =
+                grupo.getCantidadEstudiantes();
+
         Integer capacidad = aula.getCapacidad();
 
         return cantidadEstudiantes != null
@@ -496,8 +932,6 @@ public class HorarioService {
                 && cantidadEstudiantes > capacidad;
     }
 
-    // Recupera el horario vigente de la sede y año escolar del grupo.
-    // Si aún no existe, lo crea en estado BORRADOR.
     private Horario obtenerOCrearHorario(
             Grupo grupo,
             String correoUsuario) {
@@ -506,27 +940,38 @@ public class HorarioService {
                 .findFirstByAnioEscolarId_IdAndSedeId_IdOrderByVersionDesc(
                         grupo.getAnioEscolar().getId(),
                         grupo.getSede().getId())
-                .orElseGet(() -> crearHorario(
-                        grupo,
-                        correoUsuario));
+                .orElseGet(() ->
+                        crearHorario(
+                                grupo,
+                                correoUsuario));
     }
 
-    // Crea la primera versión del horario para la sede y año escolar.
     private Horario crearHorario(
             Grupo grupo,
             String correoUsuario) {
 
-        Usuario usuario = usuarioRepository.findByCorreo(correoUsuario)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "El usuario autenticado no existe"));
+        Usuario usuario =
+                usuarioRepository.findByCorreo(correoUsuario)
+                        .orElseThrow(() ->
+                                new RecursoNoEncontradoException(
+                                        "El usuario autenticado "
+                                                + "no existe"));
 
         Horario horario = new Horario();
-        horario.setAnioEscolarId(grupo.getAnioEscolar());
+
+        horario.setAnioEscolarId(
+                grupo.getAnioEscolar());
+
         horario.setSedeId(grupo.getSede());
+
         horario.setVersion(1);
+
         horario.setNombre(
-                "Horario " + grupo.getAnioEscolar().getAnio()
-                        + " - " + grupo.getSede().getNombre());
+                "Horario "
+                        + grupo.getAnioEscolar().getAnio()
+                        + " - "
+                        + grupo.getSede().getNombre());
+
         horario.setEstado(EstadoHorario.BORRADOR);
         horario.setFechaPublicacion(null);
         horario.setCreadoPor(usuario);
@@ -534,7 +979,6 @@ public class HorarioService {
         return horarioRepository.save(horario);
     }
 
-    // Resuelve el turno del grado a partir de su plan de estudios.
     private Turno resolverTurno(Grupo grupo) {
 
         return planEstudiosRepository
@@ -548,30 +992,17 @@ public class HorarioService {
                 .orElse(null);
     }
 
-    // El tablero se publica cuando todas las asignaciones del grupo están
-    // confirmadas. Mientras falte alguna, permanece en BORRADOR. Un horario
-    // archivado conserva ese estado y uno ya publicado no vuelve a borrador.
+    // H-03: conservar el estado real del horario.
     static EstadoHorario determinarEstadoHorario(
             Horario horario,
             List<AsignacionAcademica> asignaciones) {
 
-        if (horario != null
-                && horario.getEstado() == EstadoHorario.ARCHIVADO) {
-            return EstadoHorario.ARCHIVADO;
+        if (horario == null
+                || horario.getEstado() == null) {
+
+            return EstadoHorario.BORRADOR;
         }
 
-        boolean todasConfirmadas = asignaciones != null
-                && !asignaciones.isEmpty()
-                && asignaciones.stream()
-                .allMatch(asignacion -> asignacion.getEstado()
-                        == EstadoAsignacionAcademica.CONFIRMADA);
-
-        if (todasConfirmadas
-                || (horario != null
-                && horario.getEstado() == EstadoHorario.PUBLICADO)) {
-            return EstadoHorario.PUBLICADO;
-        }
-
-        return EstadoHorario.BORRADOR;
+        return horario.getEstado();
     }
 }

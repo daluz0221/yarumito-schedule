@@ -13,6 +13,7 @@ import co.edu.ieruralyarumito.backend.entity.Idoneidad;
 import co.edu.ieruralyarumito.backend.entity.PlanEstudios;
 import co.edu.ieruralyarumito.backend.entity.Usuario;
 import co.edu.ieruralyarumito.backend.entity.enums.EstadoAsignacionAcademica;
+import co.edu.ieruralyarumito.backend.entity.enums.EstadoDocente;
 import co.edu.ieruralyarumito.backend.exception.RecursoDuplicadoException;
 import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
 import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
@@ -100,6 +101,12 @@ public class AsignacionAcademicaService {
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "El usuario autenticado no existe"));
 
+        // H-05: el grupo debe pertenecer al año escolar seleccionado.
+        validarAnioEscolarGrupo(anioEscolar, grupo);
+
+        // H-06A: solo un docente ACTIVO recibe nuevas asignaciones.
+        validarDocenteActivo(docente);
+
         // Reglas de negocio HU-06, aplicadas antes de persistir.
         validarUnicidad(anioEscolar, grupo, asignatura);
         validarContinuidadDocente(anioEscolar, grupo, asignatura, docente);
@@ -118,6 +125,31 @@ public class AsignacionAcademicaService {
                 asignacionAcademicaRepository.save(asignacion);
 
         return asignacionAcademicaMapper.toResponse(guardada);
+    }
+
+    // H-05: evita asignaciones entre años escolares diferentes.
+    private void validarAnioEscolarGrupo(
+            AnioEscolar anioEscolar,
+            Grupo grupo) {
+
+        if (grupo.getAnioEscolar() == null
+                || !anioEscolar.getId().equals(
+                grupo.getAnioEscolar().getId())) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "El grupo no pertenece al año escolar indicado");
+        }
+    }
+
+    // H-06A: verifica el estado administrativo del docente.
+    private void validarDocenteActivo(Docente docente) {
+
+        if (docente.getEstado() != EstadoDocente.ACTIVO) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "Solo un docente activo puede recibir "
+                            + "una asignación académica");
+        }
     }
 
     // Consulta una asignación académica por su identificador.
@@ -229,8 +261,9 @@ public class AsignacionAcademicaService {
                                 asignatura.getId());
 
         boolean asignadaAOtroDocente = asignacionesExistentes.stream()
-                .anyMatch(asignacion -> !asignacion.getDocente().getId()
-                        .equals(docente.getId()));
+                .anyMatch(asignacion ->
+                        !asignacion.getDocente().getId()
+                                .equals(docente.getId()));
 
         if (asignadaAOtroDocente) {
             throw new RelacionAcademicaInvalidaException(
@@ -278,7 +311,7 @@ public class AsignacionAcademicaService {
         return idoneidad.getArea() != null
                 && asignatura.getArea() != null
                 && idoneidad.getArea().getId()
-                        .equals(asignatura.getArea().getId());
+                .equals(asignatura.getArea().getId());
     }
 
     // Verifica que la idoneidad esté vigente en la fecha indicada.
@@ -302,7 +335,7 @@ public class AsignacionAcademicaService {
                         "La asignación académica no existe"));
     }
 
-    // Genera el resumen de horas requeridas y asignadas para un grupo.
+    // Q-01: genera el resumen utilizando la consulta por identificadores.
     @Transactional(readOnly = true)
     public ResumenAsignacionAcademicaResponse generateResumenAsignacionAcademica(
             UUID anioEscolarId,
@@ -318,15 +351,21 @@ public class AsignacionAcademicaService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Grupo no encontrado"));
 
+        // H-05: el resumen también debe usar un año coherente.
+        validarAnioEscolarGrupo(anioEscolar, grupo);
+
         Grado grado = grupo.getGrado();
 
         List<PlanEstudios> planEstudiosList = planEstudiosRepository
-                .findByAnioEscolarAndGrado(
+                .findByAnioEscolar_IdAndGrado_Id(
                         anioEscolar.getId(),
-                        grado.getId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "No se encontraron planes de estudio para el año escolar "
-                                + "y grupo especificados"));
+                        grado.getId());
+
+        if (planEstudiosList.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "No se encontraron planes de estudio para el año escolar "
+                            + "y grupo especificados");
+        }
 
         int horasRequeridas = planEstudiosList.stream()
                 .mapToInt(PlanEstudios::getHorasSemanales)

@@ -1,3 +1,4 @@
+
 package co.edu.ieruralyarumito.backend.service;
 
 import co.edu.ieruralyarumito.backend.entity.AsignacionAcademica;
@@ -11,11 +12,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/**
- * Verifica que el tablero del Gestor exponga el estado del Horario
- * (BORRADOR/PUBLICADO/ARCHIVADO) y no el estado de la asignación
- * académica (CONFIRMADA). HU-04 consume este valor para sus informes.
- */
 class HorarioServiceEstadoTest {
 
     @Test
@@ -24,8 +20,7 @@ class HorarioServiceEstadoTest {
         assertEquals(
                 EstadoHorario.BORRADOR,
                 HorarioService.determinarEstadoHorario(
-                        null, List.of())
-        );
+                        null, List.of()));
     }
 
     @Test
@@ -40,30 +35,26 @@ class HorarioServiceEstadoTest {
                         horario,
                         List.of(
                                 asignacion(EstadoAsignacionAcademica.CONFIRMADA),
-                                asignacion(EstadoAsignacionAcademica.BORRADOR)
-                        ))
-        );
+                                asignacion(EstadoAsignacionAcademica.BORRADOR))));
     }
 
     @Test
-    void exponePublicadoCuandoTodasLasAsignacionesEstanConfirmadas() {
+    void conservaBorradorAunqueTodasLasAsignacionesEstanConfirmadas() {
 
         Horario horario = new Horario();
         horario.setEstado(EstadoHorario.BORRADOR);
 
         assertEquals(
-                EstadoHorario.PUBLICADO,
+                EstadoHorario.BORRADOR,
                 HorarioService.determinarEstadoHorario(
                         horario,
                         List.of(
                                 asignacion(EstadoAsignacionAcademica.CONFIRMADA),
-                                asignacion(EstadoAsignacionAcademica.CONFIRMADA)
-                        ))
-        );
+                                asignacion(EstadoAsignacionAcademica.CONFIRMADA))));
     }
 
     @Test
-    void conservaPublicadoAunqueElHorarioNoTengaAsignaciones() {
+    void conservaPublicadoCuandoEstaPersistidoComoPublicado() {
 
         Horario horario = new Horario();
         horario.setEstado(EstadoHorario.PUBLICADO);
@@ -71,12 +62,11 @@ class HorarioServiceEstadoTest {
         assertEquals(
                 EstadoHorario.PUBLICADO,
                 HorarioService.determinarEstadoHorario(
-                        horario, List.of())
-        );
+                        horario, List.of()));
     }
 
     @Test
-    void exponeArchivadoPorEncimaDeLasAsignacionesConfirmadas() {
+    void conservaArchivadoAunqueTodasLasAsignacionesEstanConfirmadas() {
 
         Horario horario = new Horario();
         horario.setEstado(EstadoHorario.ARCHIVADO);
@@ -86,9 +76,18 @@ class HorarioServiceEstadoTest {
                 HorarioService.determinarEstadoHorario(
                         horario,
                         List.of(
-                                asignacion(EstadoAsignacionAcademica.CONFIRMADA)
-                        ))
-        );
+                                asignacion(EstadoAsignacionAcademica.CONFIRMADA))));
+    }
+
+    @Test
+    void exponeBorradorCuandoElHorarioNoTieneEstado() {
+
+        Horario horario = new Horario();
+
+        assertEquals(
+                EstadoHorario.BORRADOR,
+                HorarioService.determinarEstadoHorario(
+                        horario, List.of()));
     }
 
     private AsignacionAcademica asignacion(
