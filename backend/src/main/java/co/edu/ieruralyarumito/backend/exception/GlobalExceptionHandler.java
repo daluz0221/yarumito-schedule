@@ -73,6 +73,21 @@ public class GlobalExceptionHandler {
                         exception.getMessage()));
     }
 
+    // Maneja los conflictos de programación de horario
+    // (docente ocupado, aula ocupada).
+    @ExceptionHandler(ConflictoHorarioException.class)
+    public ResponseEntity<Map<String, String>> manejarConflictoHorario(
+            ConflictoHorarioException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                        "codigo",
+                        exception.getCodigo(),
+                        "mensaje",
+                        exception.getMessage()));
+    }
+
     // Maneja los errores cuando una relación académica
     // entre entidades no es válida.
     @ExceptionHandler(RelacionAcademicaInvalidaException.class)
