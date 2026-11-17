@@ -73,6 +73,21 @@ public class GlobalExceptionHandler {
                         exception.getMessage()));
     }
 
+    // Maneja los conflictos de programación de horario
+    // (docente ocupado, aula ocupada).
+    @ExceptionHandler(ConflictoHorarioException.class)
+    public ResponseEntity<Map<String, String>> manejarConflictoHorario(
+            ConflictoHorarioException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                        "codigo",
+                        exception.getCodigo(),
+                        "mensaje",
+                        exception.getMessage()));
+    }
+
     // Maneja los errores cuando una relación académica
     // entre entidades no es válida.
     @ExceptionHandler(RelacionAcademicaInvalidaException.class)
@@ -97,6 +112,23 @@ public class GlobalExceptionHandler {
                 .body(Map.of(
                         "mensaje",
                         exception.getMessage()));
+    }
+
+    // El informe publicado y otras reglas de estado lanzan este error
+    // con un mensaje listo para mostrar.
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> manejarEstadoInvalido(
+            IllegalStateException exception) {
+
+        String mensaje = exception.getMessage();
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                        "mensaje",
+                        mensaje == null || mensaje.isBlank()
+                                ? "La operación no es válida en el estado actual."
+                                : mensaje));
     }
 
     // Maneja validaciones funcionales inválidas

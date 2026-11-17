@@ -1,0 +1,1 @@
+export { ActivateAcademicYearModal } from './ActivateAcademicYearModal';

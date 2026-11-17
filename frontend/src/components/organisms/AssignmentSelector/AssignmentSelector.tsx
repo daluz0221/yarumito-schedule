@@ -1,5 +1,4 @@
-import { academicYearOptions, type AcademicYearStatus } from '../../../content/academicYear'
-import { academicYears } from '../../../content/academicYear'
+import type { AcademicYearStatus } from '../../../content/academicYear'
 import { Card } from '../../atoms/Card'
 import { FormField } from '../../molecules/FormField'
 import { SelectField } from '../../molecules/SelectField'
@@ -10,7 +9,10 @@ export type AssignmentSelectorProps = {
   groupId: string
   gradeLabel: string
   yearStatus: AcademicYearStatus
+  yearOptions: { value: string; label: string }[]
   groupOptions: { value: string; label: string }[]
+  yearsDisabled?: boolean
+  groupsDisabled?: boolean
   onYearChange: (yearId: string) => void
   onGroupChange: (groupId: string) => void
 }
@@ -20,11 +22,16 @@ export function AssignmentSelector({
   groupId,
   gradeLabel,
   yearStatus,
+  yearOptions,
   groupOptions,
+  yearsDisabled = false,
+  groupsDisabled = false,
   onYearChange,
   onGroupChange,
 }: AssignmentSelectorProps) {
-  const emptyGroups = groupOptions.length === 0
+  const resolvedGroups =
+    groupOptions.length > 0 ? groupOptions : [{ value: '', label: 'Sin grupos activos' }]
+  const emptyGroups = resolvedGroups.every((option) => option.value === '')
 
   return (
     <Card className={styles.card}>
@@ -34,7 +41,8 @@ export function AssignmentSelector({
           label="Año lectivo"
           name="year"
           value={yearId}
-          options={academicYearOptions(academicYears)}
+          options={yearOptions}
+          disabled={yearsDisabled}
           onChange={onYearChange}
         />
         <SelectField
@@ -42,12 +50,8 @@ export function AssignmentSelector({
           label="Grupo"
           name="group"
           value={emptyGroups ? '' : groupId}
-          options={
-            emptyGroups
-              ? [{ value: '', label: 'Sin grupos activos' }]
-              : groupOptions
-          }
-          disabled={emptyGroups || yearStatus === 'CERRADO'}
+          options={resolvedGroups}
+          disabled={groupsDisabled || emptyGroups || yearStatus === 'CERRADO'}
           onChange={onGroupChange}
         />
         <FormField id="assignment-grade" label="Grado">

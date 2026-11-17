@@ -6,6 +6,7 @@ import {
   ProtectedRoute,
 } from './auth'
 import { AcademicYearPage } from './pages/AcademicYearPage'
+import { AuditoriaPage } from './pages/AuditoriaPage'
 import { AulasPage } from './pages/AulasPage'
 import { AreasPage } from './pages/AreasPage'
 import { AssignmentPage } from './pages/AssignmentPage'
@@ -15,6 +16,8 @@ import { GradosPage } from './pages/GradosPage'
 import { EditTeacherPage } from './pages/EditTeacherPage'
 import { FranjasPage } from './pages/FranjasPage'
 import { RegisterTeacherPage } from './pages/RegisterTeacherPage'
+import { ConsultasPage } from './pages/ConsultasPage'
+import { InformesPage } from './pages/InformesPage'
 import { PublicationPage } from './pages/PublicationPage'
 import { RestrictionsPage } from './pages/RestrictionsPage'
 import { SchedulePage } from './pages/SchedulePage'
@@ -56,6 +59,9 @@ export default function App() {
             <Route path="/dashboard/horario" element={<SchedulePage />} />
             <Route path="/dashboard/validaciones" element={<ValidationsPage />} />
             <Route path="/dashboard/publicacion" element={<PublicationPage />} />
+            <Route path="/dashboard/auditoria" element={<AuditoriaPage />} />
+            <Route path="/dashboard/consultas" element={<ConsultasPage />} />
+            <Route path="/dashboard/informes" element={<InformesPage />} />
             <Route path="/dashboard/docentes" element={<TeachersPage />} />
             <Route
               path="/dashboard/docentes/registrar"

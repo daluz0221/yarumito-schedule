@@ -1,0 +1,1 @@
+export { AcademicYearFormModal } from './AcademicYearFormModal';

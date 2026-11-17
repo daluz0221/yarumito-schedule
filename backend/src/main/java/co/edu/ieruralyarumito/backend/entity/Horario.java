@@ -61,6 +61,30 @@ public class Horario {
         return this.id;
     }
 
+    public AnioEscolar getAnioEscolarId(){
+        return this.anioEscolarId;
+    }
+
+    public void setAnioEscolarId(AnioEscolar anioEscolarId){
+        this.anioEscolarId = anioEscolarId;
+    }
+
+    public Sede getSedeId(){
+        return this.sedeId;
+    }
+
+    public void setSedeId(Sede sedeId){
+        this.sedeId = sedeId;
+    }
+
+    public Usuario getCreadoPor(){
+        return this.creadoPor;
+    }
+
+    public void setCreadoPor(Usuario creadoPor){
+        this.creadoPor = creadoPor;
+    }
+
     public int getVersion(){
         return this.version;
     }
@@ -87,6 +111,10 @@ public class Horario {
 
     public LocalDateTime getFechaPublicacion(){
         return this.fechaPublicacion;
+    }
+
+    public void setFechaPublicacion(LocalDateTime fechaPublicacion){
+        this.fechaPublicacion = fechaPublicacion;
     }
 
     public String getNotas(){

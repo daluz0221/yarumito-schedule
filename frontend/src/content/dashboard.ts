@@ -157,7 +157,27 @@ export const sidebarSecondaryNav: NavItemData[] = [
     to: '/dashboard/publicacion',
     indented: true,
   },
-  { id: 'queries', label: 'Consultas', icon: 'search', disabled: true, indented: true },
+  {
+    id: 'audit',
+    label: 'Auditoría',
+    icon: 'search',
+    to: '/dashboard/auditoria',
+    indented: true,
+  },
+  {
+    id: 'queries',
+    label: 'Consultas',
+    icon: 'search',
+    to: '/dashboard/consultas',
+    indented: true,
+  },
+  {
+    id: 'reports',
+    label: 'Informes',
+    icon: 'clipboard',
+    to: '/dashboard/informes',
+    indented: true,
+  },
 ]
 
 export const sidebarAccountNav: NavItemData[] = [
@@ -239,11 +259,29 @@ export const dashboardModules: ModuleItemData[] = [
     to: '/dashboard/publicacion',
   },
   {
+    id: 'audit',
+    title: 'Auditoría',
+    description: 'Consulta el historial de cambios por entidad o por usuario.',
+    icon: 'search',
+    available: true,
+    to: '/dashboard/auditoria',
+  },
+  {
     id: 'queries',
     title: 'Consultas',
-    description: 'Consulte horarios por grupo, docente o jornada cuando el proceso esté listo.',
+    description: 'Consulte el horario institucional o publicado de un grupo y descárguelo.',
     icon: 'search',
-    available: false,
+    available: true,
+    to: '/dashboard/consultas',
+  },
+  {
+    id: 'reports',
+    title: 'Informes institucionales',
+    description:
+      'Consulta la planta docente, las áreas y asignaturas, y los perfiles profesionales.',
+    icon: 'clipboard',
+    available: true,
+    to: '/dashboard/informes',
   },
 ]
 

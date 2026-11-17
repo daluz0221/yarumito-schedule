@@ -15,6 +15,7 @@ export type ValidationFiltersProps = {
   groupOptions: { value: string; label: string }[]
   teacherOptions: { value: string; label: string }[]
   classroomOptions: { value: string; label: string }[]
+  kindOptions?: { value: string; label: string }[]
   validating: boolean
   onChange: (patch: Partial<ValidationFilterValues>) => void
   onRevalidate: () => void
@@ -25,6 +26,7 @@ export function ValidationFilters({
   groupOptions,
   teacherOptions,
   classroomOptions,
+  kindOptions = kindFilterOptions,
   validating,
   onChange,
   onRevalidate,
@@ -33,7 +35,7 @@ export function ValidationFilters({
     <Card className={styles.card}>
       <SectionHeader
         title="Filtros"
-        description="Acota los conflictos por severidad, estado, tipo o elemento afectado."
+        description="Acota los conflictos por severidad, estado o tipo. El grupo elige el horario que se consulta."
       />
 
       <form className={styles.filters} onSubmit={(event) => event.preventDefault()}>
@@ -58,7 +60,7 @@ export function ValidationFilters({
           label="Tipo de conflicto"
           name="kind"
           value={values.kind}
-          options={kindFilterOptions}
+          options={kindOptions}
           onChange={(kind) => onChange({ kind })}
         />
         <SelectField

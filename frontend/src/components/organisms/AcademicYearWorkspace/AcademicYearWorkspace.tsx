@@ -19,6 +19,7 @@ import { Button } from '../../atoms/Button'
 import { Text } from '../../atoms/Text'
 import { AcademicYearCard } from '../AcademicYearCard'
 import { AcademicYearFormModal } from '../AcademicYearFormModal'
+import { ParametrosInstitucionalesSection } from '../ParametrosInstitucionalesSection'
 import { SchoolGroupsSection } from '../SchoolGroupsSection'
 import styles from './AcademicYearWorkspace.module.css'
 
@@ -101,6 +102,12 @@ export function AcademicYearWorkspace() {
             onYearChange={selectYear}
             onSaved={guardarAnio}
             onMissing={retirar}
+          />
+
+          <ParametrosInstitucionalesSection
+            key={year.id}
+            yearId={year.id}
+            yearLabel={year.year}
           />
 
           {fuenteGrupos ? (

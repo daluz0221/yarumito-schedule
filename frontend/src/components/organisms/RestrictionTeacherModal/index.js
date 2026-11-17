@@ -1,0 +1,1 @@
+export { RestrictionTeacherModal } from './RestrictionTeacherModal';

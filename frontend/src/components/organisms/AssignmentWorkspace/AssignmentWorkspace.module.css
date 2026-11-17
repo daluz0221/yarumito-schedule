@@ -51,6 +51,13 @@
   font-size: 14px;
 }
 
+.error {
+  margin: 0;
+  color: #c0392b;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
 @media (max-width: 560px) {
   .tab,
   .tabActive {

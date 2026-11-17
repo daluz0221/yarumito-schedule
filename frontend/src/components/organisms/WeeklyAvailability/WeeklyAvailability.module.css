@@ -37,6 +37,30 @@
   font-size: 13px;
 }
 
+.error {
+  margin: 0;
+  color: #d15b6a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.shift {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.shiftLabel {
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.shiftSelect {
+  width: min(100%, 240px);
+}
+
 .grid {
   display: grid;
   grid-template-columns: 108px repeat(5, minmax(0, 1fr));

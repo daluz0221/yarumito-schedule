@@ -1,26 +1,40 @@
-import { useEffect, useState } from 'react'
-import { ApiError, listarCatalogoAreas, listarDocentes } from '../../../api'
-import type { AreaResponse } from '../../../api/areas'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  activitySubjects,
-  assignmentGroupOptions,
+  anioEscolarVisible,
+  ApiError,
+  confirmarAsignacion,
+  consultarAsignacion,
+  etiquetaGrado,
+  listarAreas,
+  listarAsignaturas,
+  listarBorradores,
+  listarAsignacionesPorGrupo,
+  asignarActividadDocente,
+  listarActividadesDocente,
+  listarDocentes,
+  listarPlanesEstudio,
+  listarRestriccionesPorAnio,
+  opcionesAniosEscolares,
+  registrarAsignacion,
+  useCatalogoAniosEscolares,
+  useCatalogoGrupos,
+} from '../../../api'
+import type { AreaResponse } from '../../../api/areas'
+import type { AsignacionActividadResponse } from '../../../api/actividadesDocente'
+import type { AsignacionAcademicaResponse } from '../../../api/asignaciones'
+import type { PlanEstudiosResponse } from '../../../api/planesEstudio'
+import {
   assignmentPriorityNote,
   assignmentPrioritySteps,
   assignmentTabs,
-  buildAssignmentRows,
-  curricularSubjects,
-  gradeLabelFromGroup,
-  groupsForYear,
-  nextAssignmentId,
-  planEntriesForGroup,
-  seedAssignments,
+  filasActividadesInstitucionales,
+  mergeCurricularAssignments,
   summarizeRows,
-  type AssignmentRecord,
   type AssignmentRow,
   type AssignmentTab,
+  type CurricularAssignmentSource,
 } from '../../../content/academicAssignment'
-import { academicYears } from '../../../content/academicYear'
-import { currentStudyPlanYear } from '../../../content/studyPlan'
+import type { AcademicYearStatus } from '../../../content/academicYear'
 import { formatTeacherName, type Teacher } from '../../../content/teachers'
 import { Card } from '../../atoms/Card'
 import { Text } from '../../atoms/Text'
@@ -30,21 +44,20 @@ import { AssignmentSection } from '../AssignmentSection'
 import { AssignmentSelector } from '../AssignmentSelector'
 import { AssignmentSummary } from '../AssignmentSummary'
 import { PlanSubjectPickerModal } from '../PlanSubjectPickerModal'
-import { RemoveAssignmentModal } from '../RemoveAssignmentModal'
 import styles from './AssignmentWorkspace.module.css'
 
 function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === 'AbortError'
 }
 
+function mensajeError(cause: unknown, fallback: string) {
+  return cause instanceof ApiError && cause.message ? cause.message : fallback
+}
+
 type Dialog =
   | { name: 'pick-subject' }
   | { name: 'create'; row?: AssignmentRow }
-  | { name: 'edit'; row: AssignmentRow }
-  | { name: 'remove'; row: AssignmentRow }
   | { name: 'create-activity'; row?: AssignmentRow }
-  | { name: 'edit-activity'; row: AssignmentRow }
-  | { name: 'remove-activity'; row: AssignmentRow }
 
 type Catalog = {
   teachers: Teacher[]
@@ -52,26 +65,199 @@ type Catalog = {
   error: string
 }
 
+function materiasDelGrado(
+  planes: PlanEstudiosResponse[],
+  yearId: string,
+  gradoId: string,
+  areaPorAsignatura: ReadonlyMap<string, string>,
+) {
+  const grouped = new Map<
+    string,
+    { key: string; area: string; subject: string; requiredHours: number }
+  >()
+
+  planes
+    .filter((plan) => plan.anioEscolarId === yearId && plan.gradoId === gradoId)
+    .forEach((plan) => {
+      const current = grouped.get(plan.asignaturaId)
+
+      if (!current) {
+        grouped.set(plan.asignaturaId, {
+          key: plan.asignaturaId,
+          area: areaPorAsignatura.get(plan.asignaturaId)?.trim() || '—',
+          subject: plan.asignaturaNombre?.trim() || 'Asignatura',
+          requiredHours: plan.horasSemanales,
+        })
+        return
+      }
+
+      current.requiredHours += plan.horasSemanales
+    })
+
+  return [...grouped.values()]
+}
+
+function fuenteAsignacion(item: AsignacionAcademicaResponse): CurricularAssignmentSource {
+  return {
+    id: item.id,
+    asignaturaId: item.asignaturaId,
+    asignaturaNombre: item.asignaturaNombre,
+    docenteId: item.docenteId,
+    docenteNombre: item.docenteNombre,
+    horasSemanales: item.horasSemanales,
+    observacion: item.observacion,
+    estado: item.estado,
+  }
+}
+
 export function AssignmentWorkspace() {
-  const [yearId, setYearId] = useState(currentStudyPlanYear().id)
-  const [groupId, setGroupId] = useState(() => groupsForYear(currentStudyPlanYear().id)[0]?.id ?? '')
+  const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
+  const { grupos, error: gruposError, loading: gruposLoading } = useCatalogoGrupos()
+  const [yearId, setYearId] = useState('')
+  const [groupId, setGroupId] = useState('')
   const [tab, setTab] = useState<AssignmentTab>('curricular')
-  const [assignments, setAssignments] = useState<AssignmentRecord[]>(seedAssignments)
+  const [actividadesDocentes, setActividadesDocentes] = useState<AsignacionActividadResponse[] | null>(
+    null,
+  )
+  const [actividadesError, setActividadesError] = useState('')
+  const [asignacionesGrupo, setAsignacionesGrupo] = useState<AsignacionAcademicaResponse[] | null>(
+    null,
+  )
+  const [asignacionesError, setAsignacionesError] = useState('')
+  const [borradores, setBorradores] = useState<AsignacionAcademicaResponse[] | null>(null)
+  const [borradoresError, setBorradoresError] = useState('')
+  const [planes, setPlanes] = useState<PlanEstudiosResponse[] | null>(null)
+  const [planesError, setPlanesError] = useState('')
+  const [areaPorAsignatura, setAreaPorAsignatura] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
+  )
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [dialog, setDialog] = useState<Dialog | null>(null)
+  const [saveError, setSaveError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState('')
+  const [revision, setRevision] = useState(0)
+  const [conteoRestricciones, setConteoRestricciones] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    if (!anios?.length) {
+      return
+    }
+
+    setYearId((current) =>
+      anios.some((year) => year.id === current)
+        ? current
+        : (anioEscolarVisible(anios)?.id ?? ''),
+    )
+  }, [anios])
+
+  useEffect(() => {
+    if (!yearId) {
+      setConteoRestricciones({})
+      return
+    }
+
+    const controller = new AbortController()
+
+    listarRestriccionesPorAnio(yearId, controller.signal)
+      .then((items) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        const counts: Record<string, number> = {}
+        items.forEach((item) => {
+          counts[item.docenteId] = (counts[item.docenteId] ?? 0) + 1
+        })
+        setConteoRestricciones(counts)
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setConteoRestricciones({})
+      })
+
+    return () => controller.abort()
+  }, [yearId])
+
+  const yearGroups = useMemo(() => {
+    return (grupos ?? [])
+      .filter((group) => group.anioEscolarId === yearId && group.activo)
+      .sort(
+        (left, right) =>
+          left.gradoNivel - right.gradoNivel || left.codigo.localeCompare(right.codigo, 'es'),
+      )
+  }, [grupos, yearId])
+
+  useEffect(() => {
+    if (!yearId || grupos === null) {
+      return
+    }
+
+    setGroupId((current) =>
+      yearGroups.some((group) => group.id === current) ? current : (yearGroups[0]?.id ?? ''),
+    )
+  }, [grupos, yearGroups, yearId])
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    listarPlanesEstudio(controller.signal)
+      .then((items) => {
+        setPlanes(items)
+        setPlanesError('')
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setPlanes([])
+        setPlanesError(
+          mensajeError(cause, 'No se pudo cargar el plan de estudios de este grado.'),
+        )
+      })
+
+    return () => controller.abort()
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
 
     Promise.all([
       listarDocentes({ page: 0, size: 100, estado: 'ACTIVO' }, controller.signal),
-      listarCatalogoAreas(controller.signal),
+      listarAreas(controller.signal),
     ])
-      .then(([teachersPage, areas]) => {
+      .then(async ([teachersPage, areas]) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
         const teachers = [...teachersPage.content].sort((left, right) =>
           formatTeacherName(left).localeCompare(formatTeacherName(right), 'es'),
         )
         setCatalog({ teachers, areas, error: '' })
+
+        try {
+          const groups = await Promise.all(
+            areas.map((area) =>
+              listarAsignaturas(area.id, controller.signal).then((subjects) =>
+                subjects.map((subject) => [subject.id, area.nombre] as const),
+              ),
+            ),
+          )
+
+          if (!controller.signal.aborted) {
+            setAreaPorAsignatura(new Map(groups.flat()))
+          }
+        } catch (cause) {
+          if (!isAbortError(cause) && !controller.signal.aborted) {
+            setAreaPorAsignatura(new Map())
+          }
+        }
       })
       .catch((cause) => {
         if (isAbortError(cause)) {
@@ -81,106 +267,267 @@ export function AssignmentWorkspace() {
         setCatalog({
           teachers: [],
           areas: [],
-          error:
-            cause instanceof ApiError
-              ? cause.message
-              : 'No se pudieron cargar los docentes. La asignación queda en consulta local.',
+          error: mensajeError(cause, 'No se pudieron cargar los docentes.'),
         })
       })
 
     return () => controller.abort()
   }, [])
 
-  const year = academicYears.find((item) => item.id === yearId) ?? academicYears[0]
-  const yearGroups = groupsForYear(year.id)
-  const group = yearGroups.find((item) => item.id === groupId) ?? yearGroups[0]
-  const groupOptions = assignmentGroupOptions(year.id)
-  const gradeLabel = group ? gradeLabelFromGroup(group) : ''
-  const readOnly = year.status === 'CERRADO'
-  const planEntries = group ? planEntriesForGroup(year.id, group) : []
+  useEffect(() => {
+    const controller = new AbortController()
+
+    listarBorradores(controller.signal)
+      .then((items) => {
+        setBorradores(items)
+        setBorradoresError('')
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setBorradores([])
+        setBorradoresError(
+          mensajeError(cause, 'No se pudieron cargar los borradores de asignación.'),
+        )
+      })
+
+    return () => controller.abort()
+  }, [revision])
+
+  useEffect(() => {
+    if (!groupId) {
+      setAsignacionesGrupo([])
+      setAsignacionesError('')
+      return
+    }
+
+    const controller = new AbortController()
+    setAsignacionesGrupo(null)
+    setAsignacionesError('')
+
+    listarAsignacionesPorGrupo(groupId, controller.signal)
+      .then((items) => {
+        setAsignacionesGrupo(items)
+        setAsignacionesError('')
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setAsignacionesGrupo([])
+        setAsignacionesError(
+          mensajeError(cause, 'No se pudieron cargar las asignaciones de este grupo.'),
+        )
+      })
+
+    return () => controller.abort()
+  }, [groupId, revision])
+
+  useEffect(() => {
+    if (!catalog) {
+      return
+    }
+
+    if (catalog.teachers.length === 0) {
+      setActividadesDocentes([])
+      setActividadesError('')
+      return
+    }
+
+    const controller = new AbortController()
+
+    Promise.all(
+      catalog.teachers.map(async (teacher) => {
+        try {
+          return await listarActividadesDocente(teacher.id, controller.signal)
+        } catch (cause) {
+          if (isAbortError(cause) || controller.signal.aborted) {
+            throw cause
+          }
+
+          return null
+        }
+      }),
+    )
+      .then((groups) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        const failed = groups.some((groupItems) => groupItems === null)
+        setActividadesDocentes(groups.flatMap((groupItems) => groupItems ?? []))
+        setActividadesError(
+          failed ? 'No se pudieron cargar las actividades de todos los docentes.' : '',
+        )
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setActividadesDocentes([])
+        setActividadesError(
+          mensajeError(cause, 'No se pudieron cargar las actividades de los docentes.'),
+        )
+      })
+
+    return () => controller.abort()
+  }, [catalog, revision])
+
+  const year = anios?.find((item) => item.id === yearId) ?? null
+  const group = yearGroups.find((item) => item.id === groupId) ?? null
+  const yearStatus: AcademicYearStatus = year?.status ?? 'PLANEACION'
+  const gradeLabel = group ? etiquetaGrado(group.gradoNombre) : ''
+  const readOnly = yearStatus === 'CERRADO'
   const teachers = catalog?.teachers ?? []
   const areas = catalog?.areas ?? []
-  const scopedAssignments = assignments.filter(
-    (item) => item.yearId === year.id && item.groupId === (group?.id ?? ''),
-  )
-  const curricularRows = buildAssignmentRows(
-    curricularSubjects(planEntries),
-    scopedAssignments.filter((item) => item.tab === 'curricular'),
-    teachers,
-  )
-  const activityRows = buildAssignmentRows(
-    activitySubjects(),
-    scopedAssignments.filter((item) => item.tab === 'activity'),
-    teachers,
-  )
+  const subjects = group
+    ? materiasDelGrado(planes ?? [], yearId, group.gradoId, areaPorAsignatura)
+    : []
+  const curricularRows =
+    planes !== null && asignacionesGrupo !== null
+      ? mergeCurricularAssignments(subjects, asignacionesGrupo.map(fuenteAsignacion))
+      : []
+  const activityOptions = filasActividadesInstitucionales([])
+  const activityRows =
+    actividadesDocentes === null
+      ? []
+      : filasActividadesInstitucionales(actividadesDocentes)
   const visibleRows = tab === 'curricular' ? curricularRows : activityRows
   const summary = summarizeRows(curricularRows)
-  const closeDialog = () => setDialog(null)
-  const canCreate = !readOnly && Boolean(group) && visibleRows.length > 0
+  const pendingSubjects = curricularRows.filter((row) => !row.assignmentId)
+  const borradoresGrupo = (borradores ?? []).filter((item) => item.grupoId === group?.id)
+  const curricularLista = planes !== null && asignacionesGrupo !== null
+  const canCreate =
+    !readOnly &&
+    (tab === 'curricular'
+      ? Boolean(group) && curricularLista && pendingSubjects.length > 0 && !planesError
+      : teachers.length > 0 && actividadesDocentes !== null)
+  const yearOptions = opcionesAniosEscolares(anios, aniosError)
+  const groupOptions = gruposLoading
+    ? [{ value: '', label: 'Cargando grupos…' }]
+    : gruposError
+      ? [{ value: '', label: 'Grupos no disponibles' }]
+      : yearGroups.map((item) => ({ value: item.id, label: item.codigo }))
+
+  const closeDialog = () => {
+    if (saving) {
+      return
+    }
+
+    setDialog(null)
+    setSaveError('')
+  }
 
   const selectYear = (nextYearId: string) => {
     setYearId(nextYearId)
-    setGroupId(groupsForYear(nextYearId)[0]?.id ?? '')
     setDialog(null)
+    setActionError('')
   }
 
-  const saveRecord = (
-    values: {
-      subjectKey: string
-      teacherId: string | null
-      teacherName: string
-      assignedHours: number
-      kind: AssignmentRecord['kind']
-      note: string
-    },
-    nextTab: AssignmentTab,
-  ) => {
-    if (!group) {
+  const upsertAssignment = async (values: AssignmentFormValues) => {
+    if (!group || !year) {
       return
     }
 
-    const record: AssignmentRecord = {
-      id: nextAssignmentId(year.id, group.id, values.subjectKey),
-      yearId: year.id,
-      groupId: group.id,
-      subjectKey: values.subjectKey,
-      tab: nextTab,
-      teacherId: values.teacherId,
-      teacherName: values.teacherName || null,
-      assignedHours: values.assignedHours,
-      kind: values.kind,
-      note: values.note,
-    }
-
-    setAssignments((current) => {
-      const exists = current.some((item) => item.id === record.id)
-      return exists
-        ? current.map((item) => (item.id === record.id ? record : item))
-        : [...current, record]
-    })
-    closeDialog()
-  }
-
-  const upsertAssignment = (values: AssignmentFormValues) => {
-    saveRecord(values, 'curricular')
-  }
-
-  const upsertActivity = (values: ActivityAssignmentFormValues) => {
-    saveRecord({ ...values, kind: 'ACTIVIDAD' }, 'activity')
-  }
-
-  const removeAssignment = (row: AssignmentRow) => {
-    if (!group) {
+    if (!values.teacherId) {
+      setSaveError('Selecciona un docente registrado.')
       return
     }
 
-    const id = nextAssignmentId(year.id, group.id, row.key)
-    setAssignments((current) => current.filter((item) => item.id !== id))
-    closeDialog()
+    setSaving(true)
+    setSaveError('')
+
+    try {
+      await registrarAsignacion({
+        anioEscolarId: year.id,
+        docenteId: values.teacherId,
+        grupoId: group.id,
+        asignaturaId: values.subjectKey,
+        horasSemanales: values.assignedHours,
+        observacion: values.note.trim() || null,
+      })
+      setRevision((current) => current + 1)
+      setDialog(null)
+      setSaveError('')
+      setActionError('')
+    } catch (cause) {
+      setSaveError(mensajeError(cause, 'No se pudo guardar la asignación académica.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const confirmAssignment = async (row: AssignmentRow) => {
+    if (!row.assignmentId || confirmingId) {
+      return
+    }
+
+    setConfirmingId(row.assignmentId)
+    setActionError('')
+
+    try {
+      const actual = await consultarAsignacion(row.assignmentId)
+
+      if (actual.estado !== 'BORRADOR') {
+        setActionError('La asignación ya no está en borrador.')
+        setRevision((current) => current + 1)
+        return
+      }
+
+      await confirmarAsignacion(row.assignmentId)
+      setRevision((current) => current + 1)
+    } catch (cause) {
+      setActionError(mensajeError(cause, 'No se pudo confirmar la asignación.'))
+    } finally {
+      setConfirmingId(null)
+    }
+  }
+
+  const upsertActivity = async (values: ActivityAssignmentFormValues) => {
+    if (!values.teacherId) {
+      setSaveError('Selecciona un docente registrado.')
+      return
+    }
+
+    const justificacion = values.note.trim()
+
+    if (!justificacion) {
+      setSaveError('Ingresa la justificación de la actividad.')
+      return
+    }
+
+    setSaving(true)
+    setSaveError('')
+
+    try {
+      await asignarActividadDocente(values.teacherId, {
+        actividadId: values.subjectKey,
+        horasSemanales: values.assignedHours,
+        justificacion,
+      })
+      setRevision((current) => current + 1)
+      setDialog(null)
+      setSaveError('')
+      setActionError('')
+    } catch (cause) {
+      setSaveError(mensajeError(cause, 'No se pudo guardar la actividad del docente.'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const openSubject = (row: AssignmentRow) => {
-    setDialog(row.assigned ? { name: 'edit', row } : { name: 'create', row })
+    if (row.assignmentId) {
+      setDialog(null)
+      return
+    }
+
+    setSaveError('')
+    setDialog({ name: 'create', row })
   }
 
   return (
@@ -222,25 +569,37 @@ export function AssignmentWorkspace() {
       </Card>
 
       <AssignmentSelector
-        yearId={year.id}
+        yearId={year?.id ?? ''}
         groupId={group?.id ?? ''}
         gradeLabel={gradeLabel}
-        yearStatus={year.status}
+        yearStatus={yearStatus}
+        yearOptions={yearOptions}
         groupOptions={groupOptions}
+        yearsDisabled={aniosLoading || Boolean(aniosError) || !anios?.length}
+        groupsDisabled={gruposLoading || Boolean(gruposError)}
         onYearChange={selectYear}
-        onGroupChange={setGroupId}
+        onGroupChange={(nextGroupId) => {
+          setGroupId(nextGroupId)
+          setDialog(null)
+          setActionError('')
+        }}
       />
 
-      {group ? (
+      {aniosError ? <p className={styles.error}>{aniosError}</p> : null}
+      {gruposError ? <p className={styles.error}>{gruposError}</p> : null}
+
+      {group && year && curricularLista ? (
         <AssignmentSummary
-          groupCode={group.code}
+          groupCode={group.codigo}
           gradeLabel={gradeLabel}
           requiredHours={summary.requiredHours}
           assignedHours={summary.assignedHours}
           status={summary.status}
-          subjectCount={curricularRows.length}
+          subjectCount={subjects.length}
           year={year.year}
         />
+      ) : gruposLoading || aniosLoading ? (
+        <p className={styles.message}>Cargando año lectivo y grupos...</p>
       ) : (
         <p className={styles.message}>
           Este año lectivo aún no tiene grupos activos para asignar carga.
@@ -248,9 +607,31 @@ export function AssignmentWorkspace() {
       )}
 
       {catalog === null ? <p className={styles.message}>Cargando docentes...</p> : null}
-      {catalog?.error ? <p className={styles.message}>{catalog.error}</p> : null}
+      {catalog?.error ? <p className={styles.error}>{catalog.error}</p> : null}
+      {planesError ? <p className={styles.error}>{planesError}</p> : null}
+      {asignacionesError ? <p className={styles.error}>{asignacionesError}</p> : null}
+      {borradoresError ? <p className={styles.error}>{borradoresError}</p> : null}
+      {actividadesError ? <p className={styles.error}>{actividadesError}</p> : null}
+      {actionError ? <p className={styles.error}>{actionError}</p> : null}
 
-      {group ? (
+      {tab === 'curricular' && group && borradores && !borradoresError ? (
+        <p className={styles.message}>
+          Borradores pendientes de confirmar: {borradoresGrupo.length} en este grupo y{' '}
+          {borradores.length} en total.
+        </p>
+      ) : null}
+
+      {group && tab === 'curricular' && !curricularLista && !planesError && !asignacionesError ? (
+        <p className={styles.message}>Cargando asignaciones del grupo...</p>
+      ) : null}
+
+      {tab === 'activity' && catalog && actividadesDocentes === null ? (
+        <p className={styles.message}>Cargando actividades de los docentes...</p>
+      ) : null}
+
+      {(tab === 'activity'
+        ? catalog !== null && actividadesDocentes !== null
+        : Boolean(group) && curricularLista) ? (
         <AssignmentSection
           title={tab === 'curricular' ? 'Asignaciones curriculares' : 'Actividades y proyectos'}
           description={
@@ -260,8 +641,8 @@ export function AssignmentWorkspace() {
           }
           caption={
             tab === 'curricular'
-              ? 'La asignación es por grupo. El grado se deriva del grupo seleccionado y no se edita aquí.'
-              : 'Estas actividades no reemplazan el plan de estudios; sirven para completar o equilibrar la carga docente.'
+              ? 'La asignación queda en borrador hasta que se confirma. El grado se deriva del grupo seleccionado.'
+              : 'La asignación queda guardada en el docente. No depende del grupo seleccionado ni reemplaza el plan de estudios.'
           }
           rows={visibleRows}
           emptyMessage={
@@ -272,88 +653,77 @@ export function AssignmentWorkspace() {
           canCreate={canCreate}
           createLabel={tab === 'curricular' ? '+ Asignar docente' : '+ Asignar actividad'}
           readOnly={readOnly}
-          onCreate={() =>
+          confirmingId={confirmingId}
+          editableAssigned={tab !== 'activity'}
+          groupId={tab === 'curricular' ? group?.id : undefined}
+          onCreate={() => {
+            setSaveError('')
             setDialog(tab === 'curricular' ? { name: 'pick-subject' } : { name: 'create-activity' })
-          }
-          onAssign={(row) =>
-            setDialog(tab === 'curricular' ? { name: 'create', row } : { name: 'create-activity', row })
-          }
-          onEdit={(row) =>
-            setDialog(tab === 'curricular' ? { name: 'edit', row } : { name: 'edit-activity', row })
-          }
-          onRemove={(row) =>
-            setDialog(tab === 'curricular' ? { name: 'remove', row } : { name: 'remove-activity', row })
-          }
+          }}
+          onAssign={(row) => {
+            setSaveError('')
+            setDialog(
+              tab === 'curricular' ? { name: 'create', row } : { name: 'create-activity', row },
+            )
+          }}
+          onEdit={() => undefined}
+          onRemove={() => undefined}
+          onConfirm={(row) => {
+            void confirmAssignment(row)
+          }}
         />
       ) : null}
 
-      {dialog?.name === 'pick-subject' && group ? (
+      {dialog?.name === 'pick-subject' && group && year ? (
         <PlanSubjectPickerModal
           open
           year={year.year}
-          groupCode={group.code}
+          groupCode={group.codigo}
           gradeLabel={gradeLabel}
-          subjects={curricularRows}
+          subjects={pendingSubjects}
           onClose={closeDialog}
           onSelect={openSubject}
         />
       ) : null}
 
-      {dialog?.name === 'create' || dialog?.name === 'edit' ? (
+      {dialog?.name === 'create' && group && year ? (
         <AssignmentFormModal
-          key={`${dialog.name}-${dialog.row?.key ?? 'new'}`}
+          key={`create-${dialog.row?.key ?? 'new'}`}
           open
-          mode={dialog.name}
-          yearId={year.id}
+          mode="create"
           year={year.year}
-          groupCode={group?.code ?? ''}
+          restrictionCounts={conteoRestricciones}
+          groupCode={group.codigo}
           gradeLabel={gradeLabel}
-          subjects={curricularRows}
+          subjects={pendingSubjects.length > 0 ? pendingSubjects : curricularRows}
           teachers={teachers}
           areas={areas}
           row={dialog.row}
+          saving={saving}
+          error={saveError}
           onClose={closeDialog}
-          onSubmit={upsertAssignment}
+          onSubmit={(values) => {
+            void upsertAssignment(values)
+          }}
         />
       ) : null}
 
-      {dialog?.name === 'create-activity' || dialog?.name === 'edit-activity' ? (
+      {dialog?.name === 'create-activity' ? (
         <ActivityAssignmentFormModal
-          key={`${dialog.name}-${dialog.row?.key ?? 'new'}`}
+          key={`create-activity-${dialog.row?.key ?? 'new'}`}
           open
-          mode={dialog.name === 'edit-activity' ? 'edit' : 'create'}
-          yearId={year.id}
-          year={year.year}
-          activities={activityRows}
+          mode="create"
+          year={year?.year ?? 0}
+          restrictionCounts={conteoRestricciones}
+          activities={activityOptions}
           teachers={teachers}
           row={dialog.row}
+          saving={saving}
+          error={saveError}
           onClose={closeDialog}
-          onSubmit={upsertActivity}
-        />
-      ) : null}
-
-      {dialog?.name === 'remove' ? (
-        <RemoveAssignmentModal
-          open
-          year={year.year}
-          groupCode={group?.code ?? ''}
-          subjectName={dialog.row.subject}
-          teacherName={dialog.row.teacherName}
-          hours={dialog.row.assignedHours}
-          onClose={closeDialog}
-          onConfirm={() => removeAssignment(dialog.row)}
-        />
-      ) : null}
-
-      {dialog?.name === 'remove-activity' ? (
-        <RemoveAssignmentModal
-          open
-          variant="activity"
-          subjectName={dialog.row.subject}
-          teacherName={dialog.row.teacherName}
-          hours={dialog.row.assignedHours}
-          onClose={closeDialog}
-          onConfirm={() => removeAssignment(dialog.row)}
+          onSubmit={(values) => {
+            void upsertActivity(values)
+          }}
         />
       ) : null}
     </section>

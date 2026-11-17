@@ -4,3 +4,10 @@
   font-size: 14px;
   line-height: 1.5;
 }
+
+.error {
+  margin: 12px 0 0;
+  color: #d15b6a;
+  font-size: 13px;
+  line-height: 1.45;
+}
