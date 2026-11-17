@@ -1,1 +1,0 @@
-export { TurnosPage } from './TurnosPage';

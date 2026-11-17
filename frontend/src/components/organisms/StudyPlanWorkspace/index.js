@@ -1,1 +1,0 @@
-export { StudyPlanWorkspace } from './StudyPlanWorkspace';

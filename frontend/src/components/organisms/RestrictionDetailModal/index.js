@@ -1,1 +1,0 @@
-export { RestrictionDetailModal } from './RestrictionDetailModal';

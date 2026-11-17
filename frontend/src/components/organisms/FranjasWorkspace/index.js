@@ -1,1 +1,0 @@
-export { FranjasWorkspace } from './FranjasWorkspace';

@@ -1,1 +1,0 @@
-export { SedesWorkspace } from './SedesWorkspace';

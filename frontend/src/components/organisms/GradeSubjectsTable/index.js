@@ -1,1 +1,0 @@
-export { GradeSubjectsTable } from './GradeSubjectsTable';

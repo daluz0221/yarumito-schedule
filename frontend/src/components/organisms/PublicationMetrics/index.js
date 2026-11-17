@@ -1,1 +1,0 @@
-export { PublicationMetrics } from './PublicationMetrics';

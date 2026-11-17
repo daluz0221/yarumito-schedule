@@ -1,1 +1,0 @@
-export { DeactivateSubjectModal } from './DeactivateSubjectModal';

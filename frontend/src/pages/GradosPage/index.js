@@ -1,1 +1,0 @@
-export { GradosPage } from './GradosPage';
