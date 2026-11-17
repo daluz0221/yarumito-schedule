@@ -116,8 +116,8 @@ export function AssignmentFormModal({
   }))
   const [attempted, setAttempted] = useState(false)
   const [kindOpen, setKindOpen] = useState(false)
-  const [hasValidIdoneidad, setHasValidIdoneidad] = useState(false)
-  const [teacherLoad, setTeacherLoad] = useState('')
+  const [idoneidad, setIdoneidad] = useState({ key: '', valid: false })
+  const [cargaDocente, setCargaDocente] = useState({ key: '', texto: '' })
   const formId = `assignment-${mode}-form`
   const selected = subjects.find((item) => item.key === values.subjectKey)
   const hoursValue = Number(values.hours)
@@ -125,6 +125,12 @@ export function AssignmentFormModal({
   const hoursCopy = selected ? hoursStatusCopy(selected.requiredHours, hoursInvalid ? 0 : hoursValue) : null
   const teacherOptions = teacherSelectOptions(teachers, row)
   const selectedTeacher = resolveSelectedTeacher(values.teacherValue, teachers)
+  const teacherIdSeleccionado = parseTeacherSelection(values.teacherValue).teacherId
+  const idoneidadKey =
+    teacherIdSeleccionado && selected?.area ? `${teacherIdSeleccionado}|${selected.area}` : ''
+  const hasValidIdoneidad = Boolean(idoneidadKey) && idoneidad.key === idoneidadKey && idoneidad.valid
+  const teacherLoad =
+    teacherIdSeleccionado && cargaDocente.key === teacherIdSeleccionado ? cargaDocente.texto : ''
   const teacherArea = selectedTeacher
     ? resolveAreaName(selectedTeacher.areaNombramientoId, areas)
     : ''
@@ -147,65 +153,68 @@ export function AssignmentFormModal({
     .join(' ')
 
   useEffect(() => {
-    const teacherId = parseTeacherSelection(values.teacherValue).teacherId
-    if (!teacherId || !selected?.area) {
-      setHasValidIdoneidad(false)
+    if (!teacherIdSeleccionado || !selected?.area) {
       return
     }
 
     const controller = new AbortController()
-    listarIdoneidadesPorDocente(teacherId, controller.signal)
+    const key = `${teacherIdSeleccionado}|${selected.area}`
+    const area = selected.area
+
+    listarIdoneidadesPorDocente(teacherIdSeleccionado, controller.signal)
       .then((items) => {
-        setHasValidIdoneidad(
-          items.some((item) => {
+        setIdoneidad({
+          key,
+          valid: items.some((item) => {
             if (!isIdoneidadVigente(item)) {
               return false
             }
 
             const areaName = resolveAreaName(item.areaId, areas)
-            return areaName.toLowerCase() === selected.area.toLowerCase()
+            return areaName.toLowerCase() === area.toLowerCase()
           }),
-        )
+        })
       })
       .catch((cause) => {
         if (!isAbortError(cause)) {
-          setHasValidIdoneidad(false)
+          setIdoneidad({ key, valid: false })
         }
       })
 
     return () => controller.abort()
-  }, [areas, selected?.area, values.teacherValue])
+  }, [areas, selected?.area, teacherIdSeleccionado])
 
   useEffect(() => {
-    const teacherId = parseTeacherSelection(values.teacherValue).teacherId
-
-    if (!teacherId) {
-      setTeacherLoad('')
+    if (!teacherIdSeleccionado) {
       return
     }
 
     const controller = new AbortController()
+    const key = teacherIdSeleccionado
 
-    listarAsignacionesPorDocente(teacherId, controller.signal)
+    listarAsignacionesPorDocente(teacherIdSeleccionado, controller.signal)
       .then((items) => {
         const hours = items.reduce((total, item) => total + (item.horasSemanales || 0), 0)
 
         if (items.length === 0) {
-          setTeacherLoad('Este docente no tiene asignaciones registradas.')
+          setCargaDocente({ key, texto: 'Este docente no tiene asignaciones registradas.' })
           return
         }
 
         const label = items.length === 1 ? 'asignación' : 'asignaciones'
-        setTeacherLoad(`Carga actual: ${hours} h semanales en ${items.length} ${label}.`)
+        setCargaDocente({
+          key,
+          texto: `Carga actual: ${hours} h semanales en ${items.length} ${label}.`,
+        })
       })
       .catch((cause) => {
         if (!isAbortError(cause)) {
-          setTeacherLoad('')
+          setCargaDocente({ key, texto: '' })
         }
       })
 
     return () => controller.abort()
-  }, [values.teacherValue])
+  }, [teacherIdSeleccionado])
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
