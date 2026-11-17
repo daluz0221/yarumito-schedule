@@ -1,12 +1,10 @@
 -- ============================================================================
--- V32: Correcciones de esquema para HU-06 (Asignación Académica)
+-- V36: Correcciones de esquema para HU-06 (Asignación Académica)
 --      y M-11 (Construcción de Horario).
 --
--- Originalmente esta migración nació como V27, en paralelo con
--- V27__corregir_restricciones_catalogo_academico.sql del mainline. Al
--- fusionar ambas ramas quedaban dos migraciones con la misma versión y
--- Flyway fallaba al arrancar. Por eso se renumera a V32, después de las
--- migraciones V28 a V31 del mainline.
+-- Esta migración contenía antes el número V32. Producción ya había aplicado
+-- otra V32 (permitir_numero_cero_en_franja_descanso), por lo que se restauró
+-- esa y estos cambios pasaron a V36 para no alterar migraciones ya aplicadas.
 --
 -- Este script NO modifica migraciones anteriores. Sólo agrega lo que el
 -- mainline no cubre: valores por defecto y restricciones de unicidad
@@ -39,22 +37,7 @@ alter table asignacionyhorario.asignacionacademica
 
 
 -- ----------------------------------------------------------------------------
--- 3. Franjas horarias: permitir el número 0 para franjas de descanso,
---    tal como lo documenta la entidad FranjaHoraria.
---
---    La corrección de la FK grupo.sede_id y de los CHECK de tipo de aula
---    ya la realiza V27__corregir_restricciones_catalogo_academico.sql.
--- ----------------------------------------------------------------------------
-alter table tiempoyespacio.franjahoraria
-    drop constraint if exists franjahoraria_numero_check;
-
-alter table tiempoyespacio.franjahoraria
-    add constraint franjahoraria_numero_check
-    check (numero between 0 and 6);
-
-
--- ----------------------------------------------------------------------------
--- 4. M-11: impedir programaciones duplicadas.
+-- 3. M-11: impedir programaciones duplicadas.
 --    - Una misma aula no puede tener dos clases en el mismo día/franja/horario.
 --    - Una misma asignación académica no puede tener dos clases en el mismo
 --      día/franja/horario.
