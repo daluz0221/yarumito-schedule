@@ -19,6 +19,7 @@ import {
   type InformeHorariosResponse,
   type VersionInformeHorario,
 } from '../../../api'
+import { idDisponible } from '../../../content/idDisponible'
 import type { Teacher } from '../../../content/teachers'
 import { Badge, type BadgeTone } from '../../atoms/Badge'
 import { Button } from '../../atoms/Button'
@@ -221,9 +222,9 @@ export function ConsultasWorkspace() {
   const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
   const { grupos, error: gruposError, loading: gruposLoading } = useCatalogoGrupos()
   const { sedes, error: sedesError } = useCatalogoSedes()
-  const [yearId, setYearId] = useState('')
+  const [yearElegido, setYearElegido] = useState('')
   const [campusId, setCampusId] = useState('')
-  const [groupId, setGroupId] = useState('')
+  const [groupElegido, setGroupElegido] = useState('')
   const [version, setVersion] = useState<VersionInformeHorario>('institucional')
   const [dia, setDia] = useState('')
   const [jornada, setJornada] = useState('')
@@ -236,15 +237,12 @@ export function ConsultasWorkspace() {
   const [descargaError, setDescargaError] = useState('')
   const consultaAbort = useRef<AbortController | null>(null)
 
-  useEffect(() => {
-    if (!anios?.length) {
-      return
-    }
-
-    setYearId((current) =>
-      anios.some((year) => year.id === current) ? current : (anioEscolarVisible(anios)?.id ?? ''),
-    )
-  }, [anios])
+  const yearId = idDisponible(
+    yearElegido,
+    anios,
+    Boolean(anios?.length),
+    anioEscolarVisible(anios ?? [])?.id ?? '',
+  )
 
   const campusSeleccionada = sedes?.some((sede) => sede.id === campusId)
     ? campusId
@@ -268,15 +266,12 @@ export function ConsultasWorkspace() {
     [campusSeleccionada, gruposDelAnio],
   )
 
-  useEffect(() => {
-    if (!yearId || grupos === null) {
-      return
-    }
-
-    setGroupId((current) =>
-      yearGroups.some((group) => group.id === current) ? current : (yearGroups[0]?.id ?? ''),
-    )
-  }, [grupos, yearGroups, yearId])
+  const groupId = idDisponible(
+    groupElegido,
+    yearGroups,
+    Boolean(yearId) && grupos !== null,
+    yearGroups[0]?.id ?? '',
+  )
 
   useEffect(() => {
     if (!esRector) {
@@ -302,18 +297,21 @@ export function ConsultasWorkspace() {
     return () => controller.abort()
   }, [esRector])
 
-  useEffect(() => {
-    if (docenteId && !docentes.some((docente) => docente.id === docenteId)) {
-      setDocenteId('')
-    }
-  }, [docenteId, docentes])
+  const docenteActivo =
+    docenteId && docentes.some((docente) => docente.id === docenteId) ? docenteId : ''
+  const consultaClave = `${groupId}|${version}`
+  const [consultaVista, setConsultaVista] = useState(consultaClave)
+
+  if (consultaVista !== consultaClave) {
+    setConsultaVista(consultaClave)
+    setConsulta({ estado: 'inicial' })
+    setDescargaError('')
+  }
 
   useEffect(() => () => consultaAbort.current?.abort(), [])
 
   useEffect(() => {
     consultaAbort.current?.abort()
-    setConsulta({ estado: 'inicial' })
-    setDescargaError('')
   }, [groupId, version])
 
   const grupo = yearGroups.find((item) => item.id === groupId) ?? null
@@ -326,12 +324,12 @@ export function ConsultasWorkspace() {
     () => ({
       anioEscolarId: yearId,
       grupoId: groupId,
-      docenteId,
+      docenteId: docenteActivo,
       dia,
       jornada,
       estado,
     }),
-    [dia, docenteId, estado, groupId, jornada, yearId],
+    [dia, docenteActivo, estado, groupId, jornada, yearId],
   )
 
   function consultar(event?: FormEvent<HTMLFormElement>) {
@@ -446,7 +444,7 @@ export function ConsultasWorkspace() {
             value={year?.id ?? ''}
             options={opcionesAniosEscolares(anios, aniosError)}
             disabled={!esRector || aniosLoading || Boolean(aniosError) || !anios?.length}
-            onChange={setYearId}
+            onChange={setYearElegido}
           />
           <SelectField
             id="consulta-campus"
@@ -473,7 +471,7 @@ export function ConsultasWorkspace() {
                     }))
             }
             disabled={!esRector || gruposLoading || Boolean(gruposError) || sinGrupos}
-            onChange={setGroupId}
+            onChange={setGroupElegido}
           />
           <SelectField
             id="consulta-version"
@@ -506,7 +504,7 @@ export function ConsultasWorkspace() {
             id="consulta-teacher"
             label="Docente"
             name="teacher"
-            value={docenteId}
+            value={docenteActivo}
             options={[
               { value: '', label: 'Todos los docentes' },
               ...docentes.map((docente) => ({

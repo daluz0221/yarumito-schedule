@@ -35,6 +35,7 @@ import {
   type CurricularAssignmentSource,
 } from '../../../content/academicAssignment'
 import type { AcademicYearStatus } from '../../../content/academicYear'
+import { idDisponible } from '../../../content/idDisponible'
 import { formatTeacherName, type Teacher } from '../../../content/teachers'
 import { Card } from '../../atoms/Card'
 import { Text } from '../../atoms/Text'
@@ -113,17 +114,19 @@ function fuenteAsignacion(item: AsignacionAcademicaResponse): CurricularAssignme
 export function AssignmentWorkspace() {
   const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
   const { grupos, error: gruposError, loading: gruposLoading } = useCatalogoGrupos()
-  const [yearId, setYearId] = useState('')
-  const [groupId, setGroupId] = useState('')
+  const [yearElegido, setYearElegido] = useState('')
+  const [groupElegido, setGroupElegido] = useState('')
   const [tab, setTab] = useState<AssignmentTab>('curricular')
-  const [actividadesDocentes, setActividadesDocentes] = useState<AsignacionActividadResponse[] | null>(
-    null,
-  )
-  const [actividadesError, setActividadesError] = useState('')
-  const [asignacionesGrupo, setAsignacionesGrupo] = useState<AsignacionAcademicaResponse[] | null>(
-    null,
-  )
-  const [asignacionesError, setAsignacionesError] = useState('')
+  const [actividadesCarga, setActividadesCarga] = useState<{
+    clave: string
+    items: AsignacionActividadResponse[]
+    error: string
+  } | null>(null)
+  const [asignacionesCarga, setAsignacionesCarga] = useState<{
+    clave: string
+    items: AsignacionAcademicaResponse[]
+    error: string
+  } | null>(null)
   const [borradores, setBorradores] = useState<AsignacionAcademicaResponse[] | null>(null)
   const [borradoresError, setBorradoresError] = useState('')
   const [planes, setPlanes] = useState<PlanEstudiosResponse[] | null>(null)
@@ -138,29 +141,27 @@ export function AssignmentWorkspace() {
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState('')
   const [revision, setRevision] = useState(0)
-  const [conteoRestricciones, setConteoRestricciones] = useState<Record<string, number>>({})
-
-  useEffect(() => {
-    if (!anios?.length) {
-      return
-    }
-
-    setYearId((current) =>
-      anios.some((year) => year.id === current)
-        ? current
-        : (anioEscolarVisible(anios)?.id ?? ''),
-    )
-  }, [anios])
+  const [conteoCarga, setConteoCarga] = useState<{
+    yearId: string
+    counts: Record<string, number>
+  } | null>(null)
+  const yearId = idDisponible(
+    yearElegido,
+    anios,
+    Boolean(anios?.length),
+    anioEscolarVisible(anios ?? [])?.id ?? '',
+  )
+  const conteoRestricciones = conteoCarga?.yearId === yearId ? conteoCarga.counts : {}
 
   useEffect(() => {
     if (!yearId) {
-      setConteoRestricciones({})
       return
     }
 
     const controller = new AbortController()
+    const solicitado = yearId
 
-    listarRestriccionesPorAnio(yearId, controller.signal)
+    listarRestriccionesPorAnio(solicitado, controller.signal)
       .then((items) => {
         if (controller.signal.aborted) {
           return
@@ -170,14 +171,14 @@ export function AssignmentWorkspace() {
         items.forEach((item) => {
           counts[item.docenteId] = (counts[item.docenteId] ?? 0) + 1
         })
-        setConteoRestricciones(counts)
+        setConteoCarga({ yearId: solicitado, counts })
       })
       .catch((cause) => {
         if (isAbortError(cause) || controller.signal.aborted) {
           return
         }
 
-        setConteoRestricciones({})
+        setConteoCarga({ yearId: solicitado, counts: {} })
       })
 
     return () => controller.abort()
@@ -191,16 +192,12 @@ export function AssignmentWorkspace() {
           left.gradoNivel - right.gradoNivel || left.codigo.localeCompare(right.codigo, 'es'),
       )
   }, [grupos, yearId])
-
-  useEffect(() => {
-    if (!yearId || grupos === null) {
-      return
-    }
-
-    setGroupId((current) =>
-      yearGroups.some((group) => group.id === current) ? current : (yearGroups[0]?.id ?? ''),
-    )
-  }, [grupos, yearGroups, yearId])
+  const groupId = idDisponible(
+    groupElegido,
+    yearGroups,
+    Boolean(yearId) && grupos !== null,
+    yearGroups[0]?.id ?? '',
+  )
 
   useEffect(() => {
     const controller = new AbortController()
@@ -296,48 +293,47 @@ export function AssignmentWorkspace() {
     return () => controller.abort()
   }, [revision])
 
+  const asignacionesClave = groupId ? `${groupId}:${revision}` : ''
+
   useEffect(() => {
     if (!groupId) {
-      setAsignacionesGrupo([])
-      setAsignacionesError('')
       return
     }
 
     const controller = new AbortController()
-    setAsignacionesGrupo(null)
-    setAsignacionesError('')
+    const clave = `${groupId}:${revision}`
 
     listarAsignacionesPorGrupo(groupId, controller.signal)
       .then((items) => {
-        setAsignacionesGrupo(items)
-        setAsignacionesError('')
+        setAsignacionesCarga({ clave, items, error: '' })
       })
       .catch((cause) => {
         if (isAbortError(cause) || controller.signal.aborted) {
           return
         }
 
-        setAsignacionesGrupo([])
-        setAsignacionesError(
-          mensajeError(cause, 'No se pudieron cargar las asignaciones de este grupo.'),
-        )
+        setAsignacionesCarga({
+          clave,
+          items: [],
+          error: mensajeError(cause, 'No se pudieron cargar las asignaciones de este grupo.'),
+        })
       })
 
     return () => controller.abort()
   }, [groupId, revision])
 
-  useEffect(() => {
-    if (!catalog) {
-      return
-    }
+  const actividadesClave =
+    catalog && catalog.teachers.length > 0
+      ? `${catalog.teachers.map((teacher) => teacher.id).join(',')}:${revision}`
+      : ''
 
-    if (catalog.teachers.length === 0) {
-      setActividadesDocentes([])
-      setActividadesError('')
+  useEffect(() => {
+    if (!catalog || catalog.teachers.length === 0) {
       return
     }
 
     const controller = new AbortController()
+    const clave = `${catalog.teachers.map((teacher) => teacher.id).join(',')}:${revision}`
 
     Promise.all(
       catalog.teachers.map(async (teacher) => {
@@ -358,20 +354,22 @@ export function AssignmentWorkspace() {
         }
 
         const failed = groups.some((groupItems) => groupItems === null)
-        setActividadesDocentes(groups.flatMap((groupItems) => groupItems ?? []))
-        setActividadesError(
-          failed ? 'No se pudieron cargar las actividades de todos los docentes.' : '',
-        )
+        setActividadesCarga({
+          clave,
+          items: groups.flatMap((groupItems) => groupItems ?? []),
+          error: failed ? 'No se pudieron cargar las actividades de todos los docentes.' : '',
+        })
       })
       .catch((cause) => {
         if (isAbortError(cause) || controller.signal.aborted) {
           return
         }
 
-        setActividadesDocentes([])
-        setActividadesError(
-          mensajeError(cause, 'No se pudieron cargar las actividades de los docentes.'),
-        )
+        setActividadesCarga({
+          clave,
+          items: [],
+          error: mensajeError(cause, 'No se pudieron cargar las actividades de los docentes.'),
+        })
       })
 
     return () => controller.abort()
@@ -384,6 +382,22 @@ export function AssignmentWorkspace() {
   const readOnly = yearStatus === 'CERRADO'
   const teachers = catalog?.teachers ?? []
   const areas = catalog?.areas ?? []
+  const asignacionesGrupo = !groupId
+    ? []
+    : asignacionesCarga?.clave === asignacionesClave
+      ? asignacionesCarga.items
+      : null
+  const asignacionesError =
+    groupId && asignacionesCarga?.clave === asignacionesClave ? asignacionesCarga.error : ''
+  const actividadesDocentes = !catalog
+    ? null
+    : catalog.teachers.length === 0
+      ? []
+      : actividadesCarga?.clave === actividadesClave
+        ? actividadesCarga.items
+        : null
+  const actividadesError =
+    catalog && actividadesCarga?.clave === actividadesClave ? actividadesCarga.error : ''
   const subjects = group
     ? materiasDelGrado(planes ?? [], yearId, group.gradoId, areaPorAsignatura)
     : []
@@ -423,7 +437,7 @@ export function AssignmentWorkspace() {
   }
 
   const selectYear = (nextYearId: string) => {
-    setYearId(nextYearId)
+    setYearElegido(nextYearId)
     setDialog(null)
     setActionError('')
   }
@@ -579,7 +593,7 @@ export function AssignmentWorkspace() {
         groupsDisabled={gruposLoading || Boolean(gruposError)}
         onYearChange={selectYear}
         onGroupChange={(nextGroupId) => {
-          setGroupId(nextGroupId)
+          setGroupElegido(nextGroupId)
           setDialog(null)
           setActionError('')
         }}

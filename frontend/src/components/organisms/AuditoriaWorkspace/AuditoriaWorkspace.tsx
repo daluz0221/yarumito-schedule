@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../auth'
 import {
@@ -444,11 +444,8 @@ export function AuditoriaWorkspace() {
   const usuarioSeccion = useRef<HTMLDivElement>(null)
   const entidadAbort = useRef<AbortController | null>(null)
   const usuarioAbort = useRef<AbortController | null>(null)
-  const yearElegido = useRef(false)
   const grupoElegido = useRef(false)
   const grupoAnterior = useRef<string | null>(null)
-  const enlaceSeleccionado = useRef(false)
-  const consultaEnlace = useRef(false)
   const [yearId, setYearId] = useState('')
   const [groupId, setGroupId] = useState('')
   const [tipo, setTipo] = useState<EntidadAuditable>(
@@ -469,7 +466,9 @@ export function AuditoriaWorkspace() {
   const [asignaciones, setAsignaciones] = useState<AsignacionAcademicaResponse[] | null>(null)
   const [clases, setClases] = useState<ClaseProgramadaResponse[] | null>(null)
   const [catalogoError, setCatalogoError] = useState('')
-  const [catalogoCargando, setCatalogoCargando] = useState(false)
+  const [catalogoVisto, setCatalogoVisto] = useState('')
+  const [yearFijado, setYearFijado] = useState(false)
+  const [enlacePreparado, setEnlacePreparado] = useState(false)
 
   const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares(
     user?.rol === 'RECTOR',
@@ -488,6 +487,7 @@ export function AuditoriaWorkspace() {
   }, [grupos, yearId])
 
   const grupo = yearGroups.find((item) => item.id === groupId) ?? null
+  const catalogoCargando = user?.rol === 'RECTOR' && Boolean(groupId) && catalogoVisto !== groupId
 
   const etiquetas = useMemo(() => {
     const mapa = new Map<string, string>()
@@ -550,7 +550,7 @@ export function AuditoriaWorkspace() {
     return [{ value: '', label: catalogoCargando ? 'Cargando registros…' : 'Elige un registro' }, ...opciones]
   }, [catalogoCargando, etiquetas, opcionesRegistroBase, registroId])
 
-  const cargarEntidad = useCallback(async (entidadValor: string, idValor: string) => {
+  async function cargarEntidad(entidadValor: string, idValor: string) {
     if (!esEntidad(entidadValor) || !UUID.test(idValor)) {
       return
     }
@@ -589,7 +589,7 @@ export function AuditoriaWorkspace() {
         error: mensajeError(cause, 'No se pudo consultar el historial de la entidad.'),
       })
     }
-  }, [])
+  }
 
   useEffect(() => {
     return () => {
@@ -598,37 +598,70 @@ export function AuditoriaWorkspace() {
     }
   }, [])
 
-  useEffect(() => {
-    if (user?.rol !== 'RECTOR' || consultaEnlace.current) {
-      return
-    }
+  const aniosListos = Boolean(anios?.length) && !(grupoInicial && grupos === null)
 
-    if (!esEntidad(entidadInicial) || !UUID.test(idInicial)) {
-      return
-    }
-
-    consultaEnlace.current = true
-    void cargarEntidad(entidadInicial, idInicial)
-  }, [cargarEntidad, entidadInicial, idInicial, user?.rol])
-
-  useEffect(() => {
-    if (!anios?.length || yearElegido.current) {
-      return
-    }
-
-    if (grupoInicial && grupos === null) {
-      return
-    }
-
+  if (!yearFijado && aniosListos && anios) {
     const grupoEnlace = (grupos ?? []).find((item) => item.id === grupoInicial)
     const siguiente =
       grupoEnlace && anios.some((year) => year.id === grupoEnlace.anioEscolarId)
         ? grupoEnlace.anioEscolarId
         : (anioEscolarVisible(anios)?.id ?? '')
 
+    setYearFijado(true)
     setYearId(siguiente)
-    yearElegido.current = true
-  }, [anios, grupoInicial, grupos])
+  }
+
+  if (
+    !enlacePreparado &&
+    user?.rol === 'RECTOR' &&
+    esEntidad(entidadInicial) &&
+    UUID.test(idInicial)
+  ) {
+    setEnlacePreparado(true)
+    setAlcance('registro')
+    setIdConsultado(idInicial)
+    setTipo(entidadInicial)
+    setRegistroId(idInicial)
+    setVacioEntidad(VACIO_REGISTRO)
+    setTituloEntidad(etiquetaEntidad(entidadInicial))
+    setConsultaEntidad({ estado: 'cargando', registros: [], error: '' })
+  }
+
+  useEffect(() => {
+    if (!enlacePreparado || !esEntidad(entidadInicial) || !UUID.test(idInicial)) {
+      return
+    }
+
+    const controller = new AbortController()
+    entidadAbort.current?.abort()
+    entidadAbort.current = controller
+
+    consultarAuditoriaPorEntidad(entidadInicial, idInicial, controller.signal)
+      .then((registros) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        setConsultaEntidad({
+          estado: 'listo',
+          registros: ordenarRegistros(Array.isArray(registros) ? registros : []),
+          error: '',
+        })
+      })
+      .catch((cause: unknown) => {
+        if (esAbort(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setConsultaEntidad({
+          estado: 'error',
+          registros: [],
+          error: mensajeError(cause, 'No se pudo consultar el historial de la entidad.'),
+        })
+      })
+
+    return () => controller.abort()
+  }, [enlacePreparado, entidadInicial, idInicial])
 
   useEffect(() => {
     if (!yearId || grupos === null) {
@@ -668,37 +701,10 @@ export function AuditoriaWorkspace() {
     setRegistroId('')
   }, [groupId])
 
-  useEffect(() => {
-    if (enlaceSeleccionado.current || asignaciones === null || clases === null) {
-      return
-    }
-
-    if (!esEntidad(entidadInicial) || !UUID.test(idInicial)) {
-      return
-    }
-
-    const lista = entidadInicial === 'ClaseProgramada' ? clases : asignaciones
-
-    if (!lista.some((item) => item.id === idInicial)) {
-      return
-    }
-
-    setTipo(entidadInicial)
-    setRegistroId(idInicial)
-    enlaceSeleccionado.current = true
-  }, [asignaciones, clases, entidadInicial, idInicial])
-
-  useEffect(() => {
-    if (alcance !== 'registro' || !idConsultado) {
-      return
-    }
-
-    const etiqueta = etiquetas.get(idConsultado)
-
-    if (etiqueta) {
-      setTituloEntidad(etiqueta)
-    }
-  }, [alcance, etiquetas, idConsultado])
+  const tituloVisible =
+    alcance === 'registro' && idConsultado
+      ? (etiquetas.get(idConsultado) || tituloEntidad)
+      : tituloEntidad
 
   useEffect(() => {
     if (user?.rol !== 'RECTOR') {
@@ -735,8 +741,7 @@ export function AuditoriaWorkspace() {
     }
 
     const controller = new AbortController()
-    setCatalogoCargando(true)
-    setCatalogoError('')
+    const catalogoClave = groupId
 
     Promise.all([
       listarAsignacionesPorGrupo(groupId, controller.signal),
@@ -749,7 +754,8 @@ export function AuditoriaWorkspace() {
 
         setAsignaciones(Array.isArray(lista) ? lista : [])
         setClases(Array.isArray(tablero?.clasesProgramadas) ? tablero.clasesProgramadas : [])
-        setCatalogoCargando(false)
+        setCatalogoError('')
+        setCatalogoVisto(catalogoClave)
       })
       .catch((cause: unknown) => {
         if (esAbort(cause) || controller.signal.aborted) {
@@ -761,7 +767,7 @@ export function AuditoriaWorkspace() {
         setCatalogoError(
           mensajeError(cause, 'No se pudieron cargar las asignaciones y clases del grupo.'),
         )
-        setCatalogoCargando(false)
+        setCatalogoVisto(catalogoClave)
       })
 
     return () => controller.abort()
@@ -960,8 +966,8 @@ export function AuditoriaWorkspace() {
               options={yearOptions}
               disabled={aniosLoading || Boolean(aniosError) || !anios?.length}
               onChange={(value) => {
-                yearElegido.current = true
                 grupoElegido.current = true
+                setYearFijado(true)
                 setYearId(value)
               }}
             />
@@ -1034,7 +1040,7 @@ export function AuditoriaWorkspace() {
           <ResultadoConsulta
             consulta={consultaEntidad}
             vacio={vacioEntidad}
-            titulo={tituloEntidad}
+            titulo={tituloVisible}
             inicial="Elige un grupo o un registro para ver su historial."
           >
             <HistorialTabla

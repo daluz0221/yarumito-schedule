@@ -140,19 +140,27 @@ export function ValidationsWorkspace() {
     : (gruposDelAnio[0]?.id ?? '')
   const grupo = gruposDelAnio.find((group) => group.id === groupId) ?? null
   const horarioId = tablero?.grupoId === groupId ? (tablero.horarioId ?? '') : ''
+  const horarioClave = `${groupId}:${revision}`
+  const [horarioVisto, setHorarioVisto] = useState(horarioClave)
 
-  useEffect(() => {
-    const controller = new AbortController()
+  if (horarioVisto !== horarioClave) {
+    setHorarioVisto(horarioClave)
+    setHorarioError('')
 
     if (!groupId) {
       setTablero(null)
       setHorarioCargando(false)
-      setHorarioError('')
-      return () => controller.abort()
+    } else {
+      setHorarioCargando(true)
+    }
+  }
+
+  useEffect(() => {
+    if (!groupId) {
+      return
     }
 
-    setHorarioCargando(true)
-    setHorarioError('')
+    const controller = new AbortController()
 
     consultarHorarioGrupo(groupId, controller.signal)
       .then((siguiente) => {
@@ -176,22 +184,38 @@ export function ValidationsWorkspace() {
     return () => controller.abort()
   }, [groupId, revision])
 
-  useEffect(() => {
-    const controller = new AbortController()
-    const modo = consultaDe(filters)
+  const conflictoClave = `${horarioId}:${filters.severity}:${filters.status}:${revision}:${yearId}`
+  const [conflictoVisto, setConflictoVisto] = useState(conflictoClave)
+
+  if (conflictoVisto !== conflictoClave) {
+    setConflictoVisto(conflictoClave)
+    setConflictoError('')
+    setVisibles([])
 
     if (!horarioId) {
       setTodos([])
-      setVisibles([])
       setCargando(false)
-      setConflictoError('')
-      return () => controller.abort()
+    } else {
+      setCargando(true)
+    }
+  }
+
+  const seleccionClave = `${groupId}:${yearId}`
+  const [seleccionVista, setSeleccionVista] = useState(seleccionClave)
+
+  if (seleccionVista !== seleccionClave) {
+    setSeleccionVista(seleccionClave)
+    setSelectedId(null)
+    setResolverError('')
+  }
+
+  useEffect(() => {
+    if (!horarioId) {
+      return
     }
 
-    setCargando(true)
-    setVisibles([])
-    setConflictoError('')
-
+    const controller = new AbortController()
+    const modo = consultaDe({ severity: filters.severity, status: filters.status })
     const especificos =
       modo === 'pendientes'
         ? listarConflictosPendientes(horarioId, controller.signal)
@@ -229,11 +253,6 @@ export function ValidationsWorkspace() {
 
     return () => controller.abort()
   }, [filters.severity, filters.status, horarioId, revision, yearId])
-
-  useEffect(() => {
-    setSelectedId(null)
-    setResolverError('')
-  }, [groupId, yearId])
 
   const summary = summarizeConflicts(todos)
   const rows = filterConflicts(visibles, {
