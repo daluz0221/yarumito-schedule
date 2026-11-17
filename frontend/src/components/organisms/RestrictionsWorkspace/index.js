@@ -1,1 +1,0 @@
-export { RestrictionsWorkspace } from './RestrictionsWorkspace';

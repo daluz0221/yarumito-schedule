@@ -1,1 +1,0 @@
-export { SedesPage } from './SedesPage';

@@ -1,1 +1,0 @@
-export { TeacherAvailabilitySummary } from './TeacherAvailabilitySummary';

@@ -1,1 +1,0 @@
-export { AcademicYearWorkspace } from './AcademicYearWorkspace';

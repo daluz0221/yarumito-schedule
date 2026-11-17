@@ -1,1 +1,0 @@
-export { AssignmentWorkspace } from './AssignmentWorkspace';

@@ -1,1 +1,0 @@
-export { WeeklyAvailability } from './WeeklyAvailability';

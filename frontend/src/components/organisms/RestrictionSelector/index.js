@@ -1,1 +1,0 @@
-export { RestrictionSelector } from './RestrictionSelector';
