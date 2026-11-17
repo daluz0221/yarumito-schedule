@@ -7,7 +7,6 @@ import {
   parseTeacherSelection,
   type AssignmentRow,
 } from '../../../content/academicAssignment'
-import { countRestrictions } from '../../../content/teacherRestrictions'
 import { formatTeacherName, type Teacher } from '../../../content/teachers'
 import { Button } from '../../atoms/Button'
 import { Modal } from '../../atoms/Modal'
@@ -31,11 +30,13 @@ export type ActivityAssignmentFormValues = {
 export type ActivityAssignmentFormModalProps = {
   open: boolean
   mode: ActivityAssignmentFormMode
-  yearId: string
   year: number
+  restrictionCounts?: Readonly<Record<string, number>>
   activities: AssignmentRow[]
   teachers: Teacher[]
   row?: AssignmentRow
+  saving?: boolean
+  error?: string
   onClose: () => void
   onSubmit: (values: ActivityAssignmentFormValues) => void
 }
@@ -49,6 +50,7 @@ type FormValues = {
 
 const requiredChoiceMessage = 'Seleccione una opción.'
 const hoursMessage = 'Ingresa las horas asignadas.'
+const justificationMessage = 'Ingresa la justificación de la actividad.'
 
 function initialTeacherValue(row: AssignmentRow | undefined, teachers: Teacher[]) {
   if (row?.teacherId && teachers.some((teacher) => teacher.id === row.teacherId)) {
@@ -68,11 +70,13 @@ function initialTeacherValue(row: AssignmentRow | undefined, teachers: Teacher[]
 export function ActivityAssignmentFormModal({
   open,
   mode,
-  yearId,
   year,
+  restrictionCounts,
   activities,
   teachers,
   row,
+  saving = false,
+  error = '',
   onClose,
   onSubmit,
 }: ActivityAssignmentFormModalProps) {
@@ -83,7 +87,7 @@ export function ActivityAssignmentFormModal({
   const [values, setValues] = useState<FormValues>(() => ({
     subjectKey: initialActivity,
     teacherValue: initialTeacherValue(row, teachers),
-    hours: row ? String(row.assignedHours) : '1',
+    hours: row && row.assignedHours > 0 ? String(row.assignedHours) : String(row?.requiredHours || 1),
     note: row?.note ?? '',
   }))
   const [attempted, setAttempted] = useState(false)
@@ -91,10 +95,9 @@ export function ActivityAssignmentFormModal({
   const hoursValue = Number(values.hours)
   const hoursInvalid = !values.hours || !Number.isInteger(hoursValue) || hoursValue < 1
   const selectedTeacher = teachers.find((teacher) => teacher.id === values.teacherValue)
-  const teacherName = selectedTeacher
-    ? formatTeacherName(selectedTeacher)
-    : parseTeacherSelection(values.teacherValue).teacherName
-  const restrictionCount = teacherName ? countRestrictions(yearId, teacherName) : 0
+  const restrictionCount = selectedTeacher
+    ? (restrictionCounts?.[selectedTeacher.id] ?? 0)
+    : 0
   const teacherOptions = [
     { value: '', label: 'Seleccionar docente' },
     ...teachers
@@ -111,11 +114,19 @@ export function ActivityAssignmentFormModal({
       : []),
   ]
 
+  const justification = values.note.trim()
+  const justificationInvalid = justification.length === 0
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+
+    if (saving) {
+      return
+    }
+
     setAttempted(true)
 
-    if (!values.subjectKey || !values.teacherValue || hoursInvalid) {
+    if (!values.subjectKey || !values.teacherValue || hoursInvalid || justificationInvalid) {
       return
     }
 
@@ -131,7 +142,7 @@ export function ActivityAssignmentFormModal({
         ? formatTeacherName(catalogTeacher)
         : teacher.teacherName,
       assignedHours: hoursValue,
-      note: values.note.trim(),
+      note: justification,
     })
   }
 
@@ -148,8 +159,11 @@ export function ActivityAssignmentFormModal({
       footer={
         <ModalActions
           formId={formId}
-          confirmLabel={editing ? 'Guardar cambios' : 'Guardar asignación'}
+          confirmLabel={
+            saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Guardar asignación'
+          }
           confirmType="submit"
+          disabled={saving}
           onCancel={onClose}
         />
       }
@@ -191,16 +205,23 @@ export function ActivityAssignmentFormModal({
           error={attempted && hoursInvalid ? hoursMessage : undefined}
           onChange={(event) => patch({ hours: event.target.value.replace(/\D/g, '') })}
         />
-        <FormField id={`${formId}-note`} label="Observación">
+        <FormField
+          id={`${formId}-note`}
+          label="Justificación"
+          required
+          error={attempted && justificationInvalid ? justificationMessage : undefined}
+        >
           <TextArea
             id={`${formId}-note`}
             name="note"
             rows={3}
-            placeholder="Observación opcional"
+            required
+            placeholder="Por qué se asigna esta actividad"
             value={values.note}
             onChange={(event) => patch({ note: event.target.value })}
           />
         </FormField>
+        {error ? <p className={styles.error}>{error}</p> : null}
         {restrictionCount > 0 ? (
           <p className={styles.warning}>{assignmentRestrictionWarning}</p>
         ) : selectedTeacher ? (

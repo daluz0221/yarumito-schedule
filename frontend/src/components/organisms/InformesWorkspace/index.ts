@@ -1,0 +1,1 @@
+export { InformesWorkspace } from './InformesWorkspace'

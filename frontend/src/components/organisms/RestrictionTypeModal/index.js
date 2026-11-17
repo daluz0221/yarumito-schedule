@@ -1,0 +1,1 @@
+export { RestrictionTypeModal } from './RestrictionTypeModal';

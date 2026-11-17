@@ -64,5 +64,14 @@ autenticacion-login.md
 alineacion-edicion-docentes.md
 alineacion-listado-docentes.md
 alineacion-perfil-docente.md
-AUDIT_REPORT.html
+
+/_docs_referencia
+/.agents-skills/*
+
+informe_final/*
 AUDIT_REPORT.md
+AUDIT_REPORT.html
+
+integracion_guia.md
+guia_de_uso/*
+sugerencias_backend.md

@@ -1,6 +1,7 @@
 package co.edu.ieruralyarumito.backend.repository;
 
 import co.edu.ieruralyarumito.backend.entity.Usuario;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,4 +14,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
 
     // Evita crear más de una vez el usuario semilla.
     boolean existsByCorreo(String correo);
+
+    // Lista las cuentas ordenadas por correo, sin exponer la contraseña.
+    List<Usuario> findAllByOrderByCorreoAsc();
 }

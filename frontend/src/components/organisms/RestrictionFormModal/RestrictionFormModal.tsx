@@ -1,18 +1,15 @@
 import { useRef, useState, type FormEvent } from 'react'
+import type { RestriccionDocenteVista } from '../../../api/restriccionesDocentes'
 import {
-  findTeacherRestriction,
   labelAvailability,
   restrictionApprovalHint,
-  restrictionBandOptions,
   restrictionDayOptions,
   restrictionEditApprovalHint,
   restrictionEditTypeHint,
   restrictionEffect,
   restrictionTypeHint,
   restrictionTypeOptions,
-  timeBandLabel,
   type RestrictionKind,
-  type TeacherRestriction,
   type WeekDay,
 } from '../../../content/teacherRestrictions'
 import { TextArea } from '../../atoms/TextArea'
@@ -25,17 +22,30 @@ import styles from './RestrictionFormModal.module.css'
 
 export type RestrictionFormMode = 'create' | 'edit'
 
+export type RestrictionFormValues = {
+  day: WeekDay
+  bandId: string
+  tipo: RestrictionKind
+  motivo: string
+  documentoSoporte: string | null
+}
+
 export type RestrictionFormModalProps = {
   open: boolean
   mode: RestrictionFormMode
-  yearId: string
   year: number
   teacherName: string
   day?: WeekDay | ''
   bandId?: string
+  bandLabel?: string
   tipo?: RestrictionKind | ''
-  restriction?: TeacherRestriction
+  restriction?: RestriccionDocenteVista
+  bandOptions: { value: string; label: string }[]
+  isTaken?: (day: string, bandId: string) => boolean
+  submitting?: boolean
+  error?: string
   onClose: () => void
+  onSubmit: (values: RestrictionFormValues) => void
 }
 
 type FormValues = {
@@ -44,23 +54,28 @@ type FormValues = {
   tipo: string
   motivo: string
   fileName: string
+  documentoSoporte: string | null
 }
 
 const requiredChoiceMessage = 'Seleccione una opción.'
 const motivoMessage = 'Ingresa el motivo.'
 const duplicateMessage = 'Esta franja ya tiene una restricción.'
+const fileMessage = 'No se pudo leer el documento soporte.'
+const fileSizeMessage = 'El documento soporte no puede superar 1.5 MB.'
+const maxFileBytes = 1_500_000
 
 function createValues(day = '', bandId = '', tipo = ''): FormValues {
-  return { day, bandId, tipo, motivo: '', fileName: '' }
+  return { day, bandId, tipo, motivo: '', fileName: '', documentoSoporte: null }
 }
 
-function valuesFromRestriction(restriction: TeacherRestriction): FormValues {
+function valuesFromRestriction(restriction: RestriccionDocenteVista): FormValues {
   return {
     day: restriction.day,
     bandId: restriction.bandId,
     tipo: restriction.status,
     motivo: restriction.motivo,
-    fileName: restriction.fileName ?? '',
+    fileName: '',
+    documentoSoporte: restriction.documentoSoporte,
   }
 }
 
@@ -69,17 +84,35 @@ function effectNote(status: RestrictionKind) {
   return `${labelAvailability(status)}: ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}`
 }
 
+function archivoABase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : ''
+      const comma = result.indexOf(',')
+      resolve(comma >= 0 ? result.slice(comma + 1) : result)
+    }
+    reader.onerror = () => reject(reader.error ?? new Error(fileMessage))
+    reader.readAsDataURL(file)
+  })
+}
+
 export function RestrictionFormModal({
   open,
   mode,
-  yearId,
   year,
   teacherName,
   day = '',
   bandId = '',
+  bandLabel = '',
   tipo = '',
   restriction,
+  bandOptions,
+  isTaken,
+  submitting = false,
+  error = '',
   onClose,
+  onSubmit,
 }: RestrictionFormModalProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [values, setValues] = useState<FormValues>(() =>
@@ -88,28 +121,63 @@ export function RestrictionFormModal({
       : createValues(day, bandId, tipo),
   )
   const [attempted, setAttempted] = useState(false)
+  const [fileError, setFileError] = useState('')
   const formId = `restriction-${mode}-form`
   const editing = mode === 'edit'
-  const occupied = editing
-    ? undefined
-    : values.day && values.bandId
-      ? findTeacherRestriction(yearId, teacherName, values.bandId, values.day as WeekDay)
-      : undefined
-  const duplicate = Boolean(occupied)
+  const duplicate =
+    !editing &&
+    Boolean(values.day && values.bandId && isTaken?.(values.day, values.bandId))
+  const attachmentLabel = values.fileName
+    ? values.fileName
+    : values.documentoSoporte
+      ? 'Documento adjunto'
+      : 'Ningún archivo adjunto'
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setAttempted(true)
 
-    if (!values.day || !values.bandId || !values.tipo || !values.motivo.trim() || duplicate) {
+    if (
+      submitting ||
+      !values.day ||
+      !values.bandId ||
+      !values.tipo ||
+      !values.motivo.trim() ||
+      duplicate
+    ) {
       return
     }
 
-    onClose()
+    onSubmit({
+      day: values.day as WeekDay,
+      bandId: values.bandId,
+      tipo: values.tipo as RestrictionKind,
+      motivo: values.motivo.trim(),
+      documentoSoporte: values.documentoSoporte,
+    })
   }
 
   const patch = (partial: Partial<FormValues>) => {
     setValues((current) => ({ ...current, ...partial }))
+  }
+
+  const attachFile = async (file: File | undefined) => {
+    if (!file) {
+      return
+    }
+
+    if (file.size > maxFileBytes) {
+      setFileError(fileSizeMessage)
+      return
+    }
+
+    try {
+      const documentoSoporte = await archivoABase64(file)
+      setFileError('')
+      patch({ fileName: file.name, documentoSoporte })
+    } catch {
+      setFileError(fileMessage)
+    }
   }
 
   return (
@@ -121,8 +189,11 @@ export function RestrictionFormModal({
       footer={
         <ModalActions
           formId={formId}
-          confirmLabel={editing ? 'Guardar cambios' : 'Guardar restricción'}
+          confirmLabel={
+            submitting ? 'Guardando…' : editing ? 'Guardar cambios' : 'Guardar restricción'
+          }
           confirmType="submit"
+          disabled={submitting}
           onCancel={onClose}
         />
       }
@@ -130,41 +201,43 @@ export function RestrictionFormModal({
       <form id={formId} className={styles.form} onSubmit={handleSubmit}>
         {editing ? (
           <div className={styles.context}>
-            <p>{teacherName} · Año lectivo {year}</p>
+            <p>
+              {teacherName} · Año lectivo {year}
+            </p>
             <p className={styles.slot}>
-              {values.day} · {timeBandLabel(values.bandId)}
+              {values.day} · {bandLabel}
             </p>
           </div>
         ) : null}
         {editing ? null : (
-        <div className={styles.grid}>
-          <SelectField
-            id={`${formId}-day`}
-            label="Día"
-            name="day"
-            required
-            value={values.day}
-            options={restrictionDayOptions()}
-            error={attempted && !values.day ? requiredChoiceMessage : undefined}
-            onChange={(nextDay) => patch({ day: nextDay })}
-          />
-          <SelectField
-            id={`${formId}-band`}
-            label="Franja"
-            name="band"
-            required
-            value={values.bandId}
-            options={restrictionBandOptions()}
-            error={
-              attempted && !values.bandId
-                ? requiredChoiceMessage
-                : attempted && duplicate
-                  ? duplicateMessage
-                  : undefined
-            }
-            onChange={(nextBand) => patch({ bandId: nextBand })}
-          />
-        </div>
+          <div className={styles.grid}>
+            <SelectField
+              id={`${formId}-day`}
+              label="Día"
+              name="day"
+              required
+              value={values.day}
+              options={restrictionDayOptions()}
+              error={attempted && !values.day ? requiredChoiceMessage : undefined}
+              onChange={(nextDay) => patch({ day: nextDay })}
+            />
+            <SelectField
+              id={`${formId}-band`}
+              label="Franja"
+              name="band"
+              required
+              value={values.bandId}
+              options={[{ value: '', label: 'Seleccione una franja' }, ...bandOptions]}
+              error={
+                attempted && !values.bandId
+                  ? requiredChoiceMessage
+                  : attempted && duplicate
+                    ? duplicateMessage
+                    : undefined
+              }
+              onChange={(nextBand) => patch({ bandId: nextBand })}
+            />
+          </div>
         )}
         <SelectField
           id={`${formId}-type`}
@@ -172,10 +245,14 @@ export function RestrictionFormModal({
           name="tipo"
           required
           value={values.tipo}
-          options={editing ? restrictionTypeOptions.filter((option) => option.value) : restrictionTypeOptions}
+          options={
+            editing
+              ? restrictionTypeOptions.filter((option) => option.value)
+              : restrictionTypeOptions
+          }
           hint={editing ? restrictionEditTypeHint : restrictionTypeHint}
           error={attempted && !values.tipo ? requiredChoiceMessage : undefined}
-          onChange={(tipo) => patch({ tipo })}
+          onChange={(nextTipo) => patch({ tipo: nextTipo })}
         />
         <FormField
           id={`${formId}-motivo`}
@@ -195,18 +272,31 @@ export function RestrictionFormModal({
           />
         </FormField>
         <div className={styles.file}>
-          <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={submitting}
+            onClick={() => fileRef.current?.click()}
+          >
             {editing ? 'Vincular documento soporte' : 'Adjuntar archivo'}
           </Button>
           <input
             ref={fileRef}
             type="file"
             className={styles.fileInput}
-            onChange={(event) => patch({ fileName: event.target.files?.[0]?.name ?? values.fileName })}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+              void attachFile(file)
+            }}
           />
-          <p>
-            Documento soporte (opcional) · {values.fileName || 'Ningún archivo adjunto'}
-          </p>
+          <p>Documento soporte (opcional) · {attachmentLabel}</p>
+          {fileError ? (
+            <p className={styles.error} role="alert">
+              {fileError}
+            </p>
+          ) : null}
         </div>
         <p className={styles.note}>
           {editing ? restrictionEditApprovalHint : restrictionApprovalHint}
@@ -217,6 +307,11 @@ export function RestrictionFormModal({
             <p className={styles.note}>{effectNote('PREFERENCIA')}</p>
           </>
         )}
+        {error ? (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        ) : null}
       </form>
     </Modal>
   )

@@ -36,6 +36,8 @@ export {
 } from './catalogos'
 export type { OpcionAsignaturaPredefinida, OpcionCatalogo } from './catalogos'
 export { getAuthenticatedUser, login, logout, verifySession } from './auth'
+export { etiquetaUsuario, listarUsuarios } from './usuarios'
+export type { UsuarioListado } from './usuarios'
 export {
   actualizarArea,
   cambiarEstadoArea,
@@ -124,6 +126,118 @@ export {
   sugerirCodigoGrupo,
 } from './grupos'
 export type { CrearGrupoRequest, GrupoResponse } from './grupos'
+export {
+  actualizarClaseProgramada,
+  bandasDelTablero,
+  clasesDelTablero,
+  consultarHorarioGrupo,
+  crearClaseProgramada,
+  diaSemanaApi,
+  eliminarClaseProgramada,
+  etiquetaEstadoHorario,
+  metricasDelTablero,
+  pendientesDelTablero,
+} from './horarios'
+export {
+  aConflictoRevisado,
+  listarConflictosPendientes,
+  listarConflictosPorHorario,
+  listarConflictosPorSeveridad,
+  marcarConflictoResuelto,
+} from './conflictos'
+export type { ConflictoResponse, ConflictoVista, SeveridadConflicto, TipoConflicto } from './conflictos'
+export type {
+  ActualizarClaseProgramadaRequest,
+  AsignacionPendienteResponse,
+  ClaseProgramadaResponse,
+  ClaseVista,
+  CrearClaseProgramadaRequest,
+  EstadoHorario,
+  HorarioGrupoResponse,
+  ResumenHorarioResponse,
+} from './horarios'
+export {
+  confirmarAsignacion,
+  consultarAsignacion,
+  listarAsignacionesPorDocente,
+  listarAsignacionesPorGrupo,
+  listarBorradores,
+  registrarAsignacion,
+} from './asignaciones'
+export { asignarActividadDocente, listarActividadesDocente } from './actividadesDocente'
+export type {
+  AsignacionActividadResponse,
+  CrearAsignacionActividadRequest,
+  TipoActividadInstitucional,
+} from './actividadesDocente'
+export type {
+  AsignacionAcademicaResponse,
+  CrearAsignacionAcademicaRequest,
+  EstadoAsignacionAcademica,
+} from './asignaciones'
+export {
+  consultarAuditoriaPorEntidad,
+  consultarAuditoriaPorUsuario,
+} from './registrosAuditoria'
+export {
+  consultarInformeHorario,
+  descargarInformeHorario,
+} from './informesHorarios'
+export {
+  consultarInformeAreasAsignaturas,
+  consultarInformePerfilesProfesionales,
+  consultarInformePlantaDocente,
+  descargarInformeAreasAsignaturas,
+  descargarInformePerfilesProfesionales,
+  descargarInformePlantaDocente,
+} from './informesInstitucionales'
+export {
+  consultarParametroInstitucionalPorClave,
+  listarParametrosInstitucionalesPorAnio,
+} from './parametrosInstitucionales'
+export type { ParametroInstitucionalResponse } from './parametrosInstitucionales'
+export type {
+  FormatoInformeHorario,
+  InformeHorarioCarga,
+  InformeHorarioClaseDetalle,
+  InformeHorariosFiltroRequest,
+  InformeHorariosResponse,
+  VersionInformeHorario,
+} from './informesHorarios'
+export type {
+  FiltroAreasAsignaturas,
+  FiltroPerfilProfesional,
+  FiltroPlantaDocente,
+  FormatoInformeInstitucional,
+  InformeAreasAsignaturas,
+  InformeAreaDetalle,
+  InformeAsignaturaDetalle,
+  InformeIdoneidadDetalle,
+  InformePerfilDocente,
+  InformePerfilProfesional,
+  InformePlantaDocente,
+  InformePlantaDocenteDetalle,
+  InformeTituloDetalle,
+  TipoIdoneidadInforme,
+  TipoVinculacionInforme,
+} from './informesInstitucionales'
+export type { EntidadAuditable, RegistroAuditoriaResponse } from './registrosAuditoria'
+export {
+  actualizarRestriccion,
+  aRestriccionVista,
+  consultarRestriccion,
+  diaApi,
+  listarRestriccionesPorAnio,
+  listarRestriccionesPorDocenteYAnio,
+  registrarRestriccion,
+  tipoApi,
+} from './restriccionesDocentes'
+export type {
+  ActualizarRestriccionDocenteRequest,
+  CrearRestriccionDocenteRequest,
+  RestriccionDocenteResponse,
+  RestriccionDocenteVista,
+} from './restriccionesDocentes'
 export { useCatalogoAniosEscolares } from './useCatalogoAniosEscolares'
 export { useCatalogoGrados } from './useCatalogoGrados'
 export { useCatalogoGrupos } from './useCatalogoGrupos'

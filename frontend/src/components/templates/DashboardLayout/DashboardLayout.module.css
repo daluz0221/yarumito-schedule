@@ -8,13 +8,19 @@
   position: sticky;
   top: 0;
   z-index: 30;
+  align-self: flex-start;
   width: var(--sidebar-width);
   height: 100svh;
+  max-height: 100svh;
+  min-height: 0;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .sidebarSlot > aside {
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .sidebarClose {

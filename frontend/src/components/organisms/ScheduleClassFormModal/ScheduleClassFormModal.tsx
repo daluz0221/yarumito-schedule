@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react'
 import {
-  defaultClassroom,
   scheduleBandOptions,
   scheduleClassroomOptions,
   scheduleDayOptions,
@@ -31,9 +30,35 @@ export type ScheduleClassFormModalProps = {
   bandId: string
   classroom: string
   subjectKey: string
+  bandOptions?: { value: string; label: string }[]
+  classroomOptions?: { value: string; label: string }[]
+  submitting?: boolean
+  error?: string
   onClose: () => void
   onSubmit: (values: ScheduleClassFormValues) => void
   onRemove?: () => void
+}
+
+function aulaParaAsignacion(
+  note: string | null,
+  options: { value: string; label: string }[],
+  current: string,
+) {
+  const disponibles = options.filter((option) => option.value)
+
+  if (note && /laborat/i.test(note)) {
+    const laboratorio = disponibles.find((option) => /lab/i.test(option.label))
+
+    if (laboratorio) {
+      return laboratorio.value
+    }
+  }
+
+  if (disponibles.some((option) => option.value === current)) {
+    return current
+  }
+
+  return disponibles[0]?.value ?? ''
 }
 
 export function ScheduleClassFormModal({
@@ -48,6 +73,10 @@ export function ScheduleClassFormModal({
   bandId,
   classroom,
   subjectKey,
+  bandOptions,
+  classroomOptions,
+  submitting = false,
+  error = '',
   onClose,
   onSubmit,
   onRemove,
@@ -64,10 +93,11 @@ export function ScheduleClassFormModal({
     label: `${item.subject} · ${item.teacherName} · ${groupCode}`,
   }))
 
+  const roomOptions = classroomOptions ?? scheduleClassroomOptions()
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (creating && !selected) {
+    if (submitting || (creating && !selected) || !values.classroom) {
       return
     }
 
@@ -83,19 +113,31 @@ export function ScheduleClassFormModal({
     <Modal
       open={open}
       title={creating ? 'Programar clase' : 'Editar clase programada'}
-      onClose={onClose}
+      onClose={submitting ? () => undefined : onClose}
       footer={
         <>
-          <Button variant="muted" size="sm" onClick={onClose}>
+          <Button variant="muted" size="sm" onClick={onClose} disabled={submitting}>
             Cancelar
           </Button>
           {creating ? null : (
-            <Button variant="outline" size="sm" onClick={onRemove}>
+            <Button variant="outline" size="sm" onClick={onRemove} disabled={submitting}>
               Quitar del horario
             </Button>
           )}
-          <Button type="submit" form={formId} variant="primary" size="sm" disabled={creating && !selected}>
-            {creating ? 'Programar clase' : 'Guardar cambios'}
+          <Button
+            type="submit"
+            form={formId}
+            variant="primary"
+            size="sm"
+            disabled={submitting || (creating && !selected) || !values.classroom}
+          >
+            {submitting
+              ? creating
+                ? 'Programando…'
+                : 'Guardando…'
+              : creating
+                ? 'Programar clase'
+                : 'Guardar cambios'}
           </Button>
         </>
       }
@@ -157,13 +199,13 @@ export function ScheduleClassFormModal({
                 ? assignmentOptions
                 : [{ value: '', label: 'Sin horas pendientes' }]
             }
-            disabled={assignmentOptions.length === 0}
+            disabled={assignmentOptions.length === 0 || submitting}
             onChange={(nextKey) => {
               const next = assignments.find((item) => item.key === nextKey)
               setValues((current) => ({
                 ...current,
                 subjectKey: nextKey,
-                classroom: defaultClassroom(next?.note ?? null),
+                classroom: aulaParaAsignacion(next?.note ?? null, roomOptions, current.classroom),
               }))
             }}
           />
@@ -177,6 +219,7 @@ export function ScheduleClassFormModal({
             required
             value={values.day}
             options={scheduleDayOptions()}
+            disabled={submitting}
             onChange={(nextDay) =>
               setValues((current) => ({ ...current, day: nextDay as WeekDay }))
             }
@@ -187,7 +230,8 @@ export function ScheduleClassFormModal({
             name="band"
             required
             value={values.bandId}
-            options={scheduleBandOptions()}
+            options={bandOptions ?? scheduleBandOptions()}
+            disabled={submitting}
             onChange={(nextBand) => setValues((current) => ({ ...current, bandId: nextBand }))}
           />
         </div>
@@ -198,13 +242,19 @@ export function ScheduleClassFormModal({
           name="classroom"
           required
           value={values.classroom}
-          options={scheduleClassroomOptions()}
+          options={roomOptions.length > 0 ? roomOptions : [{ value: '', label: 'Sin aulas activas' }]}
+          disabled={submitting || roomOptions.length === 0}
           onChange={(nextRoom) => setValues((current) => ({ ...current, classroom: nextRoom }))}
         />
 
         {creating ? (
           <p className={styles.hint}>
             La asignación determina docente, asignatura y grupo. No se reasignan desde este módulo.
+          </p>
+        ) : null}
+        {error ? (
+          <p className={styles.error} role="alert">
+            {error}
           </p>
         ) : null}
       </form>

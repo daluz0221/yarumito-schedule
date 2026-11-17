@@ -1,22 +1,22 @@
 import {
   availabilityDays,
   morningBands,
+  type TimeBand,
   type WeekDay,
 } from '../../../content/teacherRestrictions'
-import {
-  blockKey,
-  breakBand,
-  classBands,
-  type ScheduleBlock,
-} from '../../../content/scheduleConstruction'
+import { rutaHistorialEntidad } from '../../../content/auditoria'
+import { blockKey, type ScheduleBlock } from '../../../content/scheduleConstruction'
 import { Card } from '../../atoms/Card'
 import { Text } from '../../atoms/Text'
+import { TextLink } from '../../atoms/TextLink'
 import styles from './ScheduleGrid.module.css'
 
 export type ScheduleGridProps = {
   groupCode: string
+  groupId: string
   shiftLabel: string
   readOnly: boolean
+  bands?: TimeBand[]
   blocks: Map<string, ScheduleBlock>
   onProgram: (day: WeekDay, bandId: string) => void
   onEdit: (placementId: string) => void
@@ -24,14 +24,16 @@ export type ScheduleGridProps = {
 
 export function ScheduleGrid({
   groupCode,
+  groupId,
   shiftLabel,
   readOnly,
+  bands = morningBands,
   blocks,
   onProgram,
   onEdit,
 }: ScheduleGridProps) {
-  const pause = breakBand()
-  const slots = classBands()
+  const pause = bands.some((band) => band.kind === 'break')
+  const slots = bands.filter((band) => band.kind === 'class')
 
   return (
     <Card className={styles.card}>
@@ -53,11 +55,11 @@ export function ScheduleGrid({
             </div>
           ))}
 
-          {morningBands.map((band) => {
+          {bands.map((band) => {
             if (band.kind === 'break') {
               return (
                 <div key={band.id} className={styles.break} role="row">
-                  DESCANSO · 09:15 – 09:45 · No programable
+                  {band.label}
                 </div>
               )
             }
@@ -77,6 +79,7 @@ export function ScheduleGrid({
                     bandId={band.id}
                     block={blocks.get(blockKey(day, band.id))}
                     readOnly={readOnly}
+                    groupId={groupId}
                     onProgram={onProgram}
                     onEdit={onEdit}
                   />
@@ -101,11 +104,12 @@ type SlotProps = {
   bandId: string
   block?: ScheduleBlock
   readOnly: boolean
+  groupId: string
   onProgram: (day: WeekDay, bandId: string) => void
   onEdit: (placementId: string) => void
 }
 
-function Slot({ day, bandId, block, readOnly, onProgram, onEdit }: SlotProps) {
+function Slot({ day, bandId, block, readOnly, groupId, onProgram, onEdit }: SlotProps) {
   if (!block) {
     return (
       <div className={styles.cell} role="gridcell">
@@ -127,18 +131,26 @@ function Slot({ day, bandId, block, readOnly, onProgram, onEdit }: SlotProps) {
 
   return (
     <div className={styles.cell} role="gridcell">
-      <button
-        type="button"
-        className={`${styles.block} ${styles[block.tone]}`}
-        title={block.reason || undefined}
-        disabled={readOnly}
-        aria-label={`Editar clase. ${label}`}
-        onClick={() => onEdit(block.id)}
-      >
-        <span className={styles.subject}>{block.subject}</span>
-        <span>{block.teacherName}</span>
-        <span>{block.classroom}</span>
-      </button>
+      <div className={styles.occupied}>
+        <button
+          type="button"
+          className={`${styles.block} ${styles[block.tone]}`}
+          title={block.reason || undefined}
+          disabled={readOnly || Boolean(block.locked)}
+          aria-label={block.locked ? `Clase bloqueada. ${label}` : `Editar clase. ${label}`}
+          onClick={() => onEdit(block.id)}
+        >
+          <span className={styles.subject}>{block.subject}</span>
+          <span>{block.teacherName}</span>
+          <span>{block.classroom}</span>
+        </button>
+        <TextLink
+          className={styles.history}
+          to={rutaHistorialEntidad('ClaseProgramada', block.id, groupId)}
+        >
+          Ver historial
+        </TextLink>
+      </div>
     </div>
   )
 }

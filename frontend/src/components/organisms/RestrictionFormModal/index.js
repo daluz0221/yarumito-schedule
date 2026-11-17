@@ -1,0 +1,1 @@
+export { RestrictionFormModal } from './RestrictionFormModal';

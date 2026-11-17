@@ -21,7 +21,7 @@ export function ConflictsTable({ rows, emptyMessage, onDetail }: ConflictsTableP
       <div className={styles.header}>
         <SectionHeader
           title="Conflictos detectados"
-          description="Errores y advertencias calculados sobre el horario en construcción."
+          description="Errores y advertencias registrados en el horario seleccionado."
         />
       </div>
 

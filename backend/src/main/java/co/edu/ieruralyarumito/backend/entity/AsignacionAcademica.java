@@ -65,6 +65,46 @@ public class AsignacionAcademica {
         return this.id;
     }
 
+    public AnioEscolar getAnioEscolar(){
+        return this.anioEscolar;
+    }
+
+    public void setAnioEscolar(AnioEscolar anioEscolar){
+        this.anioEscolar = anioEscolar;
+    }
+
+    public Docente getDocente(){
+        return this.docente;
+    }
+
+    public void setDocente(Docente docente){
+        this.docente = docente;
+    }
+
+    public Grupo getGrupo(){
+        return this.grupo;
+    }
+
+    public void setGrupo(Grupo grupo){
+        this.grupo = grupo;
+    }
+
+    public Asignatura getAsignatura(){
+        return this.asignatura;
+    }
+
+    public void setAsignatura(Asignatura asignatura){
+        this.asignatura = asignatura;
+    }
+
+    public Usuario getAsignadaPor(){
+        return this.asignadaPor;
+    }
+
+    public void setAsignadaPor(Usuario asignadaPor){
+        this.asignadaPor = asignadaPor;
+    }
+
     public int getHorasSemanales(){
         return this.horasSemanales;
     }

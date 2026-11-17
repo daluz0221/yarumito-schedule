@@ -1,20 +1,27 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import {
+  actualizarRestriccion,
+  ApiError,
+  consultarRestriccion,
+  diaApi,
+  aRestriccionVista,
+  registrarRestriccion,
+  tipoApi,
+} from '../../../api'
+import type { RestriccionDocenteVista } from '../../../api/restriccionesDocentes'
 import {
   availabilityDays,
-  findTeacherRestriction,
   labelAvailability,
-  morningBands,
-  morningShiftLabel,
   type AvailabilityStatus,
   type RestrictionKind,
   type WeekDay,
 } from '../../../content/teacherRestrictions'
+import { Select } from '../../atoms/Select'
 import { Button } from '../../atoms/Button'
 import { Card } from '../../atoms/Card'
 import { Text } from '../../atoms/Text'
-import { RemoveRestrictionModal } from '../RemoveRestrictionModal'
 import { RestrictionDetailModal } from '../RestrictionDetailModal'
-import { RestrictionFormModal } from '../RestrictionFormModal'
+import { RestrictionFormModal, type RestrictionFormValues } from '../RestrictionFormModal'
 import { RestrictionTypeModal } from '../RestrictionTypeModal'
 import styles from './WeeklyAvailability.module.css'
 
@@ -23,14 +30,31 @@ type AvailabilityDialog =
   | { name: 'create'; day: WeekDay | ''; bandId: string; tipo: RestrictionKind }
   | { name: 'edit'; day: WeekDay; bandId: string }
   | { name: 'detail'; day: WeekDay; bandId: string }
-  | { name: 'remove'; day: WeekDay; bandId: string }
+
+export type AvailabilityBand = {
+  id: string
+  label: string
+  kind: 'class' | 'break'
+}
 
 export type WeeklyAvailabilityProps = {
   yearId: string
   year: number
+  teacherId: string
   teacherName: string
   readOnly: boolean
-  statusAt: (bandId: string, day: WeekDay) => AvailabilityStatus
+  yearClosed?: boolean
+  shiftLabel: string
+  turnos: { id: string; nombre: string }[]
+  turnoId: string
+  onTurnoChange: (turnoId: string) => void
+  bands: AvailabilityBand[]
+  bandsLoading: boolean
+  bandsError: string
+  restrictions: RestriccionDocenteVista[]
+  loading: boolean
+  error: string
+  onSaved: () => void
 }
 
 const legend = [
@@ -39,19 +63,114 @@ const legend = [
   { status: 'PREFERENCIA', detail: 'Advertencia' },
 ] as const
 
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
+function mensajeError(cause: unknown, fallback: string) {
+  return cause instanceof ApiError && cause.message ? cause.message : fallback
+}
+
+function findRestriction(
+  restrictions: RestriccionDocenteVista[],
+  bandId: string,
+  day: WeekDay,
+) {
+  return restrictions.find((item) => item.bandId === bandId && item.day === day)
+}
+
 export function WeeklyAvailability({
   yearId,
   year,
+  teacherId,
   teacherName,
   readOnly,
-  statusAt,
+  yearClosed = false,
+  shiftLabel,
+  turnos,
+  turnoId,
+  onTurnoChange,
+  bands,
+  bandsLoading,
+  bandsError,
+  restrictions,
+  loading,
+  error,
+  onSaved,
 }: WeeklyAvailabilityProps) {
   const [dialog, setDialog] = useState<AvailabilityDialog | null>(null)
-  const closeDialog = () => setDialog(null)
-  const restriction =
+  const [consulted, setConsulted] = useState<RestriccionDocenteVista | null>(null)
+  const [consultKey, setConsultKey] = useState('')
+  const [consulting, setConsulting] = useState(false)
+  const [consultError, setConsultError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const closeDialog = () => {
+    setDialog(null)
+    setSaveError('')
+  }
+  const detailKey =
     dialog && dialog.name !== 'create' && dialog.name !== 'type' && dialog.day
-      ? findTeacherRestriction(yearId, teacherName, dialog.bandId, dialog.day)
+      ? `${dialog.day}-${dialog.bandId}`
+      : ''
+  const listed =
+    dialog && dialog.name !== 'create' && dialog.name !== 'type' && dialog.day
+      ? findRestriction(restrictions, dialog.bandId, dialog.day)
       : undefined
+  const restriction = consultKey === detailKey && consulted ? consulted : listed
+  const classBands = bands.filter((band) => band.kind === 'class')
+  const bandLabel = (bandId: string) => bands.find((band) => band.id === bandId)?.label ?? ''
+
+  useEffect(() => {
+    if (dialog?.name !== 'detail' || !dialog.day) {
+      return
+    }
+
+    const current = findRestriction(restrictions, dialog.bandId, dialog.day)
+    if (!current) {
+      return
+    }
+
+    const controller = new AbortController()
+    const key = `${dialog.day}-${dialog.bandId}`
+    setConsulting(true)
+    setConsultError('')
+    setConsulted(null)
+    setConsultKey(key)
+
+    consultarRestriccion(current.id, controller.signal)
+      .then((dto) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        const vista = aRestriccionVista(dto)
+        if (!vista) {
+          setConsultError('No se pudo leer la restricción.')
+          return
+        }
+
+        setConsulted(vista)
+        setConsultKey(key)
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setConsultError(mensajeError(cause, 'No se pudo consultar la restricción.'))
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setConsulting(false)
+        }
+      })
+
+    return () => controller.abort()
+  }, [dialog, restrictions])
+
+  const statusAt = (bandId: string, day: WeekDay): AvailabilityStatus =>
+    findRestriction(restrictions, bandId, day)?.status ?? 'DISPONIBLE'
 
   const openSlot = (day: WeekDay, bandId: string) => {
     const status = statusAt(bandId, day)
@@ -70,15 +189,68 @@ export function WeeklyAvailability({
     )
   }
 
+  const saveRestriction = async (values: RestrictionFormValues) => {
+    setSaving(true)
+    setSaveError('')
+
+    try {
+      if (dialog?.name === 'edit') {
+        if (!restriction) {
+          setSaveError('No se pudo identificar la restricción.')
+          return
+        }
+
+        await actualizarRestriccion(restriction.id, {
+          tipo: tipoApi(values.tipo),
+          motivo: values.motivo,
+          documentoSoporte: values.documentoSoporte,
+        })
+      } else {
+        await registrarRestriccion({
+          docenteId: teacherId,
+          anioEscolarId: yearId,
+          dia: diaApi(values.day),
+          franjaHorariaId: values.bandId,
+          tipo: tipoApi(values.tipo),
+          motivo: values.motivo,
+          documentoSoporte: values.documentoSoporte,
+        })
+      }
+
+      closeDialog()
+      onSaved()
+    } catch (cause) {
+      setSaveError(mensajeError(cause, 'No se pudo guardar la restricción.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <Card className={styles.card}>
       <div className={styles.intro}>
         <Text as="h3" variant="sectionTitle">
           Disponibilidad semanal
         </Text>
+        {turnos.length > 1 ? (
+          <div className={styles.shift}>
+            <label className={styles.shiftLabel} htmlFor="restriction-shift">
+              Turno
+            </label>
+            <Select
+              id="restriction-shift"
+              selectSize="sm"
+              className={styles.shiftSelect}
+              value={turnoId}
+              options={turnos.map((turno) => ({ value: turno.id, label: turno.nombre }))}
+              onChange={(event) => onTurnoChange(event.target.value)}
+            />
+          </div>
+        ) : (
+          <Text variant="body">Turno: {shiftLabel}</Text>
+        )}
         <Text variant="body">
-          Turno: {morningShiftLabel} · Selecciona una franja para consultar o agregar una
-          restricción.
+          Selecciona una franja para consultar o agregar una restricción.
         </Text>
       </div>
 
@@ -86,7 +258,7 @@ export function WeeklyAvailability({
         variant="primary"
         size="sm"
         className={styles.action}
-        disabled={readOnly}
+        disabled={readOnly || classBands.length === 0}
         onClick={() => setDialog({ name: 'type', day: '', bandId: '' })}
       >
         + Agregar restricción
@@ -105,43 +277,60 @@ export function WeeklyAvailability({
       <p className={styles.note}>
         Las franjas sin restricciones se consideran disponibles para la planificación.
       </p>
+      {bandsLoading ? <p className={styles.note}>Cargando franjas horarias...</p> : null}
+      {bandsError ? (
+        <p className={styles.error} role="alert">
+          {bandsError}
+        </p>
+      ) : null}
+      {loading ? <p className={styles.note}>Cargando restricciones...</p> : null}
+      {error ? (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      ) : null}
+      {!bandsLoading && !bandsError && bands.length === 0 ? (
+        <p className={styles.note}>Este turno no tiene franjas horarias.</p>
+      ) : null}
 
-      <div className={styles.grid}>
-        <span className={styles.head}>Franja</span>
-        {availabilityDays.map((day) => (
-          <span key={day} className={styles.head}>
-            {day}
-          </span>
-        ))}
+      {bands.length > 0 ? (
+        <div className={styles.grid}>
+          <span className={styles.head}>Franja</span>
+          {availabilityDays.map((day) => (
+            <span key={day} className={styles.head}>
+              {day}
+            </span>
+          ))}
 
-        {morningBands.map((band) =>
-          band.kind === 'break' ? (
-            <p key={band.id} className={styles.break}>
-              {band.label}
-            </p>
-          ) : (
-            <div key={band.id} className={styles.row}>
-              <span className={styles.time}>{band.label}</span>
-              {availabilityDays.map((day) => {
-                const status = statusAt(band.id, day)
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    className={[styles.cell, styles[status]].join(' ')}
-                    aria-label={`${day} ${band.label}: ${labelAvailability(status)}`}
-                    onClick={() => openSlot(day, band.id)}
-                  >
-                    <span className={styles.day}>{day}</span>
-                    <StatusMark status={status} />
-                    {labelAvailability(status)}
-                  </button>
-                )
-              })}
-            </div>
-          ),
-        )}
-      </div>
+          {bands.map((band) =>
+            band.kind === 'break' ? (
+              <p key={band.id} className={styles.break}>
+                {band.label}
+              </p>
+            ) : (
+              <div key={band.id} className={styles.row}>
+                <span className={styles.time}>{band.label}</span>
+                {availabilityDays.map((day) => {
+                  const status = statusAt(band.id, day)
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      className={[styles.cell, styles[status]].join(' ')}
+                      aria-label={`${day} ${band.label}: ${labelAvailability(status)}`}
+                      onClick={() => openSlot(day, band.id)}
+                    >
+                      <span className={styles.day}>{day}</span>
+                      <StatusMark status={status} />
+                      {labelAvailability(status)}
+                    </button>
+                  )
+                })}
+              </div>
+            ),
+          )}
+        </div>
+      ) : null}
 
       {dialog?.name === 'type' ? (
         <RestrictionTypeModal
@@ -155,42 +344,45 @@ export function WeeklyAvailability({
 
       {dialog?.name === 'create' || dialog?.name === 'edit' ? (
         <RestrictionFormModal
-          key={`${dialog.name}-${dialog.day}-${dialog.bandId}-${dialog.name === 'create' ? dialog.tipo : 'edit'}`}
+          key={`${dialog.name}-${dialog.day}-${dialog.bandId}-${dialog.name === 'create' ? dialog.tipo : restriction?.id ?? 'edit'}`}
           open
           mode={dialog.name}
-          yearId={yearId}
           year={year}
           teacherName={teacherName}
           day={dialog.day}
           bandId={dialog.bandId}
+          bandLabel={bandLabel(dialog.bandId)}
           tipo={dialog.name === 'create' ? dialog.tipo : undefined}
           restriction={dialog.name === 'edit' ? restriction : undefined}
+          bandOptions={classBands.map((band) => ({ value: band.id, label: band.label }))}
+          isTaken={(day, bandId) =>
+            restrictions.some((item) => item.day === day && item.bandId === bandId)
+          }
+          submitting={saving}
+          error={saveError}
           onClose={closeDialog}
+          onSubmit={(values) => {
+            void saveRestriction(values)
+          }}
         />
       ) : null}
 
-      {dialog?.name === 'detail' && restriction ? (
+      {dialog?.name === 'detail' ? (
         <RestrictionDetailModal
           open
           year={year}
           teacherName={teacherName}
-          restriction={restriction}
+          bandLabel={bandLabel(dialog.bandId)}
+          restriction={restriction ?? null}
+          loading={consulting && !restriction}
+          error={restriction ? '' : consultError}
           readOnly={readOnly}
-          onEdit={() => setDialog({ name: 'edit', day: dialog.day, bandId: dialog.bandId })}
-          onRemove={() => setDialog({ name: 'remove', day: dialog.day, bandId: dialog.bandId })}
+          yearClosed={yearClosed}
+          onEdit={() => {
+            setSaveError('')
+            setDialog({ name: 'edit', day: dialog.day, bandId: dialog.bandId })
+          }}
           onClose={closeDialog}
-        />
-      ) : null}
-
-      {dialog?.name === 'remove' ? (
-        <RemoveRestrictionModal
-          open
-          teacherName={teacherName}
-          year={year}
-          day={dialog.day}
-          bandId={dialog.bandId}
-          onConfirm={closeDialog}
-          onClose={() => setDialog({ name: 'detail', day: dialog.day, bandId: dialog.bandId })}
         />
       ) : null}
     </Card>

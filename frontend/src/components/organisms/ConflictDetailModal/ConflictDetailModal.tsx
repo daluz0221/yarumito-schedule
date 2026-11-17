@@ -15,8 +15,11 @@ export type ConflictDetailModalProps = {
   conflict: ReviewedConflict | null
   scheduleLabel: string
   detectedAt: string
+  resolving?: boolean
+  resolveError?: string
   onClose: () => void
   onOpenSchedule: () => void
+  onResolve?: () => void
 }
 
 export function ConflictDetailModal({
@@ -24,8 +27,11 @@ export function ConflictDetailModal({
   conflict,
   scheduleLabel,
   detectedAt,
+  resolving = false,
+  resolveError = '',
   onClose,
   onOpenSchedule,
+  onResolve,
 }: ConflictDetailModalProps) {
   if (!conflict) {
     return null
@@ -43,6 +49,11 @@ export function ConflictDetailModal({
           <Button variant="muted" size="sm" onClick={onClose}>
             Cerrar
           </Button>
+          {conflict.status === 'PENDIENTE' && onResolve ? (
+            <Button variant="outline" size="sm" disabled={resolving} onClick={onResolve}>
+              {resolving ? 'Guardando…' : 'Marcar como resuelto'}
+            </Button>
+          ) : null}
           <Button variant="primary" size="sm" onClick={onOpenSchedule}>
             Corregir en horario
           </Button>
@@ -67,6 +78,12 @@ export function ConflictDetailModal({
             </div>
           ))}
         </dl>
+
+        {resolveError ? (
+          <p className={styles.resolveError} role="alert">
+            {resolveError}
+          </p>
+        ) : null}
       </div>
     </Modal>
   )

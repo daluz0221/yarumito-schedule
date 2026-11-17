@@ -1,0 +1,1 @@
+export { DeleteTitleModal } from './DeleteTitleModal';

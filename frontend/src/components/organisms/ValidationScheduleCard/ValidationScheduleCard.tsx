@@ -1,25 +1,32 @@
-import { academicYearOptions, academicYears, type AcademicYear } from '../../../content/academicYear'
-import {
-  scheduleNameForYear,
-  validationScheduleStatus,
-} from '../../../content/validations'
-import { Badge } from '../../atoms/Badge'
+import type { AcademicYear } from '../../../content/academicYear'
+import { scheduleNameForYear } from '../../../content/validations'
+import { Badge, type BadgeTone } from '../../atoms/Badge'
 import { Card } from '../../atoms/Card'
 import { Text } from '../../atoms/Text'
 import { SelectField } from '../../molecules/SelectField'
 import styles from './ValidationScheduleCard.module.css'
 
 export type ValidationScheduleCardProps = {
-  year: AcademicYear
-  version: number
+  year: AcademicYear | null
+  yearOptions: { value: string; label: string }[]
+  yearDisabled?: boolean
+  versionLabel: string
+  scheduleName: string
   campusLabel: string
+  statusLabel: string
+  statusTone: BadgeTone
   onYearChange: (yearId: string) => void
 }
 
 export function ValidationScheduleCard({
   year,
-  version,
+  yearOptions,
+  yearDisabled = false,
+  versionLabel,
+  scheduleName,
   campusLabel,
+  statusLabel,
+  statusTone,
   onYearChange,
 }: ValidationScheduleCardProps) {
   return (
@@ -30,9 +37,8 @@ export function ValidationScheduleCard({
             Horario en validación
           </Text>
           <Text variant="body">
-            El backend aún no publica versiones de horario. Se valida el
-            borrador local de {year.year} con la asignación y las restricciones
-            ya registradas.
+            Se consultan los conflictos guardados del horario de este año y esta sede.
+            Elige el grupo para abrir su horario.
           </Text>
         </div>
         <div className={styles.yearSelect}>
@@ -40,24 +46,25 @@ export function ValidationScheduleCard({
             id="validation-year"
             label="Año lectivo"
             name="year"
-            value={year.id}
-            options={academicYearOptions(academicYears)}
+            value={year?.id ?? ''}
+            options={yearOptions}
+            disabled={yearDisabled}
             onChange={onYearChange}
           />
         </div>
       </div>
 
       <dl className={styles.facts}>
-        <Fact label="Año lectivo" value={String(year.year)} />
-        <Fact label="Sede" value={campusLabel.replace(/^Sede\s+/i, '')} />
-        <Fact label="Horario" value={scheduleNameForYear(year)} />
-        <Fact label="Versión" value={String(version)} />
+        <Fact label="Año lectivo" value={year ? String(year.year) : '—'} />
+        <Fact label="Sede" value={campusLabel.replace(/^Sede\s+/i, '') || '—'} />
+        <Fact label="Horario" value={scheduleName || (year ? scheduleNameForYear(year) : '—')} />
+        <Fact label="Versión" value={versionLabel} />
         <div className={styles.fact}>
           <Text as="dt" variant="caption">
             Estado
           </Text>
           <dd className={styles.badge}>
-            <Badge tone="warning">{validationScheduleStatus}</Badge>
+            <Badge tone={statusTone}>{statusLabel}</Badge>
           </dd>
         </div>
       </dl>

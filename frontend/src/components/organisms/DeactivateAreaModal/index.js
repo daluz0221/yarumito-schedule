@@ -1,0 +1,1 @@
+export { DeactivateAreaModal } from './DeactivateAreaModal';

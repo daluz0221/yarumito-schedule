@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { listarIdoneidadesPorDocente } from '../../../api'
+import { listarAsignacionesPorDocente, listarIdoneidadesPorDocente } from '../../../api'
 import type { AreaResponse } from '../../../api/areas'
 import {
   assignmentKindHint,
@@ -16,7 +16,6 @@ import {
   type CurricularKind,
 } from '../../../content/academicAssignment'
 import { isIdoneidadVigente, resolveAreaName } from '../../../content/teacherProfile'
-import { countRestrictions } from '../../../content/teacherRestrictions'
 import { formatTeacherName, labelEstado, type Teacher } from '../../../content/teachers'
 import { Button } from '../../atoms/Button'
 import { Modal } from '../../atoms/Modal'
@@ -42,14 +41,16 @@ export type AssignmentFormValues = {
 export type AssignmentFormModalProps = {
   open: boolean
   mode: AssignmentFormMode
-  yearId: string
   year: number
+  restrictionCounts?: Readonly<Record<string, number>>
   groupCode: string
   gradeLabel: string
   subjects: AssignmentRow[]
   teachers: Teacher[]
   areas: AreaResponse[]
   row?: AssignmentRow
+  saving?: boolean
+  error?: string
   onClose: () => void
   onSubmit: (values: AssignmentFormValues) => void
 }
@@ -87,14 +88,16 @@ function initialTeacherValue(row: AssignmentRow | undefined, teachers: Teacher[]
 export function AssignmentFormModal({
   open,
   mode,
-  yearId,
   year,
+  restrictionCounts,
   groupCode,
   gradeLabel,
   subjects,
   teachers,
   areas,
   row,
+  saving = false,
+  error = '',
   onClose,
   onSubmit,
 }: AssignmentFormModalProps) {
@@ -114,6 +117,7 @@ export function AssignmentFormModal({
   const [attempted, setAttempted] = useState(false)
   const [kindOpen, setKindOpen] = useState(false)
   const [hasValidIdoneidad, setHasValidIdoneidad] = useState(false)
+  const [teacherLoad, setTeacherLoad] = useState('')
   const formId = `assignment-${mode}-form`
   const selected = subjects.find((item) => item.key === values.subjectKey)
   const hoursValue = Number(values.hours)
@@ -125,23 +129,22 @@ export function AssignmentFormModal({
     ? resolveAreaName(selectedTeacher.areaNombramientoId, areas)
     : ''
   const restrictionCount = selectedTeacher
-    ? countRestrictions(yearId, formatTeacherName(selectedTeacher))
-    : values.teacherValue.startsWith('name:')
-      ? countRestrictions(yearId, parseTeacherSelection(values.teacherValue).teacherName)
-      : 0
-  const teacherHint = selectedTeacher
-    ? [
-        teacherCompatibilityHint(
+    ? (restrictionCounts?.[selectedTeacher.id] ?? 0)
+    : 0
+  const teacherHint = [
+    selectedTeacher
+      ? teacherCompatibilityHint(
           `Docente ${labelEstado(selectedTeacher.estado).toLowerCase()}`,
           teacherArea,
           selected?.area ?? '',
           hasValidIdoneidad,
-        ),
-        assignmentTeacherPriorityHint,
-      ].join(' ')
-    : values.teacherValue
-      ? assignmentTeacherPriorityHint
-      : undefined
+        )
+      : '',
+    values.teacherValue ? assignmentTeacherPriorityHint : '',
+    teacherLoad,
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   useEffect(() => {
     const teacherId = parseTeacherSelection(values.teacherValue).teacherId
@@ -173,8 +176,44 @@ export function AssignmentFormModal({
     return () => controller.abort()
   }, [areas, selected?.area, values.teacherValue])
 
+  useEffect(() => {
+    const teacherId = parseTeacherSelection(values.teacherValue).teacherId
+
+    if (!teacherId) {
+      setTeacherLoad('')
+      return
+    }
+
+    const controller = new AbortController()
+
+    listarAsignacionesPorDocente(teacherId, controller.signal)
+      .then((items) => {
+        const hours = items.reduce((total, item) => total + (item.horasSemanales || 0), 0)
+
+        if (items.length === 0) {
+          setTeacherLoad('Este docente no tiene asignaciones registradas.')
+          return
+        }
+
+        const label = items.length === 1 ? 'asignación' : 'asignaciones'
+        setTeacherLoad(`Carga actual: ${hours} h semanales en ${items.length} ${label}.`)
+      })
+      .catch((cause) => {
+        if (!isAbortError(cause)) {
+          setTeacherLoad('')
+        }
+      })
+
+    return () => controller.abort()
+  }, [values.teacherValue])
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+
+    if (saving) {
+      return
+    }
+
     setAttempted(true)
 
     if (!values.subjectKey || !values.teacherValue || hoursInvalid) {
@@ -217,8 +256,9 @@ export function AssignmentFormModal({
         footer={
           <ModalActions
             formId={formId}
-            confirmLabel={editing ? 'Guardar cambios' : 'Guardar asignación'}
+            confirmLabel={saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Guardar asignación'}
             confirmType="submit"
+            disabled={saving}
             onCancel={onClose}
           />
         }
@@ -275,7 +315,7 @@ export function AssignmentFormModal({
               required
               value={values.teacherValue}
               options={teacherOptions}
-              hint={teacherHint}
+              hint={teacherHint || undefined}
               error={attempted && !values.teacherValue ? requiredChoiceMessage : undefined}
               onChange={(teacherValue) => patch({ teacherValue })}
             />
@@ -316,7 +356,7 @@ export function AssignmentFormModal({
               required
               value={values.teacherValue}
               options={teacherOptions}
-              hint={teacherHint}
+              hint={teacherHint || undefined}
               error={attempted && !values.teacherValue ? requiredChoiceMessage : undefined}
               onChange={(teacherValue) => patch({ teacherValue })}
             />
@@ -332,6 +372,8 @@ export function AssignmentFormModal({
               onChange={(event) => patch({ note: event.target.value })}
             />
           </FormField>
+
+          {error ? <p className={styles.error}>{error}</p> : null}
 
           {restrictionCount > 0 ? (
             <p className={styles.warning}>{assignmentRestrictionWarning}</p>

@@ -40,3 +40,4 @@ public class LoginResponse {
         this.usuario = usuario;
     }
 }
+

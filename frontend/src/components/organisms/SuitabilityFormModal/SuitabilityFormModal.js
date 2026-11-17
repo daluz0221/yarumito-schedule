@@ -1,0 +1,179 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { useEffect, useState } from 'react';
+import { ApiError, listarAsignaturas } from '../../../api';
+import { PENDING_BACKEND_LABEL } from '../../../content/teachers';
+import { emptyCrearIdoneidadForm, formatTituloSoporte, idoneidadToForm, suitabilityTypeOptions, } from '../../../content/teacherProfile';
+import { Modal } from '../../atoms/Modal';
+import { TextLink } from '../../atoms/TextLink';
+import { ModalActions } from '../../molecules/ModalActions';
+import { SelectField } from '../../molecules/SelectField';
+import { TextField } from '../../molecules/TextField';
+import styles from './SuitabilityFormModal.module.css';
+const pendingOptions = [
+    { value: '', label: PENDING_BACKEND_LABEL },
+];
+function isAbortError(error) {
+    return error instanceof DOMException && error.name === 'AbortError';
+}
+function subjectLoadError(cause) {
+    return cause instanceof ApiError
+        ? cause.message
+        : 'No se pudieron cargar las asignaturas.';
+}
+function titleOptions(titles, selectedId, titlesError) {
+    const options = [
+        {
+            value: '',
+            label: 'Sin título de soporte',
+        },
+        ...titles.map((title) => ({
+            value: title.id,
+            label: formatTituloSoporte(title),
+        })),
+    ];
+    if (selectedId && !options.some((option) => option.value === selectedId)) {
+        options.push({
+            value: selectedId,
+            label: titlesError ? 'Título actual' : 'Título no disponible',
+        });
+    }
+    return options;
+}
+export function SuitabilityFormModal({ open, mode, item, areaOptions, titles = [], titlesError = '', loading = false, loadError = '', submitting = false, error = '', onClose, onRetry, onSubmit, }) {
+    const formStateKey = `${open ? 'open' : 'closed'}:${mode}:${item?.id ?? ''}`;
+    const initialValues = mode === 'edit' && item
+        ? idoneidadToForm(item)
+        : emptyCrearIdoneidadForm;
+    const [activeFormStateKey, setActiveFormStateKey] = useState(formStateKey);
+    const [values, setValues] = useState(initialValues);
+    const [subjectCatalog, setSubjectCatalog] = useState(null);
+    const [localError, setLocalError] = useState('');
+    const isEdit = mode === 'edit';
+    const isExceptional = values.tipo === 'EXCEPCIONAL';
+    if (activeFormStateKey !== formStateKey) {
+        setActiveFormStateKey(formStateKey);
+        setLocalError('');
+        setValues(initialValues);
+    }
+    useEffect(() => {
+        if (!open || !values.areaId) {
+            return;
+        }
+        const controller = new AbortController();
+        const areaId = values.areaId;
+        listarAsignaturas(areaId, controller.signal)
+            .then((loaded) => {
+            if (controller.signal.aborted) {
+                return;
+            }
+            setSubjectCatalog({
+                areaId,
+                subjects: [...loaded].sort((left, right) => left.nombre.localeCompare(right.nombre, 'es')),
+                error: '',
+            });
+        })
+            .catch((cause) => {
+            if (isAbortError(cause) || controller.signal.aborted) {
+                return;
+            }
+            setSubjectCatalog({
+                areaId,
+                subjects: [],
+                error: subjectLoadError(cause),
+            });
+        });
+        return () => controller.abort();
+    }, [open, values.areaId]);
+    const subjectCatalogForArea = open && subjectCatalog?.areaId === values.areaId ? subjectCatalog : null;
+    const subjects = subjectCatalogForArea?.subjects ?? [];
+    const subjectsError = subjectCatalogForArea?.error ?? '';
+    const subjectsLoading = Boolean(values.areaId) && subjectCatalogForArea === null;
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        if (submitting || loading || loadError) {
+            return;
+        }
+        if (!values.areaId) {
+            setLocalError('El área es obligatoria');
+            return;
+        }
+        if (!values.vigenteDesde) {
+            setLocalError('La fecha de inicio de vigencia es obligatoria');
+            return;
+        }
+        if (values.vigenteHasta &&
+            values.vigenteHasta < values.vigenteDesde) {
+            setLocalError('La fecha de finalización no puede ser anterior al inicio de vigencia');
+            return;
+        }
+        if (isExceptional && !values.justificacion.trim()) {
+            setLocalError('Una idoneidad excepcional requiere justificación');
+            return;
+        }
+        setLocalError('');
+        onSubmit(values);
+    };
+    const visibleSubjects = subjects.filter((subject) => subject.activa || subject.id === values.asignaturaId);
+    const subjectOptions = [
+        {
+            value: '',
+            label: values.areaId ? 'Sin asignatura específica' : 'Seleccione un área',
+        },
+        ...visibleSubjects.map((subject) => ({
+            value: subject.id,
+            label: subject.activa ? subject.nombre : `${subject.nombre} (inactiva)`,
+        })),
+    ];
+    if (values.asignaturaId &&
+        !subjectOptions.some((option) => option.value === values.asignaturaId)) {
+        subjectOptions.push({
+            value: values.asignaturaId,
+            label: subjectsLoading ? 'Cargando asignatura...' : 'Asignatura no disponible',
+        });
+    }
+    const subjectHint = !values.areaId
+        ? 'Seleccione un área para listar sus asignaturas.'
+        : subjectsLoading
+            ? 'Cargando asignaturas...'
+            : subjectsError
+                ? undefined
+                : visibleSubjects.length === 0
+                    ? 'Esta área no tiene asignaturas activas. La idoneidad puede guardarse para toda el área.'
+                    : 'Opcional. Sin asignatura, la idoneidad cubre toda el área.';
+    return (_jsx(Modal, { open: open, title: mode === 'add'
+            ? 'Agregar idoneidad académica'
+            : 'Editar idoneidad académica', description: isEdit
+            ? 'Actualiza los datos académicos y el periodo de vigencia de la idoneidad.'
+            : 'Define el área, la asignatura si aplica, el tipo de idoneidad y, si existe, el título de soporte.', onClose: onClose, footer: _jsx(ModalActions, { formId: "suitability-form", confirmLabel: loadError
+                ? undefined
+                : loading
+                    ? 'Cargando...'
+                    : submitting
+                        ? 'Guardando...'
+                        : mode === 'add'
+                            ? 'Guardar idoneidad'
+                            : 'Guardar cambios', confirmType: "submit", disabled: submitting || loading, onCancel: onClose }), children: loading ? (_jsx("p", { className: styles.status, children: "Cargando idoneidad..." })) : loadError ? (_jsxs("div", { className: styles.feedback, children: [_jsx("p", { className: styles.error, role: "alert", children: loadError }), onRetry ? _jsx(TextLink, { onClick: onRetry, children: "Reintentar" }) : null] })) : (_jsxs("form", { id: "suitability-form", className: styles.form, noValidate: true, onSubmit: handleSubmit, children: [_jsx(SelectField, { id: "suitability-area", label: "\u00C1rea", required: true, value: values.areaId, options: areaOptions.length > 0
+                        ? [{ value: '', label: 'Seleccione un área' }, ...areaOptions]
+                        : pendingOptions, disabled: areaOptions.length === 0, hint: areaOptions.length === 0 ? PENDING_BACKEND_LABEL : undefined, onChange: (areaId) => setValues((current) => ({
+                        ...current,
+                        areaId,
+                        asignaturaId: '',
+                    })) }), _jsx(SelectField, { id: "suitability-subject", label: "Asignatura", value: values.asignaturaId, options: subjectOptions, hint: subjectHint, error: subjectsError || undefined, disabled: !values.areaId || subjectsLoading, onChange: (asignaturaId) => setValues((current) => ({ ...current, asignaturaId })) }), _jsx(SelectField, { id: "suitability-type", label: "Tipo de idoneidad", required: true, value: values.tipo, options: suitabilityTypeOptions, onChange: (tipo) => setValues((current) => ({
+                        ...current,
+                        tipo: tipo,
+                        justificacion: tipo === 'EXCEPCIONAL' ? current.justificacion : '',
+                    })) }), _jsx(SelectField, { id: "suitability-title", label: "T\u00EDtulo profesional de soporte", value: values.tituloSoporteId, options: titleOptions(titles, values.tituloSoporteId, titlesError), hint: titlesError
+                        ? `${titlesError} Puedes guardar la idoneidad sin cambiar el título.`
+                        : titles.length === 0
+                            ? 'Este docente no tiene títulos profesionales. La idoneidad se puede guardar sin título de soporte.'
+                            : undefined, disabled: Boolean(titlesError), onChange: (tituloSoporteId) => setValues((current) => ({ ...current, tituloSoporteId })) }), _jsxs("div", { className: styles.dates, children: [_jsx(TextField, { id: "suitability-from", label: "Vigente desde", type: "date", required: true, value: values.vigenteDesde, onChange: (event) => setValues((current) => ({
+                                ...current,
+                                vigenteDesde: event.target.value,
+                            })) }), _jsx(TextField, { id: "suitability-to", label: "Vigente hasta", type: "date", value: values.vigenteHasta, onChange: (event) => setValues((current) => ({
+                                ...current,
+                                vigenteHasta: event.target.value,
+                            })) })] }), _jsx(TextField, { id: "suitability-justification", label: "Justificaci\u00F3n", required: isExceptional, placeholder: "Obligatoria solo para idoneidad excepcional", value: values.justificacion, onChange: (event) => setValues((current) => ({
+                        ...current,
+                        justificacion: event.target.value,
+                    })) }), error || localError ? (_jsx("p", { className: styles.error, role: "alert", children: error || localError })) : null] })) }));
+}

@@ -1,40 +1,37 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  actualizarClaseProgramada,
+  anioEscolarVisible,
   ApiError,
-  listarDocentes,
+  bandasDelTablero,
+  clasesDelTablero,
+  consultarHorarioGrupo,
+  crearClaseProgramada,
+  diaSemanaApi,
+  eliminarClaseProgramada,
+  etiquetaEstadoHorario,
+  etiquetaGrado,
+  listarAulasPorSede,
+  metricasDelTablero,
+  opcionesAniosEscolares,
   opcionesCatalogoSedes,
+  pendientesDelTablero,
   sedeVisible,
+  useCatalogoAniosEscolares,
+  useCatalogoGrupos,
   useCatalogoSedes,
+  type AulaResponse,
+  type ClaseVista,
+  type EstadoHorario,
+  type HorarioGrupoResponse,
+  type ResumenHorarioResponse,
 } from '../../../api'
-import {
-  buildAssignmentRows,
-  gradeLabelFromGroup,
-  groupsForYear,
-  seedAssignments,
-} from '../../../content/academicAssignment'
-import { academicYears } from '../../../content/academicYear'
-import {
-  blocksForGroup,
-  classBands,
-  curricularRowsSource,
-  defaultClassroom,
-  inspectScheduleChange,
-  pendingPlacements,
-  scheduleMetrics,
-  scheduleSubject,
-  scheduleShiftLabel,
-  scheduleShiftOptions,
-  seedPlacements,
-  type ScheduleAlert,
-  type SchedulePlacement,
-} from '../../../content/scheduleConstruction'
-import { currentStudyPlanYear } from '../../../content/studyPlan'
+import { blockKey, type PendingPlacement } from '../../../content/scheduleConstruction'
 import type { WeekDay } from '../../../content/teacherRestrictions'
-import { formatTeacherName, type Teacher } from '../../../content/teachers'
 import { Text } from '../../atoms/Text'
+import type { BadgeTone } from '../../atoms/Badge'
 import { PendingAssignments } from '../PendingAssignments'
 import { RemoveScheduleClassModal } from '../RemoveScheduleClassModal'
-import { ScheduleAlertModal } from '../ScheduleAlertModal'
 import {
   ScheduleClassFormModal,
   type ScheduleClassFormValues,
@@ -48,99 +45,291 @@ function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === 'AbortError'
 }
 
+function mensajeError(cause: unknown, fallback: string) {
+  return cause instanceof ApiError && cause.message ? cause.message : fallback
+}
+
+function tonoEstado(estado: EstadoHorario | null | undefined): BadgeTone {
+  if (estado === 'PUBLICADO') {
+    return 'success'
+  }
+
+  if (estado === 'ARCHIVADO') {
+    return 'neutral'
+  }
+
+  return 'warning'
+}
+
+function aulaInicial(
+  aulas: AulaResponse[],
+  aulaFijaId: string | null | undefined,
+  note: string | null,
+) {
+  const activas = aulas.filter((aula) => aula.activa)
+
+  if (note && /laborat/i.test(note)) {
+    const laboratorio = activas.find(
+      (aula) => aula.tipo === 'LABORATORIO' || /lab/i.test(aula.nombre),
+    )
+
+    if (laboratorio) {
+      return laboratorio.id
+    }
+  }
+
+  if (aulaFijaId && activas.some((aula) => aula.id === aulaFijaId)) {
+    return aulaFijaId
+  }
+
+  return activas[0]?.id ?? ''
+}
+
+function opcionesAula(aulas: AulaResponse[], actualId: string) {
+  const options = aulas
+    .filter((aula) => aula.activa)
+    .map((aula) => ({
+      value: aula.id,
+      label: aula.nombre?.trim() || 'Aula',
+    }))
+
+  if (actualId && !options.some((option) => option.value === actualId)) {
+    const actual = aulas.find((aula) => aula.id === actualId)
+
+    return [{ value: actualId, label: actual?.nombre?.trim() || 'Aula actual' }, ...options]
+  }
+
+  return options
+}
+
 type ClassDialog =
   | { name: 'create'; day: WeekDay; bandId: string; subjectKey: string }
   | { name: 'edit'; placementId: string }
 
 export function ScheduleWorkspace() {
-  const [yearId, setYearId] = useState(currentStudyPlanYear().id)
-  const [campusId, setCampusId] = useState('')
+  const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
+  const { grupos, error: gruposError, loading: gruposLoading } = useCatalogoGrupos()
   const { sedes, error: sedesError } = useCatalogoSedes()
-  const [shiftId, setShiftId] = useState(scheduleShiftOptions[0].value)
-  const [groupId, setGroupId] = useState(() => groupsForYear(currentStudyPlanYear().id)[0]?.id ?? '')
-  const [placements, setPlacements] = useState<SchedulePlacement[]>(seedPlacements)
-  const [teachers, setTeachers] = useState<Teacher[]>([])
-  const [catalogError, setCatalogError] = useState('')
+  const [yearId, setYearId] = useState('')
+  const [campusId, setCampusId] = useState('')
+  const [groupId, setGroupId] = useState('')
+  const [tableroGrupoId, setTableroGrupoId] = useState('')
+  const [clases, setClases] = useState<ClaseVista[]>([])
+  const [pending, setPending] = useState<PendingPlacement[]>([])
+  const [resumen, setResumen] = useState<ResumenHorarioResponse | null>(null)
+  const [estadoHorario, setEstadoHorario] = useState<EstadoHorario | null>(null)
+  const [turnoId, setTurnoId] = useState('')
+  const [turnoNombre, setTurnoNombre] = useState('')
+  const [franjas, setFranjas] = useState<ReturnType<typeof bandasDelTablero>>([])
+  const [contexto, setContexto] = useState({ codigo: '', grado: '', anio: 0 })
+  const [horarioError, setHorarioError] = useState('')
+  const [horarioLoading, setHorarioLoading] = useState(false)
+  const [aulas, setAulas] = useState<AulaResponse[] | null>(null)
+  const [aulasError, setAulasError] = useState('')
   const [classDialog, setClassDialog] = useState<ClassDialog | null>(null)
   const [removeId, setRemoveId] = useState<string | null>(null)
-  const [alert, setAlert] = useState<ScheduleAlert | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [removing, setRemoving] = useState(false)
+  const [removeError, setRemoveError] = useState('')
+  const solicitudRef = useRef(0)
+
+  const mostrarTablero = useCallback((grupoSolicitado: string, tablero: HorarioGrupoResponse) => {
+    setTableroGrupoId(grupoSolicitado)
+    setClases(clasesDelTablero(tablero))
+    setPending(pendientesDelTablero(tablero))
+    setResumen(tablero.resumen ?? null)
+    setEstadoHorario(tablero.estadoHorario ?? null)
+    setTurnoId(tablero.turnoId ?? '')
+    setTurnoNombre(tablero.turnoNombre?.trim() || '')
+    setFranjas(bandasDelTablero(tablero.franjas))
+    setContexto({
+      codigo: tablero.grupoCodigo?.trim() || '',
+      grado: tablero.gradoNombre?.trim() || '',
+      anio: tablero.anioEscolar,
+    })
+    setHorarioError('')
+  }, [])
 
   useEffect(() => {
-    const controller = new AbortController()
+    if (!anios?.length) {
+      return
+    }
 
-    listarDocentes({ page: 0, size: 100, estado: 'ACTIVO' }, controller.signal)
-      .then((page) => {
-        setTeachers(
-          [...page.content].sort((left, right) =>
-            formatTeacherName(left).localeCompare(formatTeacherName(right), 'es'),
-          ),
-        )
-        setCatalogError('')
-      })
-      .catch((cause) => {
-        if (isAbortError(cause)) {
-          return
-        }
-
-        setTeachers([])
-        setCatalogError(
-          cause instanceof ApiError
-            ? cause.message
-            : 'No se pudieron cargar los docentes. El horario usa la asignación local.',
-        )
-      })
-
-    return () => controller.abort()
-  }, [])
+    setYearId((current) =>
+      anios.some((year) => year.id === current) ? current : (anioEscolarVisible(anios)?.id ?? ''),
+    )
+  }, [anios])
 
   const campusSeleccionada = sedes?.some((sede) => sede.id === campusId)
     ? campusId
     : (sedeVisible(sedes ?? [])?.id ?? '')
 
-  const year = academicYears.find((item) => item.id === yearId) ?? academicYears[0]
-  const yearGroups = groupsForYear(year.id)
-  const group = yearGroups.find((item) => item.id === groupId) ?? yearGroups[0]
-  const readOnly = year.status === 'CERRADO'
-  const gradeLabel = group ? gradeLabelFromGroup(group) : ''
-  const shiftLabel =
-    scheduleShiftOptions.find((option) => option.value === shiftId)?.label ?? scheduleShiftLabel
+  const gruposDelAnio = useMemo(
+    () => (grupos ?? []).filter((group) => group.anioEscolarId === yearId && group.activo),
+    [grupos, yearId],
+  )
 
-  const rows = group
-    ? buildAssignmentRows(
-        curricularRowsSource(year.id, group),
-        seedAssignments.filter(
-          (item) =>
-            item.yearId === year.id && item.groupId === group.id && item.tab === 'curricular',
-        ),
-        teachers,
+  const yearGroups = useMemo(() => {
+    return gruposDelAnio
+      .filter((group) => !campusSeleccionada || group.sedeId === campusSeleccionada)
+      .sort(
+        (left, right) =>
+          left.gradoNivel - right.gradoNivel || left.codigo.localeCompare(right.codigo, 'es'),
       )
-    : []
-  const blocks = blocksForGroup(placements, year.id, group?.id ?? '', group?.students ?? 0)
-  const pending = pendingPlacements(rows, placements, year.id, group?.id ?? '')
-  const metrics = scheduleMetrics(rows, placements, blocks, year.id, group?.id ?? '')
+  }, [campusSeleccionada, gruposDelAnio])
+
+  useEffect(() => {
+    if (!yearId || grupos === null) {
+      return
+    }
+
+    setGroupId((current) =>
+      yearGroups.some((group) => group.id === current) ? current : (yearGroups[0]?.id ?? ''),
+    )
+  }, [grupos, yearGroups, yearId])
+
+  useEffect(() => {
+    setClassDialog(null)
+    setRemoveId(null)
+    setSaveError('')
+    setRemoveError('')
+  }, [groupId])
+
+  useEffect(() => {
+    const solicitud = ++solicitudRef.current
+
+    if (!groupId) {
+      setTableroGrupoId('')
+      setClases([])
+      setPending([])
+      setResumen(null)
+      setEstadoHorario(null)
+      setTurnoId('')
+      setTurnoNombre('')
+      setFranjas([])
+      setContexto({ codigo: '', grado: '', anio: 0 })
+      setHorarioError('')
+      setHorarioLoading(false)
+      return
+    }
+
+    const controller = new AbortController()
+    setHorarioLoading(true)
+    setHorarioError('')
+    setTableroGrupoId('')
+    setClases([])
+    setPending([])
+    setResumen(null)
+    setEstadoHorario(null)
+    setTurnoId('')
+    setTurnoNombre('')
+    setFranjas([])
+    setContexto({ codigo: '', grado: '', anio: 0 })
+
+    consultarHorarioGrupo(groupId, controller.signal)
+      .then((tablero) => {
+        if (controller.signal.aborted || solicitudRef.current !== solicitud) {
+          return
+        }
+
+        mostrarTablero(groupId, tablero)
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || controller.signal.aborted || solicitudRef.current !== solicitud) {
+          return
+        }
+
+        setTableroGrupoId('')
+        setClases([])
+        setPending([])
+        setResumen(null)
+        setEstadoHorario(null)
+        setTurnoId('')
+        setTurnoNombre('')
+        setFranjas([])
+        setContexto({ codigo: '', grado: '', anio: 0 })
+        setHorarioError(mensajeError(cause, 'No se pudo cargar el horario de este grupo.'))
+      })
+      .finally(() => {
+        if (!controller.signal.aborted && solicitudRef.current === solicitud) {
+          setHorarioLoading(false)
+        }
+      })
+
+    return () => controller.abort()
+  }, [groupId, mostrarTablero])
+
+  const year = anios?.find((item) => item.id === yearId) ?? null
+  const grupo = yearGroups.find((item) => item.id === groupId) ?? null
+  const sedeDelGrupo = grupo?.sedeId ?? ''
+
+  useEffect(() => {
+    if (!sedeDelGrupo) {
+      setAulas([])
+      setAulasError('')
+      return
+    }
+
+    const controller = new AbortController()
+    setAulas(null)
+    setAulasError('')
+
+    listarAulasPorSede(sedeDelGrupo, controller.signal)
+      .then((lista) => {
+        if (!controller.signal.aborted) {
+          setAulas(lista)
+        }
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setAulas([])
+        setAulasError(mensajeError(cause, 'No se pudieron cargar las aulas de la sede.'))
+      })
+
+    return () => controller.abort()
+  }, [sedeDelGrupo])
+
+  const tableroListo = tableroGrupoId === groupId && !horarioLoading
+  const readOnly =
+    year?.status === 'CERRADO' ||
+    estadoHorario === 'PUBLICADO' ||
+    estadoHorario === 'ARCHIVADO'
+  const gradeLabel = etiquetaGrado(contexto.grado || grupo?.gradoNombre || '')
+  const groupCode = contexto.codigo || grupo?.codigo || ''
+  const yearNumber = contexto.anio || year?.year || 0
+  const shiftLabel = turnoNombre || (horarioLoading ? 'Cargando turno…' : 'Sin turno')
+  const metrics = metricasDelTablero(resumen)
+  const blocks = useMemo(() => {
+    const map = new Map<string, ClaseVista>()
+    clases.forEach((clase) => map.set(blockKey(clase.day, clase.bandId), clase))
+    return map
+  }, [clases])
+  const bandOptions = franjas
+    .filter((band) => band.kind === 'class')
+    .map((band) => ({ value: band.id, label: band.label }))
+  const yearOptions = opcionesAniosEscolares(anios, aniosError)
+  const groupOptions = gruposLoading
+    ? [{ value: '', label: 'Cargando grupos…' }]
+    : gruposError
+      ? [{ value: '', label: 'Grupos no disponibles' }]
+      : yearGroups.map((item) => ({ value: item.id, label: item.codigo }))
+  const hayAulasActivas = (aulas ?? []).some((aula) => aula.activa)
 
   const selectYear = (nextYearId: string) => {
     setYearId(nextYearId)
-    setGroupId(groupsForYear(nextYearId)[0]?.id ?? '')
-    setClassDialog(null)
-    setRemoveId(null)
-    setAlert(null)
-  }
-
-  const selectGroup = (nextGroupId: string) => {
-    setGroupId(nextGroupId)
-    setClassDialog(null)
-    setRemoveId(null)
-    setAlert(null)
   }
 
   const openCreate = (day: WeekDay, bandId: string, subjectKey = pending[0]?.key ?? '') => {
-    if (readOnly || !group) {
+    if (readOnly || !grupo || bandOptions.length === 0 || !hayAulasActivas) {
       return
     }
 
     const item = pending.find((entry) => entry.key === subjectKey) ?? pending[0]
-    setAlert(null)
+    setSaveError('')
     setRemoveId(null)
     setClassDialog({
       name: 'create',
@@ -150,87 +339,156 @@ export function ScheduleWorkspace() {
     })
   }
 
-  const saveClass = (values: ScheduleClassFormValues) => {
-    if (!group || !classDialog) {
+  const saveClass = async (values: ScheduleClassFormValues) => {
+    if (!grupo || !classDialog || saving || readOnly) {
       return
     }
 
+    const solicitud = solicitudRef.current
+    const grupoSolicitado = grupo.id
     const current =
       classDialog.name === 'edit'
-        ? placements.find((item) => item.id === classDialog.placementId)
+        ? clases.find((item) => item.id === classDialog.placementId)
         : undefined
-    const assignment = pending.find((item) => item.key === values.subjectKey)
-    const teacherName = current?.teacherName ?? assignment?.teacherName ?? ''
-    const subjectKey = current?.subjectKey ?? values.subjectKey
 
-    if (!teacherName || !subjectKey) {
+    if (current?.locked) {
       return
     }
 
-    const draft = {
-      id: current?.id,
-      yearId: year.id,
-      groupId: group.id,
-      day: values.day,
-      bandId: values.bandId,
-      teacherName,
-      classroom: values.classroom,
-    }
-    const result = inspectScheduleChange(draft, placements, group.students)
+    const asignacionId = current?.subjectKey ?? values.subjectKey
 
-    if (result.blocking) {
-      setAlert(result.blocking)
+    if (!asignacionId || !values.bandId || !values.classroom) {
+      setSaveError('Selecciona la asignación, la franja y el aula.')
       return
     }
 
-    if (current) {
-      setPlacements((items) =>
-        items.map((item) =>
-          item.id === current.id
-            ? { ...item, day: values.day, bandId: values.bandId, classroom: values.classroom }
-            : item,
+    setSaving(true)
+    setSaveError('')
+
+    try {
+      if (current) {
+        await actualizarClaseProgramada(current.id, {
+          dia: diaSemanaApi(values.day),
+          franjaHorariaId: values.bandId,
+          aulaId: values.classroom,
+        })
+      } else {
+        await crearClaseProgramada({
+          asignacionAcademicaId: asignacionId,
+          dia: diaSemanaApi(values.day),
+          franjaHorariaId: values.bandId,
+          aulaId: values.classroom,
+        })
+      }
+
+      try {
+        const tablero = await consultarHorarioGrupo(grupoSolicitado)
+
+        if (solicitudRef.current !== solicitud) {
+          return
+        }
+
+        mostrarTablero(grupoSolicitado, tablero)
+      } catch (cause) {
+        if (solicitudRef.current !== solicitud) {
+          return
+        }
+
+        setHorarioError(
+          mensajeError(cause, 'El cambio se guardó, pero no se pudo actualizar el horario.'),
+        )
+      }
+
+      if (solicitudRef.current !== solicitud) {
+        return
+      }
+
+      setClassDialog(null)
+      setSaveError('')
+    } catch (cause) {
+      if (solicitudRef.current !== solicitud) {
+        return
+      }
+
+      setSaveError(
+        mensajeError(
+          cause,
+          current ? 'No se pudo actualizar la clase.' : 'No se pudo programar la clase.',
         ),
       )
-    } else {
-      setPlacements((items) => [
-        ...items,
-        {
-          id: crypto.randomUUID(),
-          yearId: year.id,
-          groupId: group.id,
-          day: values.day,
-          bandId: values.bandId,
-          subjectKey,
-          teacherName,
-          classroom: values.classroom,
-        },
-      ])
+    } finally {
+      setSaving(false)
     }
-
-    setClassDialog(null)
-    setAlert(result.capacity ? { kind: 'capacity' } : null)
   }
 
-  const confirmRemove = () => {
-    if (!removeId) {
+  const confirmRemove = async () => {
+    const clase = clases.find((item) => item.id === removeId)
+
+    if (!clase || clase.locked || removing || readOnly) {
+      if (!clase || clase?.locked) {
+        setRemoveId(null)
+      }
       return
     }
 
-    setPlacements((items) => items.filter((item) => item.id !== removeId))
-    setRemoveId(null)
-    setClassDialog(null)
-    setAlert(null)
+    const solicitud = solicitudRef.current
+    const grupoSolicitado = groupId
+    setRemoving(true)
+    setRemoveError('')
+
+    try {
+      await eliminarClaseProgramada(clase.id)
+
+      try {
+        const tablero = await consultarHorarioGrupo(grupoSolicitado)
+
+        if (solicitudRef.current !== solicitud) {
+          return
+        }
+
+        mostrarTablero(grupoSolicitado, tablero)
+      } catch (cause) {
+        if (solicitudRef.current !== solicitud) {
+          return
+        }
+
+        setHorarioError(
+          mensajeError(cause, 'La clase se quitó, pero no se pudo actualizar el horario.'),
+        )
+      }
+
+      if (solicitudRef.current !== solicitud) {
+        return
+      }
+
+      setRemoveId(null)
+      setClassDialog(null)
+      setRemoveError('')
+    } catch (cause) {
+      if (solicitudRef.current !== solicitud) {
+        return
+      }
+
+      setRemoveError(mensajeError(cause, 'No se pudo quitar la clase del horario.'))
+    } finally {
+      setRemoving(false)
+    }
   }
 
   const editing =
     classDialog?.name === 'edit'
-      ? placements.find((item) => item.id === classDialog.placementId)
+      ? clases.find((item) => item.id === classDialog.placementId)
       : undefined
   const creatingItem =
     classDialog?.name === 'create'
       ? pending.find((item) => item.key === classDialog.subjectKey) ?? pending[0]
       : undefined
-  const formOpen = Boolean(classDialog) && !removeId && !alert
+  const formOpen = Boolean(classDialog) && !removeId
+  const classroomValue =
+    editing?.aulaId ||
+    aulaInicial(aulas ?? [], grupo?.aulaFijaId, creatingItem?.note ?? null)
+  const primeraFranja = bandOptions[0]?.value ?? ''
+  const classroomOptions = opcionesAula(aulas ?? [], classroomValue)
 
   return (
     <section className={styles.workspace}>
@@ -244,82 +502,155 @@ export function ScheduleWorkspace() {
       </div>
 
       <ScheduleSelector
-        yearId={year.id}
+        yearId={year?.id ?? ''}
         campusId={campusSeleccionada}
-        shiftId={shiftId}
-        groupId={group?.id ?? ''}
+        shiftId={turnoId}
+        groupId={grupo?.id ?? ''}
         gradeLabel={gradeLabel}
-        year={year.year}
-        groupCode={group?.code ?? ''}
-        groupOptions={yearGroups.map((item) => ({ value: item.id, label: item.code }))}
+        year={yearNumber}
+        groupCode={groupCode}
+        yearOptions={yearOptions}
+        yearDisabled={aniosLoading || Boolean(aniosError)}
+        groupOptions={groupOptions}
+        groupsDisabled={gruposLoading || Boolean(gruposError)}
         campusOptions={opcionesCatalogoSedes(sedes, sedesError)}
         campusDisabled={Boolean(sedesError) || !sedes?.length}
+        shiftOptions={[{ value: turnoId, label: shiftLabel }]}
+        shiftDisabled
+        statusLabel={
+          horarioLoading
+            ? 'Cargando'
+            : horarioError
+              ? 'No disponible'
+              : grupo && tableroListo
+                ? etiquetaEstadoHorario(estadoHorario)
+                : 'Sin horario'
+        }
+        statusTone={
+          grupo && tableroListo && !horarioLoading && !horarioError
+            ? tonoEstado(estadoHorario)
+            : 'neutral'
+        }
         onYearChange={selectYear}
         onCampusChange={setCampusId}
-        onShiftChange={setShiftId}
-        onGroupChange={selectGroup}
+        onShiftChange={() => undefined}
+        onGroupChange={setGroupId}
       />
 
-      {catalogError ? <p className={styles.notice}>{catalogError}</p> : null}
+      {aniosError ? (
+        <p className={styles.alert} role="alert">
+          {aniosError}
+        </p>
+      ) : null}
+      {gruposError ? (
+        <p className={styles.alert} role="alert">
+          {gruposError}
+        </p>
+      ) : null}
       {sedesError ? (
         <p className={styles.alert} role="alert">
-          {sedesError} El horario sigue disponible con los grupos locales.
+          {sedesError}
+        </p>
+      ) : null}
+      {horarioError ? (
+        <p className={styles.alert} role="alert">
+          {horarioError}
+        </p>
+      ) : null}
+      {aulasError ? (
+        <p className={styles.alert} role="alert">
+          {aulasError}
         </p>
       ) : null}
 
-      {group ? (
+      {!year && aniosLoading ? (
+        <p className={styles.notice}>Cargando año lectivo...</p>
+      ) : null}
+      {year && gruposLoading ? <p className={styles.notice}>Cargando grupos...</p> : null}
+
+      {year && !gruposLoading && !grupo ? (
+        <p className={styles.notice}>
+          {gruposDelAnio.length === 0
+            ? 'Este año lectivo aún no tiene grupos activos para construir el horario.'
+            : 'Esta sede no tiene grupos activos en el año lectivo seleccionado.'}
+        </p>
+      ) : null}
+
+      {grupo && horarioLoading ? (
+        <p className={styles.notice}>Cargando horario del grupo...</p>
+      ) : null}
+
+      {grupo && tableroListo && !horarioError ? (
         <>
           <ScheduleMetrics {...metrics} />
+          {aulas && !hayAulasActivas ? (
+            <p className={styles.notice}>
+              Esta sede no tiene aulas activas para programar clases.
+            </p>
+          ) : null}
           <div className={styles.board}>
-            <ScheduleGrid
-              groupCode={group.code}
-              shiftLabel={shiftLabel}
-              readOnly={readOnly}
-              blocks={blocks}
-              onProgram={(day, bandId) => openCreate(day, bandId)}
-              onEdit={(placementId) => {
-                setAlert(null)
-                setRemoveId(null)
-                setClassDialog({ name: 'edit', placementId })
-              }}
-            />
+            {franjas.length === 0 ? (
+              <p className={styles.notice}>
+                Este grupo no tiene franjas horarias para armar la rejilla.
+              </p>
+            ) : (
+              <ScheduleGrid
+                groupCode={groupCode}
+                groupId={grupo.id}
+                shiftLabel={shiftLabel}
+                readOnly={readOnly}
+                bands={franjas}
+                blocks={blocks}
+                onProgram={(day, bandId) => openCreate(day, bandId)}
+                onEdit={(placementId) => {
+                  setSaveError('')
+                  setRemoveId(null)
+                  setClassDialog({ name: 'edit', placementId })
+                }}
+              />
+            )}
             <PendingAssignments
               items={pending}
-              readOnly={readOnly}
-              onProgram={(subjectKey) => openCreate('Lunes', classBands()[0]?.id ?? '0630', subjectKey)}
+              readOnly={readOnly || bandOptions.length === 0 || !hayAulasActivas}
+              onProgram={(subjectKey) => openCreate('Lunes', primeraFranja, subjectKey)}
             />
           </div>
         </>
-      ) : (
-        <p className={styles.notice}>
-          Este año lectivo aún no tiene grupos activos para construir el horario.
-        </p>
-      )}
+      ) : null}
 
-      {classDialog && group && (classDialog.name === 'create' || editing) ? (
+      {classDialog && grupo && (classDialog.name === 'create' || editing) ? (
         <ScheduleClassFormModal
+          key={
+            classDialog.name === 'edit'
+              ? `edit-${classDialog.placementId}`
+              : `create-${classDialog.day}-${classDialog.bandId}-${classDialog.subjectKey}`
+          }
           open={formOpen}
           mode={classDialog.name === 'edit' ? 'edit' : 'create'}
-          groupCode={group.code}
-          subject={
-            editing
-              ? scheduleSubject(editing.subjectKey)?.subject ?? 'Asignatura'
-              : creatingItem?.subject ?? ''
-          }
+          groupCode={groupCode}
+          subject={editing?.subject ?? creatingItem?.subject ?? ''}
           teacherName={editing?.teacherName ?? creatingItem?.teacherName ?? ''}
           pendingHours={creatingItem?.pendingHours ?? 0}
           assignments={pending}
           day={classDialog.name === 'edit' ? editing?.day ?? 'Lunes' : classDialog.day}
-          bandId={classDialog.name === 'edit' ? editing?.bandId ?? '0630' : classDialog.bandId}
-          classroom={
-            classDialog.name === 'edit'
-              ? editing?.classroom ?? 'Aula 201'
-              : defaultClassroom(creatingItem?.note ?? null)
+          bandId={
+            classDialog.name === 'edit' ? editing?.bandId ?? primeraFranja : classDialog.bandId
           }
+          classroom={classroomValue}
           subjectKey={editing?.subjectKey ?? creatingItem?.key ?? ''}
-          onClose={() => setClassDialog(null)}
+          bandOptions={bandOptions}
+          classroomOptions={classroomOptions}
+          submitting={saving}
+          error={saveError}
+          onClose={() => {
+            if (!saving) {
+              setClassDialog(null)
+              setSaveError('')
+            }
+          }}
           onRemove={() => {
-            if (editing) {
+            if (editing && !editing.locked && !saving) {
+              setRemoveError('')
               setRemoveId(editing.id)
             }
           }}
@@ -329,10 +660,16 @@ export function ScheduleWorkspace() {
 
       <RemoveScheduleClassModal
         open={Boolean(removeId)}
-        onClose={() => setRemoveId(null)}
+        submitting={removing}
+        error={removeError}
+        onClose={() => {
+          if (!removing) {
+            setRemoveId(null)
+            setRemoveError('')
+          }
+        }}
         onConfirm={confirmRemove}
       />
-      <ScheduleAlertModal alert={alert} onClose={() => setAlert(null)} />
     </section>
   )
 }
