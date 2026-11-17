@@ -1,0 +1,1 @@
+export { RemoveRestrictionModal } from './RemoveRestrictionModal';

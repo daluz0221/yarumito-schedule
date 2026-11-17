@@ -1,0 +1,1 @@
+export { AcademicAreasTable } from './AcademicAreasTable';

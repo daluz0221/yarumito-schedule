@@ -1,0 +1,145 @@
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 760px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.entityForm,
+.userForm {
+  display: grid;
+  column-gap: 16px;
+  row-gap: 16px;
+  align-items: start;
+}
+
+.entityForm {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.userForm {
+  grid-template-columns: minmax(280px, 1fr) auto;
+}
+
+.actionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  grid-column: 1 / -1;
+}
+
+.action {
+  display: flex;
+  padding-top: 28px;
+}
+
+.action button {
+  height: 44px;
+}
+
+.resultado {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.registro {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.tableHost {
+  margin-inline: -24px;
+}
+
+.id {
+  margin: 0 0 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.details {
+  min-width: 180px;
+}
+
+.details summary {
+  cursor: pointer;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.detailLabel {
+  margin: 10px 0 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pre {
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  max-height: 220px;
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.status,
+.muted {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.error {
+  margin: 0;
+  color: #c0392b;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+  .entityForm,
+  .userForm {
+    grid-template-columns: 1fr;
+  }
+
+  .action {
+    padding-top: 0;
+  }
+
+  .action,
+  .action button,
+  .actionsRow,
+  .actionsRow button {
+    width: 100%;
+  }
+
+  .actionsRow {
+    flex-direction: column;
+  }
+}

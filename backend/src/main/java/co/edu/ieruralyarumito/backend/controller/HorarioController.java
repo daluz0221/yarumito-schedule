@@ -1,6 +1,7 @@
 package co.edu.ieruralyarumito.backend.controller;
 
 import co.edu.ieruralyarumito.backend.dto.HorarioGrupoResponse;
+import co.edu.ieruralyarumito.backend.service.AsignacionAcademicaService;
 import co.edu.ieruralyarumito.backend.service.HorarioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,9 +17,13 @@ import java.util.UUID;
 public class HorarioController {
 
     private final HorarioService horarioService;
+    private final AsignacionAcademicaService asignacionAcademicaService;
 
-    public HorarioController(HorarioService horarioService) {
+    public HorarioController(
+            HorarioService horarioService,
+            AsignacionAcademicaService asignacionAcademicaService) {
         this.horarioService = horarioService;
+        this.asignacionAcademicaService = asignacionAcademicaService;
     }
 
     // Devuelve la rejilla, los contadores y las asignaciones pendientes
@@ -26,6 +31,9 @@ public class HorarioController {
     @GetMapping("/grupos/{grupoId}")
     public ResponseEntity<HorarioGrupoResponse> obtenerTablero(
             @PathVariable UUID grupoId) {
+
+        asignacionAcademicaService
+                .sincronizarGruposDelMismoGrado(grupoId);
 
         return ResponseEntity.ok(
                 horarioService.obtenerTablero(grupoId));

@@ -1,0 +1,1 @@
+export { ConsultasPage } from './ConsultasPage'

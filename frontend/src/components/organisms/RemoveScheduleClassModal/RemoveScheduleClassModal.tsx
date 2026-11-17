@@ -4,12 +4,16 @@ import styles from './RemoveScheduleClassModal.module.css'
 
 export type RemoveScheduleClassModalProps = {
   open: boolean
+  submitting?: boolean
+  error?: string
   onClose: () => void
   onConfirm: () => void
 }
 
 export function RemoveScheduleClassModal({
   open,
+  submitting = false,
+  error = '',
   onClose,
   onConfirm,
 }: RemoveScheduleClassModalProps) {
@@ -17,14 +21,14 @@ export function RemoveScheduleClassModal({
     <Modal
       open={open}
       title="Quitar del horario"
-      onClose={onClose}
+      onClose={submitting ? () => undefined : onClose}
       footer={
         <>
-          <Button variant="muted" size="sm" onClick={onClose}>
+          <Button variant="muted" size="sm" onClick={onClose} disabled={submitting}>
             Cancelar
           </Button>
-          <Button variant="primary" size="sm" onClick={onConfirm}>
-            Quitar del horario
+          <Button variant="primary" size="sm" onClick={onConfirm} disabled={submitting}>
+            {submitting ? 'Quitando…' : 'Quitar del horario'}
           </Button>
         </>
       }
@@ -33,6 +37,11 @@ export function RemoveScheduleClassModal({
         Esta clase dejará de estar programada en este bloque. La asignación académica se
         conservará y volverá a quedar pendiente de programación.
       </p>
+      {error ? (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      ) : null}
     </Modal>
   )
 }

@@ -10,6 +10,8 @@ export type CurricularKind = Exclude<AssignmentKind, 'ACTIVIDAD'>
 
 export type AssignmentStatus = 'COMPLETA' | 'PARCIAL' | 'SIN_ASIGNAR'
 
+export type AssignmentPersistence = 'BORRADOR' | 'CONFIRMADA'
+
 export type AssignmentRecord = {
   id: string
   yearId: string
@@ -43,6 +45,19 @@ export type AssignmentRow = {
   status: AssignmentStatus
   assigned: boolean
   note: string
+  assignmentId: string | null
+  estado: AssignmentPersistence | null
+}
+
+export type CurricularAssignmentSource = {
+  id: string
+  asignaturaId: string
+  asignaturaNombre: string
+  docenteId: string
+  docenteNombre: string
+  horasSemanales: number
+  observacion: string | null
+  estado: AssignmentPersistence
 }
 
 export const assignmentTabs: { id: AssignmentTab; label: string }[] = [
@@ -101,28 +116,39 @@ export const assignmentRestrictionWarning =
   'Este docente tiene restricciones de disponibilidad registradas. Se evaluarán al construir el horario; no se declara conflicto en esta asignación.'
 
 export const activityAssignmentHint =
-  'Actividad institucional demostrativa; no corresponde a una asignatura del Plan de Estudios.'
+  'No corresponde a una asignatura del Plan de Estudios. La justificación queda registrada con la asignación.'
 
 export const institutionalActivities: InstitutionalActivity[] = [
   {
-    id: 'acompanamiento',
+    id: '6f1c2a10-4b7e-4c3a-9d21-a1b2c3d4e501',
     name: 'Proyecto de acompañamiento institucional',
     area: 'Institucional',
     weeklyHours: 2,
   },
   {
-    id: 'convivencia',
+    id: '6f1c2a10-4b7e-4c3a-9d21-a1b2c3d4e502',
     name: 'Proyecto de convivencia',
     area: 'Institucional',
     weeklyHours: 2,
   },
   {
-    id: 'emprendimiento',
+    id: '6f1c2a10-4b7e-4c3a-9d21-a1b2c3d4e503',
     name: 'Proyecto de emprendimiento',
     area: 'Institucional',
     weeklyHours: 2,
   },
 ]
+
+export type ActivityAssignmentSource = {
+  id: string
+  docenteId: string
+  docenteNombre: string
+  actividadId: string
+  actividadNombre: string
+  tipoActividad: string
+  horasSemanales: number
+  justificacion: string
+}
 
 const gradeNameToId: Record<string, string> = {
   Sexto: '6',
@@ -279,8 +305,74 @@ export function buildAssignmentRows(
       status,
       assigned,
       note: assignment?.note ?? '',
+      assignmentId: null,
+      estado: null,
     }
   })
+}
+
+function filaCurricular(
+  item: { key: string; area: string; subject: string; requiredHours: number },
+  assignment: CurricularAssignmentSource | undefined,
+): AssignmentRow {
+  const assignedHours = assignment?.horasSemanales ?? 0
+  const teacherName = assignment?.docenteNombre?.trim() ?? ''
+  const assigned = Boolean(teacherName) && assignedHours > 0
+
+  return {
+    key: item.key,
+    area: item.area,
+    subject: item.subject,
+    requiredHours: item.requiredHours,
+    assignedHours,
+    teacherId: assignment?.docenteId ?? null,
+    teacherName,
+    kind: null,
+    kindLabel: assignment ? 'Curricular' : '—',
+    status: assignmentStatus(item.requiredHours, assignedHours, assigned),
+    assigned,
+    note: assignment?.observacion?.trim() ?? '',
+    assignmentId: assignment?.id ?? null,
+    estado: assignment?.estado ?? null,
+  }
+}
+
+export function mergeCurricularAssignments(
+  subjects: Array<{ key: string; area: string; subject: string; requiredHours: number }>,
+  assignments: CurricularAssignmentSource[],
+): AssignmentRow[] {
+  const bySubject = new Map<string, CurricularAssignmentSource>()
+
+  assignments.forEach((item) => {
+    const current = bySubject.get(item.asignaturaId)
+
+    if (!current || (current.estado !== 'BORRADOR' && item.estado === 'BORRADOR')) {
+      bySubject.set(item.asignaturaId, item)
+    }
+  })
+
+  const covered = new Set(subjects.map((item) => item.key))
+  const rows = subjects.map((item) => filaCurricular(item, bySubject.get(item.key)))
+
+  bySubject.forEach((assignment) => {
+    if (covered.has(assignment.asignaturaId)) {
+      return
+    }
+
+    rows.push(
+      filaCurricular(
+        {
+          key: assignment.asignaturaId,
+          area: '—',
+          subject: assignment.asignaturaNombre?.trim() || 'Asignatura',
+          requiredHours: assignment.horasSemanales,
+        },
+        assignment,
+      ),
+    )
+  })
+
+  return rows
 }
 
 export function curricularSubjects(entries: StudyPlanEntry[]) {
@@ -299,6 +391,122 @@ export function activitySubjects() {
     subject: item.name,
     requiredHours: item.weeklyHours,
   }))
+}
+
+const tipoActividadLabel: Record<string, string> = {
+  PROYECTO_PEDAGOGICO: 'Proyecto pedagógico',
+  ACTIVIDAD_INSTITUCIONAL: 'Actividad institucional',
+  DIRECCION_DE_GRUPO: 'Dirección de grupo',
+  COMITE: 'Comité',
+  OTRO: 'Otro',
+}
+
+function etiquetaTipoActividad(tipo: string) {
+  return tipoActividadLabel[tipo] ?? (tipo || 'Actividad / proyecto')
+}
+
+function filaActividadVacia(item: {
+  key: string
+  area: string
+  subject: string
+  requiredHours: number
+}): AssignmentRow {
+  return {
+    key: item.key,
+    area: item.area,
+    subject: item.subject,
+    requiredHours: item.requiredHours,
+    assignedHours: 0,
+    teacherId: null,
+    teacherName: '',
+    kind: null,
+    kindLabel: '—',
+    status: 'SIN_ASIGNAR',
+    assigned: false,
+    note: '',
+    assignmentId: null,
+    estado: null,
+  }
+}
+
+function filaActividadAsignada(
+  item: { key: string; area: string; subject: string; requiredHours: number },
+  assignment: ActivityAssignmentSource,
+): AssignmentRow {
+  const assignedHours = assignment.horasSemanales
+  const teacherName = assignment.docenteNombre?.trim() ?? ''
+
+  return {
+    key: item.key,
+    area: item.area,
+    subject: item.subject,
+    requiredHours: item.requiredHours,
+    assignedHours,
+    teacherId: assignment.docenteId,
+    teacherName,
+    kind: 'ACTIVIDAD',
+    kindLabel: etiquetaTipoActividad(assignment.tipoActividad),
+    status: assignmentStatus(item.requiredHours, assignedHours, Boolean(teacherName)),
+    assigned: Boolean(teacherName) && assignedHours > 0,
+    note: assignment.justificacion?.trim() ?? '',
+    assignmentId: null,
+    estado: null,
+  }
+}
+
+export function filasActividadesInstitucionales(
+  assignments: ActivityAssignmentSource[],
+): AssignmentRow[] {
+  const subjects = activitySubjects()
+  const pending = new Map<string, ActivityAssignmentSource[]>()
+
+  assignments.forEach((item) => {
+    const list = pending.get(item.actividadId) ?? []
+    list.push(item)
+    pending.set(item.actividadId, list)
+  })
+
+  const rows: AssignmentRow[] = []
+  const used = new Set<string>()
+
+  subjects.forEach((subject) => {
+    const matches = pending.get(subject.key) ?? []
+
+    if (matches.length === 0) {
+      rows.push(filaActividadVacia(subject))
+      return
+    }
+
+    matches.forEach((match, index) => {
+      used.add(match.id)
+      rows.push(
+        filaActividadAsignada(
+          index === 0 ? subject : { ...subject, key: match.id },
+          match,
+        ),
+      )
+    })
+  })
+
+  assignments.forEach((assignment) => {
+    if (used.has(assignment.id)) {
+      return
+    }
+
+    rows.push(
+      filaActividadAsignada(
+        {
+          key: assignment.id,
+          area: 'Institucional',
+          subject: assignment.actividadNombre?.trim() || 'Actividad institucional',
+          requiredHours: assignment.horasSemanales,
+        },
+        assignment,
+      ),
+    )
+  })
+
+  return rows
 }
 
 export function summarizeRows(rows: AssignmentRow[]) {

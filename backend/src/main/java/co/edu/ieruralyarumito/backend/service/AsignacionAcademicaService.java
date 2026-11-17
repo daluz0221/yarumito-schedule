@@ -35,6 +35,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -153,7 +155,150 @@ public class AsignacionAcademicaService {
             );
         }
 
+        sincronizarGruposDelMismoGrado(grupo.getId());
+
         return asignacionAcademicaMapper.toResponse(guardada);
+    }
+
+    // Los grupos activos del mismo año, grado y sede comparten materias
+    // y docente. Cada copia tiene sus propias horas y sus propias clases.
+    @Transactional
+    public void sincronizarGruposDelMismoGrado(UUID grupoId) {
+
+        Grupo grupo = grupoRepository
+                .findById(grupoId)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "El grupo no existe"));
+
+        if (grupo.getGrado() == null
+                || grupo.getAnioEscolar() == null
+                || !grupo.isActivo()) {
+
+            return;
+        }
+
+        List<Grupo> grupos = grupoRepository
+                .findByGrado_IdAndAnioEscolar_Id(
+                        grupo.getGrado().getId(),
+                        grupo.getAnioEscolar().getId())
+                .stream()
+                .filter(Grupo::isActivo)
+                .filter(otro -> mismaSede(grupo, otro))
+                .toList();
+
+        if (grupos.size() < 2) {
+            return;
+        }
+
+        Map<UUID, List<AsignacionAcademica>> porGrupo =
+                new HashMap<>();
+
+        for (Grupo item : grupos) {
+
+            porGrupo.put(
+                    item.getId(),
+                    new ArrayList<>(
+                            asignacionAcademicaRepository
+                                    .findByAnioEscolar_IdAndGrupo_Id(
+                                            grupo.getAnioEscolar().getId(),
+                                            item.getId())));
+        }
+
+        for (Grupo origen : grupos) {
+
+            List<AsignacionAcademica> asignaciones =
+                    List.copyOf(porGrupo.get(origen.getId()));
+
+            for (AsignacionAcademica asignacion : asignaciones) {
+
+                UUID asignaturaId =
+                        asignacion.getAsignatura().getId();
+
+                for (Grupo destino : grupos) {
+
+                    if (destino.getId().equals(origen.getId())
+                            || tieneAsignatura(
+                            porGrupo.get(destino.getId()),
+                            asignaturaId)) {
+
+                        continue;
+                    }
+
+                    if (asignacionAcademicaRepository
+                            .existsByAnioEscolar_IdAndGrupo_IdAndAsignatura_Id(
+                                    grupo.getAnioEscolar().getId(),
+                                    destino.getId(),
+                                    asignaturaId)) {
+
+                        continue;
+                    }
+
+                    AsignacionAcademica guardada =
+                            asignacionAcademicaRepository.save(
+                                    copiarAsignacion(asignacion, destino));
+
+                    porGrupo.get(destino.getId()).add(guardada);
+
+                    if (registroAuditoriaService != null) {
+
+                        String correo =
+                                guardada.getAsignadaPor() == null
+                                        ? null
+                                        : guardada.getAsignadaPor()
+                                        .getCorreo();
+
+                        auditarAsignacion(
+                                RegistroAuditoriaService.ACCION_CREATE,
+                                guardada,
+                                null,
+                                datosAsignacion(guardada),
+                                correo);
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean mismaSede(Grupo referencia, Grupo otro) {
+
+        UUID sedeReferencia = referencia.getSede() == null
+                ? null
+                : referencia.getSede().getId();
+
+        UUID sedeOtro = otro.getSede() == null
+                ? null
+                : otro.getSede().getId();
+
+        return Objects.equals(sedeReferencia, sedeOtro);
+    }
+
+    private boolean tieneAsignatura(
+            List<AsignacionAcademica> asignaciones,
+            UUID asignaturaId) {
+
+        return asignaciones.stream()
+                .anyMatch(asignacion ->
+                        asignaturaId.equals(
+                                asignacion.getAsignatura().getId()));
+    }
+
+    private AsignacionAcademica copiarAsignacion(
+            AsignacionAcademica origen,
+            Grupo destino) {
+
+        AsignacionAcademica copia = new AsignacionAcademica();
+
+        copia.setAnioEscolar(origen.getAnioEscolar());
+        copia.setDocente(origen.getDocente());
+        copia.setGrupo(destino);
+        copia.setAsignatura(origen.getAsignatura());
+        copia.setHorasSemanales(origen.getHorasSemanales());
+        copia.setHorasExtras(origen.getHorasExtras());
+        copia.setEstado(origen.getEstado());
+        copia.setObservacion(origen.getObservacion());
+        copia.setAsignadaPor(origen.getAsignadaPor());
+
+        return copia;
     }
 
     // H-05: evita asignaciones entre años diferentes.

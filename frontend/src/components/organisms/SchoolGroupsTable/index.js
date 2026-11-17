@@ -1,0 +1,1 @@
+export { SchoolGroupsTable } from './SchoolGroupsTable';

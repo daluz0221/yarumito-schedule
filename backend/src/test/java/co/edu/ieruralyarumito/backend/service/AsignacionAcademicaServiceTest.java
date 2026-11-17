@@ -9,7 +9,9 @@ import co.edu.ieruralyarumito.backend.entity.Docente;
 import co.edu.ieruralyarumito.backend.entity.Grado;
 import co.edu.ieruralyarumito.backend.entity.Grupo;
 import co.edu.ieruralyarumito.backend.entity.PlanEstudios;
+import co.edu.ieruralyarumito.backend.entity.Sede;
 import co.edu.ieruralyarumito.backend.entity.Usuario;
+import co.edu.ieruralyarumito.backend.entity.enums.EstadoAsignacionAcademica;
 import co.edu.ieruralyarumito.backend.entity.enums.EstadoDocente;
 import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
 import co.edu.ieruralyarumito.backend.mapper.AsignacionAcademicaMapper;
@@ -23,6 +25,7 @@ import co.edu.ieruralyarumito.backend.repository.PlanEstudiosRepository;
 import co.edu.ieruralyarumito.backend.repository.UsuarioRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -198,5 +201,81 @@ class AsignacionAcademicaServiceTest {
 
         verify(planEstudiosRepository)
                 .findByAnioEscolar_IdAndGrado_Id(anioId, gradoId);
+    }
+
+    @Test
+    void sincronizar_copiaLaMateriaAlOtroGrupoDelMismoGrado() {
+
+        UUID anioId = UUID.randomUUID();
+        UUID gradoId = UUID.randomUUID();
+        UUID sedeId = UUID.randomUUID();
+        UUID grupo601 = UUID.randomUUID();
+        UUID grupo602 = UUID.randomUUID();
+        UUID asignaturaId = UUID.randomUUID();
+
+        AnioEscolar anio = mock(AnioEscolar.class);
+        Grado grado = mock(Grado.class);
+        Sede sede = mock(Sede.class);
+        Grupo origen = mock(Grupo.class);
+        Grupo destino = mock(Grupo.class);
+        Asignatura asignatura = mock(Asignatura.class);
+        Docente docente = mock(Docente.class);
+        Usuario rector = mock(Usuario.class);
+        AsignacionAcademica asignacion = mock(AsignacionAcademica.class);
+
+        when(anio.getId()).thenReturn(anioId);
+        when(grado.getId()).thenReturn(gradoId);
+        when(sede.getId()).thenReturn(sedeId);
+        when(origen.getId()).thenReturn(grupo601);
+        when(origen.getGrado()).thenReturn(grado);
+        when(origen.getAnioEscolar()).thenReturn(anio);
+        when(origen.getSede()).thenReturn(sede);
+        when(origen.isActivo()).thenReturn(true);
+        when(destino.getId()).thenReturn(grupo602);
+        when(destino.getSede()).thenReturn(sede);
+        when(destino.isActivo()).thenReturn(true);
+        when(asignatura.getId()).thenReturn(asignaturaId);
+        when(asignacion.getAsignatura()).thenReturn(asignatura);
+        when(asignacion.getAnioEscolar()).thenReturn(anio);
+        when(asignacion.getDocente()).thenReturn(docente);
+        when(asignacion.getHorasSemanales()).thenReturn(4);
+        when(asignacion.getHorasExtras()).thenReturn(0);
+        when(asignacion.getEstado())
+                .thenReturn(EstadoAsignacionAcademica.BORRADOR);
+        when(asignacion.getObservacion()).thenReturn("Sexto");
+        when(asignacion.getAsignadaPor()).thenReturn(rector);
+
+        when(grupoRepository.findById(grupo601))
+                .thenReturn(Optional.of(origen));
+        when(grupoRepository.findByGrado_IdAndAnioEscolar_Id(
+                gradoId, anioId))
+                .thenReturn(List.of(origen, destino));
+        when(asignacionRepository.findByAnioEscolar_IdAndGrupo_Id(
+                anioId, grupo601))
+                .thenReturn(List.of(asignacion));
+        when(asignacionRepository.findByAnioEscolar_IdAndGrupo_Id(
+                anioId, grupo602))
+                .thenReturn(List.of());
+        when(asignacionRepository
+                .existsByAnioEscolar_IdAndGrupo_IdAndAsignatura_Id(
+                        anioId, grupo602, asignaturaId))
+                .thenReturn(false);
+        when(asignacionRepository.save(any(AsignacionAcademica.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.sincronizarGruposDelMismoGrado(grupo601);
+
+        ArgumentCaptor<AsignacionAcademica> captor =
+                ArgumentCaptor.forClass(AsignacionAcademica.class);
+
+        verify(asignacionRepository).save(captor.capture());
+
+        AsignacionAcademica copia = captor.getValue();
+
+        assertEquals(destino, copia.getGrupo());
+        assertEquals(docente, copia.getDocente());
+        assertEquals(asignatura, copia.getAsignatura());
+        assertEquals(4, copia.getHorasSemanales());
+        assertEquals(anio, copia.getAnioEscolar());
     }
 }

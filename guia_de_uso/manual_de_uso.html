@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manual de uso · Yarumito Schedule</title>
+<style>
+:root{
+  --bg:#f4f7f2; --surface:#ffffff; --ink:#1d2b1f; --muted:#5b6b5e; --line:#dbe4d6;
+  --brand:#1f6b2e; --brand-d:#14501f; --accent:#7cb518; --info:#0b4f9c;
+  --warn-bg:#fff6dc; --warn:#8a5a00; --err-bg:#fde8e8; --err:#9b1c1c; --ok-bg:#e6f4e6; --ok:#1d6b2b;
+  --code-bg:#eef3ea; --shadow:0 1px 3px rgba(0,0,0,.08);
+}
+:root[data-theme="dark"]{
+  --bg:#0f1710; --surface:#172119; --ink:#e6efe6; --muted:#9db0a0; --line:#2a3a2d;
+  --brand:#6fd07f; --brand-d:#8fe39d; --accent:#a6d84a; --info:#7db4f5;
+  --warn-bg:#3a2f0e; --warn:#f2c46b; --err-bg:#3d1717; --err:#f3a0a0; --ok-bg:#12301a; --ok:#8fe39d;
+  --code-bg:#1d2b20; --shadow:none;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1710; --surface:#172119; --ink:#e6efe6; --muted:#9db0a0; --line:#2a3a2d;
+    --brand:#6fd07f; --brand-d:#8fe39d; --accent:#a6d84a; --info:#7db4f5;
+    --warn-bg:#3a2f0e; --warn:#f2c46b; --err-bg:#3d1717; --err:#f3a0a0; --ok-bg:#12301a; --ok:#8fe39d;
+    --code-bg:#1d2b20; --shadow:none;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+body{margin:0;font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+a{color:var(--info)}
+header.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--brand-d);color:#fff}
+header.top h1{font-size:1rem;margin:0;flex:1;font-weight:600}
+header.top button{background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:6px;padding:6px 12px;cursor:pointer;font:inherit}
+#menuBtn{display:none}
+.layout{display:grid;grid-template-columns:290px minmax(0,1fr);max-width:1400px;margin:0 auto}
+nav.toc{position:sticky;top:52px;align-self:start;height:calc(100vh - 52px);overflow:auto;padding:16px;border-right:1px solid var(--line)}
+nav.toc input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;margin-bottom:10px}
+nav.toc a{display:block;padding:5px 8px;border-radius:6px;color:var(--ink);text-decoration:none;font-size:.9rem}
+nav.toc a.sub{padding-left:22px;color:var(--muted);font-size:.85rem}
+nav.toc a:hover{background:var(--code-bg)}
+nav.toc a.active{background:var(--brand);color:#fff}
+main{padding:24px clamp(16px,4vw,48px) 80px;min-width:0}
+section{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px 26px;margin:0 0 22px;box-shadow:var(--shadow)}
+h2{margin:0 0 6px;color:var(--brand);font-size:1.5rem}
+h3{margin:22px 0 6px;font-size:1.15rem}
+h4{margin:16px 0 4px;font-size:1rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+p{margin:.5em 0}
+.route{display:inline-block;font:.82rem ui-monospace,Consolas,monospace;background:var(--code-bg);padding:2px 8px;border-radius:5px;color:var(--muted)}
+code,kbd{font:.88em ui-monospace,Consolas,monospace;background:var(--code-bg);padding:1px 6px;border-radius:4px}
+pre{background:var(--code-bg);padding:12px 14px;border-radius:8px;overflow:auto;font:.85rem/1.5 ui-monospace,Consolas,monospace}
+.callout{border-left:4px solid var(--info);background:var(--code-bg);padding:10px 14px;border-radius:0 8px 8px 0;margin:12px 0}
+.callout.warn{border-color:var(--warn);background:var(--warn-bg)}
+.callout.err{border-color:var(--err);background:var(--err-bg)}
+.callout.ok{border-color:var(--ok);background:var(--ok-bg)}
+.callout b.t{display:block;margin-bottom:2px}
+.example{border:1px dashed var(--brand);border-radius:10px;padding:10px 14px;margin:12px 0;background:color-mix(in srgb,var(--brand) 6%,transparent)}
+.example>b:first-child{color:var(--brand)}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:.93rem}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:var(--code-bg)}
+.tablewrap{overflow-x:auto}
+ol,ul{padding-left:1.4em}
+li{margin:.25em 0}
+.pill{display:inline-block;padding:1px 9px;border-radius:99px;font-size:.78rem;font-weight:600}
+.pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.err{background:var(--err-bg);color:var(--err)}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0}
+.flow span{background:var(--brand);color:#fff;padding:4px 10px;border-radius:6px;font-size:.85rem}
+.flow i{color:var(--muted);font-style:normal}
+.hidden{display:none!important}
+footer{text-align:center;color:var(--muted);font-size:.85rem;padding:20px}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}
+  nav.toc{position:fixed;inset:52px 0 0 0;z-index:15;background:var(--bg);height:auto;transform:translateX(-100%);transition:transform .2s}
+  nav.toc.open{transform:none}
+  #menuBtn{display:inline-block}
+}
+@media print{header.top,nav.toc{display:none}.layout{display:block}section{break-inside:avoid;box-shadow:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <button id="menuBtn" aria-label="Abrir índice">☰ Índice</button>
+  <h1>Manual de uso · Yarumito Schedule — Gestión de horarios, clases y docentes</h1>
+  <button id="themeBtn" aria-label="Cambiar tema">Tema</button>
+</header>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Índice">
+  <input id="q" type="search" placeholder="Buscar en el manual…" aria-label="Buscar">
+  <a href="#intro">1. Introducción y acceso</a>
+  <a href="#conceptos">2. Conceptos y orden de trabajo</a>
+  <a href="#login">3. Inicio y cierre de sesión</a>
+  <a href="#inicio">4. Panel principal (Inicio)</a>
+  <a href="#anio">5. Año lectivo y grupos</a>
+  <a href="#sedes" class="sub">5.1 Sedes</a>
+  <a href="#aulas" class="sub">5.2 Aulas</a>
+  <a href="#turnos" class="sub">5.3 Turnos</a>
+  <a href="#franjas" class="sub">5.4 Franjas horarias</a>
+  <a href="#grados" class="sub">5.5 Grados</a>
+  <a href="#anio-detalle" class="sub">5.6 Años y grupos</a>
+  <a href="#areas">6. Áreas y asignaturas</a>
+  <a href="#plan">7. Plan de estudios</a>
+  <a href="#docentes">8. Docentes</a>
+  <a href="#docentes-reg" class="sub">8.1 Registrar y editar</a>
+  <a href="#docentes-perfil" class="sub">8.2 Perfil: títulos e idoneidades</a>
+  <a href="#restricciones">9. Restricciones docentes</a>
+  <a href="#asignacion">10. Asignación académica</a>
+  <a href="#horario">11. Construcción de horario</a>
+  <a href="#validaciones">12. Validaciones</a>
+  <a href="#publicacion">13. Publicación</a>
+  <a href="#auditoria">14. Auditoría</a>
+  <a href="#consultas">15. Consultas</a>
+  <a href="#informes">16. Informes</a>
+  <a href="#ejemplo">17. Ejemplo completo paso a paso</a>
+  <a href="#reglas">18. Reglas de negocio y mensajes</a>
+  <a href="#limites">19. Limitaciones conocidas</a>
+</nav>
+<main id="content">
+
+<section id="intro">
+<h2>1. Introducción y acceso</h2>
+<p><b>Yarumito Schedule</b> es la plataforma de la I.E. Rural Yarumito para administrar <b>docentes</b>, <b>catálogos académicos</b> (sedes, aulas, turnos, grados, áreas, asignaturas), <b>planes de estudio</b>, <b>asignación de carga académica</b> y <b>construcción de horarios</b> con validación automática de conflictos.</p>
+<h3>Cómo se abre</h3>
+<table class="tablewrap"><tr><th>Servicio</th><th>Dirección</th></tr>
+<tr><td>Aplicación web (frontend)</td><td><code>http://localhost:5173</code></td></tr>
+<tr><td>API (backend)</td><td><code>http://localhost:8080</code></td></tr>
+<tr><td>Base de datos PostgreSQL</td><td><code>localhost:5432</code></td></tr></table>
+<p>Para levantar todo: <code>docker compose --profile app up --build</code>. Para cargar docentes de demostración: <code>docker compose --profile seed run --rm seed</code>.</p>
+<div class="callout"><b class="t">Credenciales de desarrollo</b>Correo <code>rector@yarumito.edu.co</code> · Contraseña según la variable <code>APP_SEED_PASSWORD</code> del archivo <code>.env</code> (en <code>README.md</code> figura el valor por defecto de desarrollo).</div>
+<div class="callout warn"><b class="t">Rol único en la práctica</b>Existen los roles <code>RECTOR</code> y <code>DOCENTE</code>, pero hoy cualquier usuario autenticado accede a todas las pantallas. Solo existe un usuario (el Rector) y no hay pantalla para crear más.</div>
+</section>
+
+<section id="conceptos">
+<h2>2. Conceptos y orden de trabajo recomendado</h2>
+<h3>Glosario</h3>
+<table class="tablewrap"><tr><th>Término</th><th>Significado</th></tr>
+<tr><td>Año lectivo</td><td>Periodo escolar (p. ej. 2029). Estados: <span class="pill warn">Planeación</span> → <span class="pill ok">Activo</span> → Cerrado. Solo uno puede ser «actual».</td></tr>
+<tr><td>Sede</td><td>Lugar físico. Solo una puede ser la <b>principal</b>.</td></tr>
+<tr><td>Aula</td><td>Espacio de una sede (Aula, Laboratorio, Sala de sistemas, Cancha) con capacidad.</td></tr>
+<tr><td>Turno</td><td>Jornada: <b>Mañana</b> o <b>Contrajornada</b> (únicos nombres admitidos). Define duración de clase, clases por día y descanso.</td></tr>
+<tr><td>Franja horaria</td><td>Cada bloque (clase o descanso) dentro de un turno.</td></tr>
+<tr><td>Grado / Grupo</td><td>Grado = nivel 6° a 11°. Grupo = curso concreto de un grado en un año y una sede (p. ej. 1001).</td></tr>
+<tr><td>Plan de estudios</td><td>Asignaturas e intensidad semanal de cada grado en un año.</td></tr>
+<tr><td>Idoneidad</td><td>Habilitación de un docente para un área o asignatura (Principal / Autorizada / Excepcional).</td></tr>
+<tr><td>Asignación académica</td><td>Docente + grupo + asignatura + horas por semana. Nace en <i>Borrador</i> y se <i>Confirma</i>.</td></tr>
+<tr><td>Clase programada</td><td>Una hora de una asignación ubicada en día + franja + aula.</td></tr>
+</table>
+<h3>Orden recomendado (de lo general a lo particular)</h3>
+<div class="flow"><span>Año lectivo</span><i>→</i><span>Sedes</span><i>→</i><span>Aulas</span><i>→</i><span>Turnos</span><i>→</i><span>Franjas</span><i>→</i><span>Grados</span><i>→</i><span>Áreas/Asignaturas</span><i>→</i><span>Plan de estudios</span><i>→</i><span>Grupos</span><i>→</i><span>Docentes + títulos + idoneidades</span><i>→</i><span>Restricciones</span><i>→</i><span>Asignación</span><i>→</i><span>Horario</span><i>→</i><span>Validaciones</span></div>
+<p>El menú lateral sigue este orden. Cada pantalla depende de los datos de las anteriores: sin franjas no hay horario; sin plan de estudios no hay asignaciones; sin docentes con idoneidad no se puede asignar.</p>
+<h3>Convenciones de pantalla</h3>
+<ul><li>Botones principales a la derecha del encabezado (<code>+ Nuevo…</code>). El lápiz verde de cada fila abre la edición.</li>
+<li>Los formularios se abren en ventanas modales; los errores del servidor aparecen dentro de la modal.</li>
+<li>Los nombres de sedes se guardan en MAYÚSCULAS.</li>
+<li>Tema claro/oscuro: lo toma del sistema operativo.</li></ul>
+</section>
+
+<section id="login">
+<h2>3. Inicio y cierre de sesión</h2>
+<span class="route">/admin</span>
+<ol><li>Abre <code>http://localhost:5173</code>; te redirige a <code>/admin</code> si no hay sesión.</li>
+<li>Escribe el <b>Usuario</b> (correo electrónico) y la <b>Contraseña</b>; puedes ver/ocultar la contraseña con el ícono del ojo.</li>
+<li>Marca <b>Recordarme</b> si quieres conservar la sesión al cerrar el navegador.</li>
+<li>Pulsa <b>Iniciar sesión</b>.</li></ol>
+<p>La sesión dura <b>8 horas</b> (token JWT). Si expira, la plataforma te devuelve al formulario.</p>
+<div class="example"><b>Ejemplo.</b> Correo <code>rector@yarumito.edu.co</code> + contraseña correcta → entras al panel. Con una contraseña errónea aparece «Error de autenticación» y no avanzas.</div>
+<p><b>Cerrar sesión:</b> menú lateral → <i>Cerrar sesión</i>. (El ítem <i>Perfil</i> del menú no abre ninguna pantalla actualmente.)</p>
+</section>
+
+<section id="inicio">
+<h2>4. Panel principal (Inicio)</h2>
+<span class="route">/dashboard</span>
+<p>Muestra un saludo, cuatro tarjetas de resumen y tarjetas de módulos con el botón <b>Abrir módulo</b> (Gestión de docentes, Gestión académica, Año lectivo y grupos, Restricciones, Asignación, Construcción del horario, Validaciones, Publicación, Auditoría, Consultas, Informes).</p>
+<div class="callout warn"><b class="t">Atención</b>Las cifras de las tarjetas (p. ej. «12 docentes») son valores fijos de demostración y <u>no</u> reflejan la base de datos real. Para cifras reales usa <i>Docentes</i> o <i>Informes</i>.</div>
+</section>
+
+<section id="anio">
+<h2>5. Año lectivo y configuración institucional</h2>
+<p>Este bloque prepara la «infraestructura» del colegio. Se hace una vez y luego se ajusta.</p>
+</section>
+
+<section id="sedes">
+<h2>5.1 Sedes</h2>
+<span class="route">/dashboard/sedes</span>
+<h4>Ver y buscar</h4>
+<p>Tabla con Código, Sede, Dirección, Principal y Acciones. El cuadro <b>Buscar sede</b> filtra por código, nombre o dirección.</p>
+<h4>Crear</h4>
+<ol><li><b>+ Nueva sede</b>.</li><li>Completa <b>Nombre de la sede</b>, <b>Código</b>, <b>Dirección</b> y marca si es <b>sede principal</b>.</li><li>Guardar.</li></ol>
+<div class="example"><b>Ejemplo.</b> Nombre «Sede Vereda El Roble», código <code>ROB-01</code>, dirección «Vereda El Roble km 4», principal: No → aparece como «SEDE VEREDA EL ROBLE».</div>
+<h4>Editar</h4><p>Lápiz de la fila → cambia nombre, código, dirección o principal → Guardar.</p>
+<h4>Reglas</h4>
+<ul><li>Código único (409 «Ya existe una sede con ese código»).</li><li>Solo una sede principal (409 «Ya existe una sede principal registrada»). Para cambiarla, primero edita la actual y desmárcala.</li><li>No hay botón de eliminar sedes.</li></ul>
+</section>
+
+<section id="aulas">
+<h2>5.2 Aulas</h2>
+<span class="route">/dashboard/aulas</span>
+<p>Elige primero la <b>Sede</b> en el selector; se listan sus aulas (Nombre, Tipo, Capacidad, Estado).</p>
+<h4>Crear</h4>
+<ol><li><b>+ Nueva aula</b>.</li><li><b>Sede</b>, <b>Nombre del aula</b> (ej. A-101), <b>Tipo</b> (Aula, Laboratorio, Sala de sistemas, Cancha), <b>Capacidad</b> (opcional).</li><li>Guardar.</li></ol>
+<h4>Editar vs. Nueva versión</h4>
+<ul><li><b>Editar</b> (lápiz): corrige capacidad, nombre o estado activa/inactiva del mismo registro.</li>
+<li><b>Nueva versión</b>: úsala cuando el aula <i>cambia de nombre, tipo o sede</i>. Crea un aula nueva activa y deja la anterior <b>Inactiva</b>, conservando el historial.</li></ul>
+<div class="example"><b>Ejemplo.</b> El aula «A-101» (Aula, 40) se convierte en laboratorio: pulsa <i>Nueva versión</i>, cambia el tipo a Laboratorio. Quedan «A-101 Laboratorio · Activa» y «A-101 Aula · Inactiva».</div>
+<div class="callout warn"><b class="t">No se elimina</b>El borrado físico de aulas es rechazado por el sistema (409): inactívalas.</div>
+<p>Regla: no puede haber dos aulas <i>activas</i> con el mismo nombre en una sede.</p>
+</section>
+
+<section id="turnos">
+<h2>5.3 Turnos</h2>
+<span class="route">/dashboard/turnos</span>
+<p>Define las jornadas. Campos: <b>Nombre del turno</b> (solo <code>Mañana</code> o <code>Contrajornada</code>), <b>Hora de inicio</b>, <b>Hora de finalización</b>, <b>Duración de la clase (min)</b>, <b>Clases por día</b>, <b>Clases antes del descanso</b>, <b>Descanso (min)</b>.</p>
+<div class="example"><b>Ejemplo.</b> Mañana · 07:00–13:00 · clase 55 min · 6 clases/día · 3 antes del descanso · descanso 30 min.</div>
+<ul><li>Editar con el lápiz. Buscador por nombre.</li><li>La hora de inicio debe ser anterior a la de fin.</li><li>Un nombre distinto de los dos permitidos hace fallar el guardado (ver sección de limitaciones).</li></ul>
+</section>
+
+<section id="franjas">
+<h2>5.4 Franjas horarias</h2>
+<span class="route">/dashboard/franjas</span>
+<p>Elige un <b>Turno</b> y arma su secuencia de clases y descansos. Tabla: Orden, Número, Horario, Tipo (Académica/Descanso), Horas.</p>
+<h4>Crear</h4>
+<ol><li><b>+ Nueva franja</b>.</li><li>Turno, <b>Número</b> (de clase; 0 para descansos), <b>Hora de inicio/fin</b>, <b>Orden</b> en el día, <b>Horas académicas equivalentes</b> (1 por clase, 0 por descanso), y marca <b>Esta franja es un descanso</b> si aplica.</li></ol>
+<div class="example"><b>Ejemplo (turno Mañana).</b><pre>Orden 1  Nº1  07:00-07:55  Académica  1 h
+Orden 2  Nº0  07:55-08:25  Descanso   0 h
+Orden 3  Nº2  08:25-09:20  Académica  1 h
+Orden 4  Nº3  09:20-10:15  Académica  1 h</pre></div>
+<ul><li>Las franjas del mismo turno no pueden solaparse (400).</li><li>La duración debe coincidir con la del turno.</li><li>Los descansos no se pueden programar con clases.</li></ul>
+</section>
+
+<section id="grados">
+<h2>5.5 Grados</h2>
+<span class="route">/dashboard/grados</span>
+<p>Registra los grados de <b>6° a 11°</b>. Solo se elige el <b>nivel</b>; el servidor calcula nombre (SEXTO…UNDÉCIMO), tipo (Básica o Media), prioridad de asignación y horas semanales esperadas (30 h básica, 37 h media).</p>
+<div class="example"><b>Ejemplo.</b> + Nuevo grado → nivel 8 → queda «Octavo · Básica · prioridad 3 · 30 h».</div>
+<div class="callout warn"><b class="t">Cuidado</b>El sistema actualmente <u>permite crear dos veces el mismo nivel</u> (ver informe de hallazgos). Verifica antes de crear.</div>
+</section>
+
+<section id="anio-detalle">
+<h2>5.6 Año lectivo y grupos</h2>
+<span class="route">/dashboard/anio-lectivo</span>
+<h4>Años lectivos</h4>
+<ul><li><b>Crear año</b>: Año (ej. 2029), Fecha de inicio, Fecha de finalización, Estado (Planeación o Activo). La fecha de inicio debe ser anterior a la de fin.</li>
+<li><b>Editar fechas</b>: no permitido si el año está Cerrado.</li>
+<li><b>Activar año</b>: pasa de Planeación a Activo y lo marca como «Año actual». Solo puede haber uno actual (409 si ya existe otro).</li>
+<li><b>Cerrar año</b>: Activo → Cerrado (irreversible; conserva el histórico).</li>
+<li>Transiciones válidas: Planeación → Activo → Cerrado. Cualquier otra se rechaza.</li></ul>
+<div class="callout"><b class="t">Parámetros automáticos</b>Al crear un año se generan <code>HORAS_DOCENTE_SEMANALES = 22</code> y <code>MAX_HORAS_EXTRA = 10</code> para ese año.</div>
+<h4>Grupos</h4>
+<ol><li>Selecciona el año lectivo.</li><li><b>+ Agregar grupo</b>: <b>Código del grupo</b> (el sistema sugiere el siguiente, p. ej. 1001), <b>Grado</b>, <b>Año lectivo</b>, <b>Sede</b>, <b>Cantidad de estudiantes</b>, <b>Estado</b>, y opcionalmente <b>Aula habitual</b> y <b>Director de grupo</b>.</li><li>Filtra por grado, sede y estado con la barra de filtros.</li></ol>
+<div class="example"><b>Ejemplo.</b> Código 1001, Grado Décimo, Año 2029, Sede Principal, 30 estudiantes, Activo.</div>
+<p>Código único por año (409). Si la cantidad de estudiantes supera la capacidad del aula fija, se muestra una advertencia logística.</p>
+</section>
+
+<section id="areas">
+<h2>6. Áreas y asignaturas</h2>
+<span class="route">/dashboard/areas</span>
+<p>Arriba el listado de <b>Áreas</b> (Código, Área, Clasificación obligatoria/opcional, Aplicación todos los grados/solo media, Estado). Al seleccionar un área aparece abajo la lista de sus <b>Asignaturas</b>.</p>
+<h4>Áreas</h4>
+<ul><li><b>+ Nueva área</b>: Nombre, Código, <b>Área obligatoria</b>, <b>Solo para Media</b>, Estado. También hay un selector «Área del catálogo» para partir de las áreas oficiales precargadas.</li>
+<li>Lápiz = editar. Botón de activar/desactivar (con modal de confirmación). Filtros: texto y Estado (Todas / Activas / Inactivas).</li></ul>
+<h4>Asignaturas</h4>
+<ul><li><b>+ Nueva asignatura</b> (o elegirla del catálogo): Área, Nombre, Código, <b>Abreviatura</b>, Color de identificación, Máximo de clases consecutivas (por defecto 2), Tipo de aula requerida, y los interruptores <b>Exige idoneidad estricta</b>, <b>Asignatura de Media Técnica</b>, <b>Requiere docente exclusivo</b>, Estado.</li></ul>
+<div class="callout warn"><b class="t">Abreviatura restringida</b>La abreviatura solo puede ser una de la lista institucional (MAT, MATE, CAST, INGL, FISI, QUIM, BIOL, EDFI, INFO, ETIC, RELI, ARTE, etc.). Una abreviatura fuera de lista produce un error genérico del servidor. Usa el catálogo para evitarlo.</div>
+<div class="example"><b>Ejemplo.</b> Área «Matemáticas» (MAT) → asignatura «Geometría», código GEO, abreviatura GEOM, máx. 2 clases consecutivas, aula tipo Aula.</div>
+<p>Desactivar un área/asignatura la oculta de los selectores sin borrar el histórico.</p>
+</section>
+
+<section id="plan">
+<h2>7. Plan de estudios</h2>
+<span class="route">/dashboard/plan-estudios</span>
+<ol><li>Elige <b>Año lectivo</b> y <b>Grado</b>. Aparece el <b>Resumen del grado</b>: tipo, horas esperadas, horas configuradas, diferencia y una barra «X de Y h configuradas».</li>
+<li><b>+ Agregar asignatura</b> → selector por <b>Área</b> y <b>Asignatura</b>, <b>Horas semanales</b>, <b>Turno</b> y <b>Observación</b>.</li>
+<li>Lápiz para editar horas, turno u observación.</li></ol>
+<div class="example"><b>Ejemplo.</b> 2029 · Décimo → Álgebra, 5 h, turno Mañana. Resumen: «5 de 37 h configuradas · Pendiente 32 h».</div>
+<ul><li>Una asignatura no se puede repetir en el mismo grado y año (409).</li><li>El turno elegido determina qué franjas usará el horario del grupo.</li><li>Años cerrados quedan en solo consulta.</li></ul>
+<div class="callout warn"><b class="t">Quitar asignatura</b>El botón de quitar abre una ventana de confirmación pero <u>no elimina</u> el registro (no existe esa operación en el servidor).</div>
+</section>
+
+<section id="docentes">
+<h2>8. Docentes</h2>
+<span class="route">/dashboard/docentes</span>
+<p>Cuatro tarjetas (total, activos, en licencia, retirados), búsqueda por nombre/apellido/documento y filtros por <b>Área</b>, <b>Estado</b>, <b>Tipo de vinculación</b>; botón <b>Limpiar filtros</b>. Tabla con Documento, Docente, Área, Vinculación, Contacto, Estado, Títulos, Idoneidad y acciones (editar ✎ y ver perfil 👤). Paginación con «Filas por página».</p>
+<p>Botones superiores: <b>Actualizar listado</b> y <b>Registrar docente</b>.</p>
+</section>
+
+<section id="docentes-reg">
+<h2>8.1 Registrar y editar un docente</h2>
+<span class="route">/dashboard/docentes/registrar</span> <span class="route">/dashboard/docentes/:id/editar</span>
+<table class="tablewrap"><tr><th>Campo</th><th>Detalle / ejemplo</th></tr>
+<tr><td>Nombres, Apellidos</td><td>Laura Marcela · Rojas Pérez</td></tr>
+<tr><td>Tipo y número de documento</td><td>CC · 1032456789 (único)</td></tr>
+<tr><td>Teléfono, Correo institucional</td><td>3001234567 · laura.rojas@yarumito.edu.co</td></tr>
+<tr><td>Tipo de vinculación</td><td>Planta, Provisional o Contrato</td></tr>
+<tr><td>Área de nombramiento</td><td>Matemáticas</td></tr>
+<tr><td>Estado</td><td>Activo, Licencia o Retirado</td></tr>
+<tr><td>Régimen docente / Escalafón</td><td>2277 (grados 1–14) o 1278 (grados y niveles) …</td></tr>
+<tr><td>Número y fecha de decreto, Fecha de vinculación</td><td>Datos del nombramiento</td></tr></table>
+<p>El servidor asigna automáticamente las <b>horas contratadas</b> (p. ej. 22 h) y <b>máximo de horas extra</b> (10 h) según la vinculación.</p>
+<ul><li>Documento duplicado → 409 «Ya existe un docente con ese número de documento».</li><li>Al editar no se cambia el estado desde el formulario: usa la sección «Estado» del perfil.</li></ul>
+</section>
+
+<section id="docentes-perfil">
+<h2>8.2 Perfil del docente: títulos, idoneidades y estado</h2>
+<span class="route">/dashboard/docentes/:id</span>
+<p>El perfil reúne datos personales, institucionales, estado, títulos, idoneidades y resumen de disponibilidad semanal.</p>
+<h4>Estado administrativo</h4>
+<p>Sección «Estado»: cambia entre Activo, Licencia y Retirado. Pasar al mismo estado se rechaza (409 «ACTIVO a ACTIVO»).</p>
+<h4>Títulos profesionales</h4>
+<ol><li><b>Agregar título</b>: <b>Nivel</b> (Normalista, Licenciatura, Profesional, Especialización, Maestría, Doctorado), <b>Nombre del título</b>, <b>Institución</b>, <b>Año de graduación</b>, <b>Soporte académico</b> (nombre de archivo).</li><li>Editable con el lápiz.</li></ol>
+<div class="example"><b>Ejemplo.</b> Licenciatura · «Licenciatura en Matemáticas» · Universidad de Antioquia · 2018.</div>
+<h4>Idoneidad académica</h4>
+<ol><li><b>Agregar idoneidad</b>: <b>Tipo</b> (Principal, Autorizada, Excepcional), <b>Área</b> y/o <b>Asignatura</b>, <b>Título de soporte</b>, <b>Justificación</b> (obligatoria si es Excepcional), <b>Vigente desde</b> y <b>Vigente hasta</b>.</li>
+<li><b>Finalizar vigencia</b>: pide una fecha de finalización; la idoneidad deja de ser válida desde esa fecha.</li></ol>
+<div class="example"><b>Ejemplo.</b> Principal · Área Matemáticas · soporte «Licenciatura en Matemáticas» · desde 2020-01-01 sin fecha final → el docente puede recibir cualquier asignatura de Matemáticas.</div>
+<div class="callout"><b class="t">Por qué importa</b>La asignación académica exige una idoneidad <b>vigente</b> para la asignatura (por el área o por la asignatura puntual). Sin ella el sistema responde «El docente no cuenta con una idoneidad vigente para la asignatura indicada».</div>
+<p>Los títulos no tienen opción real de eliminar (el modal existe pero no hay operación en el servidor).</p>
+</section>
+
+<section id="restricciones">
+<h2>9. Restricciones docentes</h2>
+<span class="route">/dashboard/restricciones</span>
+<ol><li>Elige <b>Año lectivo</b> y <b>Docente</b>. Se muestra una tarjeta resumen y la <b>Disponibilidad semanal</b>: cuadrícula Lunes–Viernes × franjas del turno.</li>
+<li>Leyenda: <span class="pill ok">Disponible</span> · <span class="pill err">No disponible · Bloqueante</span> · <span class="pill warn">Preferencia · Advertencia</span>.</li>
+<li>Pulsa una celda (o <b>+ Agregar restricción</b>) → elige <b>Día</b>, <b>Franja</b>, <b>Tipo</b> (No disponible / Preferente) y <b>Motivo</b>.</li>
+<li>Pulsar una celda marcada abre el detalle y permite editar tipo/motivo.</li></ol>
+<div class="example"><b>Ejemplo.</b> Docente «Ana Gómez», jueves 07:00–07:55, No disponible, motivo «Cita médica recurrente». Al intentar programarle clase ese día/franja, el horario responde «El docente tiene registrada una restricción de no disponibilidad…».</div>
+<ul><li><b>No disponible</b> bloquea la programación. <b>Preferente</b> es solo informativa.</li><li>Los descansos no son editables.</li><li>Por ahora no se pueden borrar restricciones desde la interfaz: edítalas a «Preferente».</li></ul>
+</section>
+
+<section id="asignacion">
+<h2>10. Asignación académica</h2>
+<span class="route">/dashboard/asignacion</span>
+<p>Dos pestañas: <b>Asignaciones curriculares</b> y <b>Actividades y proyectos</b>. Una barra recuerda la prioridad: 1) área principal → 2) idoneidades válidas → 3) transversales → 4) actividades. <i>El Rector decide; no hay asignación automática.</i></p>
+<h3>Asignaciones curriculares</h3>
+<ol><li>Selecciona <b>Año lectivo</b> y <b>Grupo</b> (el grado se deriva).</li>
+<li>La tabla lista las asignaturas del plan del grado con horas, docente y estado (Pendiente / Borrador / Confirmada). Un resumen muestra horas asignadas vs requeridas.</li>
+<li>En la fila pendiente pulsa <b>Asignar</b>. Si procede, elige el <b>Tipo de asignación</b>: Principal (área de nombramiento), Idoneidad, o Transversal.</li>
+<li>Elige <b>Docente</b> (los de mejor encaje aparecen primero), <b>Horas semanales</b> y <b>Observación</b>. Si el docente tiene restricciones se muestra un aviso.</li>
+<li>Guardar → queda en <span class="pill warn">Borrador</span>. Pulsa <b>Confirmar</b> para dejarla <span class="pill ok">Confirmada</span>.</li></ol>
+<div class="example"><b>Ejemplo.</b> Grupo 1001 · Álgebra → Asignar → Principal → Laura Rojas → 5 h → Guardar → Confirmar. Resultado: Álgebra 5 h · Laura Rojas · Confirmada.</div>
+<h4>Errores típicos</h4>
+<ul><li>«Ya existe una asignación académica para el año escolar, grupo y asignatura indicados» (409).</li><li>«El docente no cuenta con una idoneidad vigente…» (400).</li></ul>
+<h3>Actividades y proyectos</h3>
+<p>Carga no curricular de un docente. Pulsa <b>Asignar</b> → <b>Docente</b>, <b>Actividad institucional</b> (Proyecto de acompañamiento institucional, de convivencia, de emprendimiento), <b>Horas asignadas</b> y <b>Justificación</b> (obligatoria).</p>
+<div class="example"><b>Ejemplo.</b> Docente Laura Rojas · Proyecto de convivencia · 2 h · «Coordina el comité escolar».</div>
+<div class="callout warn"><b class="t">Importante</b>Los botones de editar y quitar una asignación no ejecutan ninguna acción hoy. Una asignación equivocada no se corrige desde la pantalla. Además, la pantalla <u>no impide</u> asignar más horas que la carga del docente (22 h + 10 extra); la validación de carga se aplica al programar clases.</div>
+</section>
+
+<section id="horario">
+<h2>11. Construcción de horario</h2>
+<span class="route">/dashboard/horario</span>
+<ol><li>Selecciona <b>Año lectivo</b>, <b>Sede</b>, <b>Turno</b>, <b>Grupo</b> y <b>Vista</b> (por grupo). A la derecha se ve el <b>Estado del horario</b> (Borrador / Publicado / Archivado).</li>
+<li>Tarjetas de métricas: asignaciones programadas, horas programadas/total, horas pendientes, conflictos, advertencias.</li>
+<li>La cuadrícula muestra franjas (filas) × Lunes–Viernes (columnas). Los descansos aparecen como «No programable».</li>
+<li>El panel derecho <b>Asignaciones pendientes</b> lista cada asignatura con sus horas por ubicar y un botón <b>Programar</b>.</li></ol>
+<h4>Programar una clase</h4>
+<ol><li>Pulsa <b>Programar</b> en el panel o en una celda vacía.</li>
+<li>Elige <b>Asignación académica</b>, <b>Día</b>, <b>Franja horaria</b> y <b>Aula</b> (solo las activas de la sede). Se muestran Grupo, Docente, Asignatura y Horas pendientes.</li>
+<li>Guardar. La celda toma el color de la asignatura.</li></ol>
+<div class="example"><b>Ejemplo.</b> Álgebra · Lunes · 07:00–07:55 · aula A-101 → la clase aparece en Lunes/1ª franja. Una segunda clase de Álgebra el mismo lunes en la 2ª franja es válida (máximo 2 por día).</div>
+<h4>Mover, cambiar aula o quitar</h4>
+<ul><li>Pulsa una clase para ver su detalle/historial y cambiar <b>día, franja o aula</b>.</li><li><b>Quitar</b> elimina la clase y devuelve la hora a «pendientes».</li></ul>
+<h4>Reglas que bloquean (el guardado falla con mensaje)</h4>
+<table class="tablewrap"><tr><th>Código</th><th>Mensaje / causa</th></tr>
+<tr><td>GRUPO_OCUPADO</td><td>El grupo ya tiene clase en esa franja.</td></tr>
+<tr><td>DOCENTE_OCUPADO</td><td>El docente ya tiene clase en esa franja (en cualquier grupo).</td></tr>
+<tr><td>AULA_OCUPADA</td><td>El aula ya está usada en esa franja.</td></tr>
+<tr><td>DOCENTE_NO_DISPONIBLE</td><td>Restricción «No disponible» del docente.</td></tr>
+<tr><td>H-02</td><td>Más de dos clases de la misma asignatura en un día.</td></tr>
+<tr><td>H-07</td><td>Supera la carga semanal permitida (ordinarias + horas extra).</td></tr>
+<tr><td>H-08</td><td>Aula inactiva o de otra sede.</td></tr>
+<tr><td>H-10</td><td>Horario publicado/archivado o clase bloqueada.</td></tr>
+<tr><td>—</td><td>«La franja seleccionada corresponde a un descanso».</td></tr></table>
+<h4>Advertencias (guardan pero avisan)</h4>
+<ul><li>«La cantidad de estudiantes supera la capacidad del aula» (sobrecupo).</li><li>Las horas por encima de la carga ordinaria se marcan como <b>hora extra</b>.</li></ul>
+</section>
+
+<section id="validaciones">
+<h2>12. Validaciones</h2>
+<span class="route">/dashboard/validaciones</span>
+<ol><li>Elige el <b>Año lectivo</b> y el <b>Grupo</b>; se carga el horario y sus conflictos guardados.</li>
+<li>Tarjetas: <b>Total</b>, <b>Errores</b>, <b>Advertencias</b>, <b>Resueltos</b>, <b>Pendientes</b>. Un banner indica «No apto para publicación» mientras existan errores pendientes.</li>
+<li><b>Filtros</b>: Severidad, Estado, Tipo de conflicto (docente ocupado, aula ocupada, sobreaforo), Grupo, Docente, Aula. <b>Volver a validar</b> recarga.</li>
+<li>En cada fila: <b>Ver detalle</b> → <b>Marcar como resuelto</b>.</li></ol>
+<div class="example"><b>Ejemplo.</b> Aparece «ADVERTENCIA · Sobreaforo · La cantidad de estudiantes supera la capacidad del aula». Corrige el aula o el tamaño del grupo y marca el conflicto como resuelto.</div>
+<div class="callout">Los intentos rechazados por el sistema (p. ej. docente ocupado) también quedan registrados como conflicto para trazabilidad.</div>
+</section>
+
+<section id="publicacion">
+<h2>13. Publicación</h2>
+<span class="route">/dashboard/publicacion</span>
+<p>Pantalla de «Resumen final»: estado, errores, advertencias, versión, comprobaciones previas, historial y botón <b>Publicar horario</b> con ventanas de advertencias/bloqueo/éxito.</p>
+<div class="callout err"><b class="t">Estado real de la función</b>La publicación funciona solo con datos locales de demostración (año 2026, «Horario General 2026») y <u>no se comunica con el servidor</u>: publicar aquí no cambia el estado del horario real ni habilita el informe «publicado». Consulta el informe de hallazgos.</div>
+</section>
+
+<section id="auditoria">
+<h2>14. Auditoría</h2>
+<span class="route">/dashboard/auditoria</span>
+<h4>Historial del grupo</h4>
+<ol><li><b>Año lectivo</b> y <b>Grupo</b>.</li><li><b>Tipo</b>: Asignación académica o Clase programada; elige el registro concreto.</li><li><b>Ver historial del grupo</b> o <b>Consultar este registro</b>.</li></ol>
+<h4>Acciones de una cuenta</h4>
+<p>Selecciona la <b>Cuenta</b> (ej. rector@yarumito.edu.co) → <b>Consultar cuenta</b>. Tabla con Fecha, Acción (Creación/Actualización/Eliminación/Publicación), Registro y botón <b>Ver cambios</b> (valores antes/después).</p>
+<div class="example"><b>Ejemplo.</b> Rector · CREATE · Asignación académica · «Álgebra · Grupo 1001» → Ver cambios muestra docente, grupo, horas y estado Borrador.</div>
+<p>Solo se auditan asignaciones y clases; crear docentes, aulas o sedes no aparece aquí.</p>
+</section>
+
+<section id="consultas">
+<h2>15. Consultas</h2>
+<span class="route">/dashboard/consultas</span>
+<ol><li>Filtros: <b>Año lectivo</b>, <b>Sede</b>, <b>Grupo</b>, <b>Versión</b> (Horario institucional / Horario publicado), <b>Día</b>, <b>Jornada</b> (Regular / Contrajornada), <b>Docente</b>, <b>Estado del horario</b>.</li>
+<li><b>Consultar informe</b> muestra Clases (Día, Hora, Asignatura, Docente, Aula, Estado, Hora extra) y la <b>carga horaria</b> por docente (Ordinarias, Extras, Total).</li>
+<li><b>Descargar PDF</b> o <b>Descargar Excel</b> genera el archivo del grupo.</li></ol>
+<div class="example"><b>Ejemplo.</b> 2029 · Sede principal · Grupo 1001 · Horario institucional → Consultar → Descargar PDF.</div>
+<p>La versión «Horario publicado» solo funciona si el horario fue publicado en el servidor (hoy no es posible desde la interfaz).</p>
+</section>
+
+<section id="informes">
+<h2>16. Informes</h2>
+<span class="route">/dashboard/informes</span>
+<p>Tres pestañas, cada una con <b>Consultar informe</b>, <b>Descargar PDF</b> y <b>Descargar Excel</b>:</p>
+<table class="tablewrap"><tr><th>Pestaña</th><th>Filtros</th><th>Contenido</th></tr>
+<tr><td>Planta docente</td><td>Área de nombramiento, Estado, Vinculación</td><td>Docentes, área, vinculación, horas contratadas, totales.</td></tr>
+<tr><td>Áreas y asignaturas</td><td>Aplicación (todas/solo media), Estado (activas/inactivas), Clasificación</td><td>Áreas con sus asignaturas y banderas (docente exclusivo, media técnica).</td></tr>
+<tr><td>Perfiles profesionales</td><td>Docente, Tipo de idoneidad, Vigencia a la fecha</td><td>Títulos e idoneidades (vigente / no vigente).</td></tr></table>
+<div class="example"><b>Ejemplo.</b> Planta docente → Estado «Activo» → Consultar: «13 docentes · 254 h contratadas» → Descargar Excel.</div>
+</section>
+
+<section id="ejemplo">
+<h2>17. Ejemplo completo paso a paso</h2>
+<p>Objetivo: dejar listo el horario del grupo <b>1001 (Décimo)</b> del año <b>2030</b> con Álgebra impartida por un docente.</p>
+<ol>
+<li><b>Año lectivo</b> → crear 2030 (inicio 2030-01-14, fin 2030-11-29, Activo).</li>
+<li><b>Sedes</b> → Sede Principal ya existente (si no, crearla como principal).</li>
+<li><b>Aulas</b> → sede principal → A-101, tipo Aula, capacidad 35.</li>
+<li><b>Turnos</b> → Mañana 07:00–13:00, 55 min, 6 clases, 3 antes del descanso, descanso 30.</li>
+<li><b>Franjas</b> → turno Mañana: 07:00-07:55, descanso 07:55-08:25, 08:25-09:20, 09:20-10:15, 10:15-11:10, descanso largo, etc.</li>
+<li><b>Grados</b> → verificar que existe nivel 10 (Décimo).</li>
+<li><b>Áreas y asignaturas</b> → confirmar área Matemáticas y asignatura Álgebra.</li>
+<li><b>Plan de estudios</b> → 2030 · Décimo → Álgebra, 5 h, turno Mañana.</li>
+<li><b>Año lectivo → Grupos</b> → + Agregar grupo: 1001, Décimo, 2030, Sede Principal, 30 estudiantes.</li>
+<li><b>Docentes → Registrar docente</b> → Laura Rojas, Planta, área Matemáticas.</li>
+<li><b>Perfil del docente</b> → agregar título «Licenciatura en Matemáticas» y una idoneidad Principal del área Matemáticas.</li>
+<li><b>Restricciones</b> → (opcional) martes 07:00 No disponible.</li>
+<li><b>Asignación académica</b> → 2030 · grupo 1001 → Álgebra → Asignar → Principal → Laura Rojas → 5 h → Guardar → Confirmar.</li>
+<li><b>Construcción de horario</b> → 2030 · Sede principal · Mañana · 1001 → Programar 5 veces (máximo 2 por día): Lun 1ª, Lun 2ª, Mié 1ª, Mié 2ª, Vie 1ª, usando el aula A-101.</li>
+<li><b>Validaciones</b> → revisar advertencias (sobrecupo si 30 > capacidad) y marcar resueltas.</li>
+<li><b>Consultas</b> → descargar el PDF del grupo para entregarlo.</li>
+</ol>
+<div class="callout ok"><b class="t">Resultado esperado</b>5/5 horas programadas, 0 pendientes, 0 errores. El horario queda en estado <i>Borrador</i> (la publicación formal no está disponible; ver sección 19).</div>
+</section>
+
+<section id="reglas">
+<h2>18. Reglas de negocio y mensajes frecuentes</h2>
+<div class="tablewrap"><table><tr><th>Código HTTP</th><th>Mensaje</th><th>Qué hacer</th></tr>
+<tr><td>400</td><td>La fecha de inicio debe ser anterior a la fecha de finalización</td><td>Corrige las fechas del año.</td></tr>
+<tr><td>400</td><td>La franja horaria se solapa con otra franja del mismo turno</td><td>Ajusta horas u orden.</td></tr>
+<tr><td>400</td><td>La franja seleccionada corresponde a un descanso</td><td>Elige una franja académica.</td></tr>
+<tr><td>400</td><td>El grupo ya tiene dos clases de esta asignatura… el día</td><td>Distribuye en otro día (H-02).</td></tr>
+<tr><td>400</td><td>El docente no cuenta con una idoneidad vigente…</td><td>Registra la idoneidad en el perfil.</td></tr>
+<tr><td>409</td><td>Ya existe una sede principal / con ese código / grupo / docente / aula / asignación</td><td>Registro duplicado: edita el existente.</td></tr>
+<tr><td>409</td><td>Un año escolar cerrado no puede ser modificado</td><td>Crea un año nuevo.</td></tr>
+<tr><td>409</td><td>No se puede eliminar físicamente el aula…</td><td>Inactiva el aula.</td></tr>
+<tr><td>409</td><td>GRUPO_OCUPADO · DOCENTE_OCUPADO · AULA_OCUPADA · DOCENTE_NO_DISPONIBLE</td><td>Cambia día/franja/aula.</td></tr>
+<tr><td>401</td><td>Sesión inválida o vencida</td><td>Vuelve a ingresar.</td></tr>
+<tr><td>400 / 500 genérico</td><td>Sin mensaje claro (campos obligatorios vacíos, nombre de turno o abreviatura fuera de lista)</td><td>Revisa que los campos obligatorios estén completos y use valores del catálogo.</td></tr></table></div>
+</section>
+
+<section id="limites">
+<h2>19. Limitaciones conocidas (resumen)</h2>
+<ul>
+<li>La <b>publicación</b> de horarios no persiste en el servidor.</li>
+<li>No hay eliminación de: sedes, grados, años, grupos, títulos, restricciones, asignaciones ni asignaturas del plan (solo inactivar).</li>
+<li>Editar/quitar asignaciones desde la pantalla no tiene efecto.</li>
+<li>Panel de inicio con cifras de demostración.</li>
+<li>Un solo usuario/rol operativo; no hay gestión de usuarios ni cambio de contraseña.</li>
+</ul>
+<p>El detalle y la evidencia están en el <a href="informe_hallazgos.html">Informe de hallazgos</a>.</p>
+</section>
+
+<footer>Manual generado a partir del análisis del código y de pruebas en navegador y API · Yarumito Schedule · noviembre de 2026</footer>
+</main>
+</div>
+<script>
+(function(){
+  var root=document.documentElement, tb=document.getElementById('themeBtn');
+  try{var s=localStorage.getItem('theme');if(s)root.setAttribute('data-theme',s);}catch(e){}
+  tb.addEventListener('click',function(){
+    var dark=root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);
+    var n=dark?'light':'dark';root.setAttribute('data-theme',n);try{localStorage.setItem('theme',n);}catch(e){}
+  });
+  var toc=document.getElementById('toc');
+  document.getElementById('menuBtn').addEventListener('click',function(){toc.classList.toggle('open');});
+  toc.addEventListener('click',function(e){if(e.target.tagName==='A')toc.classList.remove('open');});
+  var links=[].slice.call(toc.querySelectorAll('a')), secs=links.map(function(a){return document.querySelector(a.getAttribute('href'));});
+  var io=new IntersectionObserver(function(es){es.forEach(function(en){
+    if(en.isIntersecting){links.forEach(function(l){l.classList.remove('active');});
+      var i=secs.indexOf(en.target);if(i>-1)links[i].classList.add('active');}
+  });},{rootMargin:'-20% 0px -70% 0px'});
+  secs.forEach(function(s){if(s)io.observe(s);});
+  var q=document.getElementById('q');
+  q.addEventListener('input',function(){
+    var t=q.value.trim().toLowerCase();
+    document.querySelectorAll('main section').forEach(function(s){
+      s.classList.toggle('hidden',t.length>1&&s.textContent.toLowerCase().indexOf(t)===-1);
+    });
+    links.forEach(function(a,i){a.classList.toggle('hidden',t.length>1&&secs[i]&&secs[i].classList.contains('hidden'));});
+  });
+})();
+</script>
+</body>
+</html>

@@ -87,6 +87,9 @@ public class AsignacionAcademicaController {
     public ResponseEntity<List<AsignacionAcademicaResponse>> listarPorGrupo(
             @PathVariable UUID grupoId) {
 
+        asignacionAcademicaService
+                .sincronizarGruposDelMismoGrado(grupoId);
+
         List<AsignacionAcademicaResponse> response =
                 asignacionAcademicaService
                         .listarPorGrupo(grupoId);

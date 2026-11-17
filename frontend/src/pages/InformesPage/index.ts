@@ -1,0 +1,1 @@
+export { InformesPage } from './InformesPage'

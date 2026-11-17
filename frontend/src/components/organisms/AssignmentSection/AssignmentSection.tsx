@@ -15,10 +15,14 @@ export type AssignmentSectionProps = {
   canCreate: boolean
   createLabel?: string
   readOnly?: boolean
+  confirmingId?: string | null
+  editableAssigned?: boolean
+  groupId?: string
   onCreate: () => void
   onAssign: (row: AssignmentRow) => void
   onEdit: (row: AssignmentRow) => void
   onRemove: (row: AssignmentRow) => void
+  onConfirm?: (row: AssignmentRow) => void
 }
 
 export function AssignmentSection({
@@ -30,10 +34,14 @@ export function AssignmentSection({
   canCreate,
   createLabel = '+ Asignar docente',
   readOnly = false,
+  confirmingId = null,
+  editableAssigned = true,
+  groupId,
   onCreate,
   onAssign,
   onEdit,
   onRemove,
+  onConfirm,
 }: AssignmentSectionProps) {
   return (
     <Card className={styles.section}>
@@ -54,9 +62,13 @@ export function AssignmentSection({
           rows={rows}
           emptyMessage={emptyMessage}
           readOnly={readOnly}
+          confirmingId={confirmingId}
+          editableAssigned={editableAssigned}
+          groupId={groupId}
           onAssign={onAssign}
           onEdit={onEdit}
           onRemove={onRemove}
+          onConfirm={onConfirm}
         />
       </div>
 

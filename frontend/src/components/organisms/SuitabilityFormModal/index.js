@@ -1,0 +1,1 @@
+export { SuitabilityFormModal } from './SuitabilityFormModal';

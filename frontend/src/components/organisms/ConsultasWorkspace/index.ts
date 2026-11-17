@@ -1,0 +1,1 @@
+export { ConsultasWorkspace } from './ConsultasWorkspace'

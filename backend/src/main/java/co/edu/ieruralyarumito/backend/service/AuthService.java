@@ -10,6 +10,7 @@ import co.edu.ieruralyarumito.backend.exception.CuentaInactivaException;
 import co.edu.ieruralyarumito.backend.repository.UsuarioRepository;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -81,6 +82,15 @@ public class AuthService {
         }
 
         return mapearUsuario(usuario);
+    }
+
+    // Devuelve las cuentas del sistema para elegirlas en consultas del rector.
+    @Transactional(readOnly = true)
+    public List<UsuarioResponse> listarUsuarios() {
+        return usuarioRepository.findAllByOrderByCorreoAsc()
+                .stream()
+                .map(this::mapearUsuario)
+                .toList();
     }
 
     private UsuarioResponse mapearUsuario(Usuario usuario) {

@@ -1,0 +1,1 @@
+export { RestrictionYearModal } from './RestrictionYearModal';

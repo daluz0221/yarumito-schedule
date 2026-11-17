@@ -1,10 +1,5 @@
-import { academicYearOptions, academicYears } from '../../../content/academicYear'
-import {
-  scheduleShiftOptions,
-  scheduleStatusLabel,
-  scheduleViewOptions,
-} from '../../../content/scheduleConstruction'
-import { Badge } from '../../atoms/Badge'
+import { scheduleViewOptions } from '../../../content/scheduleConstruction'
+import { Badge, type BadgeTone } from '../../atoms/Badge'
 import { Card } from '../../atoms/Card'
 import { Text } from '../../atoms/Text'
 import { SelectField } from '../../molecules/SelectField'
@@ -18,9 +13,16 @@ export type ScheduleSelectorProps = {
   gradeLabel: string
   year: number
   groupCode: string
+  yearOptions: { value: string; label: string }[]
+  yearDisabled?: boolean
   groupOptions: { value: string; label: string }[]
+  groupsDisabled?: boolean
   campusOptions: { value: string; label: string }[]
   campusDisabled?: boolean
+  shiftOptions: { value: string; label: string }[]
+  shiftDisabled?: boolean
+  statusLabel: string
+  statusTone: BadgeTone
   onYearChange: (yearId: string) => void
   onCampusChange: (campusId: string) => void
   onShiftChange: (shiftId: string) => void
@@ -35,9 +37,16 @@ export function ScheduleSelector({
   gradeLabel,
   year,
   groupCode,
+  yearOptions,
+  yearDisabled = false,
   groupOptions,
+  groupsDisabled = false,
   campusOptions,
   campusDisabled = false,
+  shiftOptions,
+  shiftDisabled = false,
+  statusLabel,
+  statusTone,
   onYearChange,
   onCampusChange,
   onShiftChange,
@@ -53,7 +62,8 @@ export function ScheduleSelector({
           label="Año lectivo"
           name="year"
           value={yearId}
-          options={academicYearOptions(academicYears)}
+          options={yearOptions}
+          disabled={yearDisabled}
           onChange={onYearChange}
         />
         <SelectField
@@ -70,7 +80,8 @@ export function ScheduleSelector({
           label="Turno"
           name="shift"
           value={shiftId}
-          options={scheduleShiftOptions}
+          options={shiftOptions}
+          disabled={shiftDisabled}
           onChange={onShiftChange}
         />
         <SelectField
@@ -81,7 +92,7 @@ export function ScheduleSelector({
           options={
             emptyGroups ? [{ value: '', label: 'Sin grupos activos' }] : groupOptions
           }
-          disabled={emptyGroups}
+          disabled={groupsDisabled || emptyGroups}
           onChange={onGroupChange}
         />
       </form>
@@ -102,7 +113,7 @@ export function ScheduleSelector({
           <Text as="span" variant="caption">
             Estado del horario
           </Text>
-          <Badge tone="warning">{scheduleStatusLabel}</Badge>
+          <Badge tone={statusTone}>{statusLabel}</Badge>
         </div>
         {groupCode ? (
           <Text as="p" variant="nav" className={styles.context}>

@@ -34,6 +34,7 @@ export type ScheduleBlock = SchedulePlacement & {
   subject: string
   tone: PlacementTone
   reason: string
+  locked?: boolean
 }
 
 export type PendingPlacement = {
@@ -101,8 +102,8 @@ export function classroomCapacity(classroom: string) {
   return scheduleClassrooms.find((room) => sameRoom(room.value, classroom))?.capacity ?? 0
 }
 
-// El backend aún no guarda la grilla. Estas clases de 2026 · 601 ilustran el
-// diseño y se contrastan con la asignación académica y las restricciones.
+// Referencia local de la validación. La construcción de horario carga la
+// grilla desde GET /api/horarios/grupos/{grupoId}.
 export const seedPlacements: SchedulePlacement[] = [
   placement('601-lun-0630', '601', 'Lunes', '0630', '2026-6-mat', 'Carlos Pérez', 'Aula 201'),
   placement('601-mar-0725', '601', 'Martes', '0725', '2026-6-bio', 'Diana Marcela Ruiz', 'Laboratorio'),

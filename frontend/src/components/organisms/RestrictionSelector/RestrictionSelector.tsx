@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   labelYearStatus,
+  type AcademicYear,
   type AcademicYearStatus,
 } from '../../../content/academicYear'
 import { FormField } from '../../molecules/FormField'
@@ -12,6 +13,7 @@ import styles from './RestrictionSelector.module.css'
 export type RestrictionSelectorProps = {
   status: AcademicYearStatus
   year: number
+  years: AcademicYear[]
   teacherName: string
   teachers: RestrictionTeacherChoice[]
   onYearChange: (yearId: string) => void
@@ -23,6 +25,7 @@ type Picker = 'year' | 'teacher' | null
 export function RestrictionSelector({
   status,
   year,
+  years,
   teacherName,
   teachers,
   onYearChange,
@@ -66,6 +69,7 @@ export function RestrictionSelector({
       {picker === 'year' ? (
         <RestrictionYearModal
           open
+          years={years}
           onSelect={(nextYearId) => {
             onYearChange(nextYearId)
             setPicker(null)

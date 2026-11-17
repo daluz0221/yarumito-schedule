@@ -37,6 +37,13 @@
   line-height: 1.45;
 }
 
+.error {
+  margin: 0;
+  color: #d15b6a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .fileInput {
   display: none;
 }
