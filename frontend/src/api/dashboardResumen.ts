@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { AlertItemData, StatItemData } from '../content/dashboard'
+import type { AlertItemData, StatBadgeTone, StatItemData } from '../content/dashboard'
 import { listarCatalogoAniosEscolares, anioEscolarVisible } from './aniosEscolares'
 import { listarCatalogoAreas } from './areas'
 import { contarDocentes } from './docentes'
@@ -11,15 +11,13 @@ import { listarRestriccionesPorAnio } from './restriccionesDocentes'
 
 export type ResumenTablero = {
   stats: StatItemData[]
-  year: string
-  status: string
   alerts: AlertItemData[]
 }
 
-const ESTADO_ANIO: Record<string, string> = {
-  PLANEACION: 'En planeación',
-  ACTIVO: 'Activo',
-  CERRADO: 'Cerrado',
+const ESTADO_ANIO: Record<string, { label: string; tone: StatBadgeTone }> = {
+  PLANEACION: { label: 'En planeación', tone: 'warning' },
+  ACTIVO: { label: 'Activo', tone: 'success' },
+  CERRADO: { label: 'Cerrado', tone: 'muted' },
 }
 
 function isAbortError(error: unknown) {
@@ -62,11 +60,19 @@ export async function consultarResumenTablero(signal?: AbortSignal): Promise<Res
   )
   const areasActivas = areas.filter((area) => area.activa !== false)
 
+  const estadoAnio = anio ? ESTADO_ANIO[anio.status] : undefined
+
   const stats: StatItemData[] = [
     { id: 'teachers', value: String(docentesActivos), label: 'Docentes activos' },
     { id: 'groups', value: String(gruposActivos.length), label: 'Grupos activos' },
     { id: 'areas', value: String(areasActivas.length), label: 'Áreas académicas' },
-    { id: 'year', value: anio ? String(anio.year) : '—', label: 'Año lectivo' },
+    {
+      id: 'year',
+      value: anio ? String(anio.year) : '—',
+      label: 'Año lectivo',
+      badge: estadoAnio?.label ?? (anio ? anio.status : 'Sin año lectivo'),
+      badgeTone: estadoAnio?.tone ?? 'neutral',
+    },
   ]
 
   const alerts: AlertItemData[] = []
@@ -147,8 +153,6 @@ export async function consultarResumenTablero(signal?: AbortSignal): Promise<Res
 
   return {
     stats,
-    year: anio ? String(anio.year) : '—',
-    status: anio ? (ESTADO_ANIO[anio.status] ?? anio.status) : 'Sin año lectivo',
     alerts,
   }
 }

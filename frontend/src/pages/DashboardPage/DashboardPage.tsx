@@ -1,7 +1,7 @@
 import { useResumenTablero } from '../../api/dashboardResumen'
 import type { AlertItemData, StatItemData } from '../../content/dashboard'
+import { AlertsCard } from '../../components/molecules/AlertsCard'
 import { DashboardHeader } from '../../components/organisms/DashboardHeader'
-import { InsightsSection } from '../../components/organisms/InsightsSection'
 import { ModulesSection } from '../../components/organisms/ModulesSection'
 import { Sidebar } from '../../components/organisms/Sidebar'
 import { StatsSection } from '../../components/organisms/StatsSection'
@@ -37,11 +37,9 @@ export function DashboardPage() {
       <WelcomeSection />
       <StatsSection items={stats} />
       <ModulesSection />
-      <InsightsSection
-        year={resumen?.year ?? '…'}
-        status={resumen?.status ?? 'Cargando'}
-        alerts={alerts}
-      />
+      <section aria-label="Alertas">
+        <AlertsCard items={alerts} />
+      </section>
     </DashboardLayout>
   )
 }

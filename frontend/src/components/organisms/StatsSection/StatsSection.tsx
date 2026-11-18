@@ -11,7 +11,14 @@ export function StatsSection({ items, label = 'Resumen' }: StatsSectionProps) {
   return (
     <section className={styles.section} aria-label={label}>
       {items.map((stat) => (
-        <StatCard key={stat.id} value={stat.value} label={stat.label} wash={stat.wash} />
+        <StatCard
+          key={stat.id}
+          value={stat.value}
+          label={stat.label}
+          wash={stat.wash}
+          badge={stat.badge}
+          badgeTone={stat.badgeTone}
+        />
       ))}
     </section>
   )
