@@ -5,6 +5,13 @@
   min-height: 88px;
 }
 
+.labelRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .card .danger {
   color: #c23b3b;
 }

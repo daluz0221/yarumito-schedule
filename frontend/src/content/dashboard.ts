@@ -58,11 +58,15 @@ export type StatWash =
   | 'success'
   | 'neutral'
 
+export type StatBadgeTone = 'neutral' | 'success' | 'warning' | 'muted'
+
 export type StatItemData = {
   id: string
   value: string
   label: string
   wash?: StatWash
+  badge?: string
+  badgeTone?: StatBadgeTone
 }
 
 export type AlertItemData = {
