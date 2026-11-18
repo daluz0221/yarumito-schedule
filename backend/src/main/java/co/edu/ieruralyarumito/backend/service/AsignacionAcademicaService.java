@@ -131,6 +131,12 @@ public class AsignacionAcademicaService {
         // CA-07: idoneidad profesional vigente.
         validarIdoneidadDocente(docente, asignatura);
 
+        // H-05: nuevo control de carga acumulada.
+        validarCargaSemanalDocente(
+                anioEscolar,
+                docente,
+                request.getHorasSemanales());
+
         AsignacionAcademica asignacion =
                 asignacionAcademicaMapper.toEntity(
                         request,
@@ -156,6 +162,72 @@ public class AsignacionAcademicaService {
         }
 
         return asignacionAcademicaMapper.toResponse(guardada);
+    }
+
+    // H-05: suma las asignaciones de un docente
+    // dentro del mismo año escolar.
+    //
+    // Permite trabajar con varios grupos.
+    // Considera tanto BORRADOR como CONFIRMADA.
+    private void validarCargaSemanalDocente(
+            AnioEscolar anioEscolar,
+            Docente docente,
+            Integer horasSolicitadas) {
+
+        if (horasSolicitadas == null || horasSolicitadas <= 0) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "Las horas semanales deben ser mayores que cero");
+        }
+
+        int horasOrdinarias =
+                docente.getHorasSemanalesContratadas();
+
+        int horasExtras =
+                docente.getMaxHorasExtra();
+
+        // HorarioService tiene actualmente un límite
+        // general de 32 bloques semanales.
+        // Se respeta también un límite individual inferior.
+        long limiteIndividual =
+                (long) horasOrdinarias + horasExtras;
+
+        long limitePermitido =
+                Math.min(32L, limiteIndividual);
+
+        if (horasOrdinarias < 0
+                || horasExtras < 0
+                || limitePermitido <= 0) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "La carga horaria configurada para "
+                            + "el docente no es válida");
+        }
+
+        long horasRegistradas =
+                asignacionAcademicaRepository
+                        .findByDocente_Id(docente.getId())
+                        .stream()
+                        .filter(asignacion ->
+                                asignacion.getAnioEscolar() != null
+                                        && anioEscolar.getId().equals(
+                                        asignacion.getAnioEscolar().getId()))
+                        .mapToLong(
+                                AsignacionAcademica::getHorasSemanales)
+                        .sum();
+
+        long totalPropuesto =
+                horasRegistradas + horasSolicitadas;
+
+        if (totalPropuesto > limitePermitido) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "La carga semanal del docente superaría "
+                            + "el máximo de " + limitePermitido
+                            + " horas: "
+                            + horasRegistradas + " registradas y "
+                            + horasSolicitadas + " solicitadas");
+        }
     }
 
     // H-05: evita asignaciones entre años diferentes.

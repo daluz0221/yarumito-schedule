@@ -4,6 +4,7 @@ import co.edu.ieruralyarumito.backend.dto.ActualizarGradoRequest;
 import co.edu.ieruralyarumito.backend.dto.CrearGradoRequest;
 import co.edu.ieruralyarumito.backend.dto.GradoResponse;
 import co.edu.ieruralyarumito.backend.entity.Grado;
+import co.edu.ieruralyarumito.backend.exception.RecursoDuplicadoException;
 import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
 import co.edu.ieruralyarumito.backend.repository.GradoRepository;
 import org.springframework.data.domain.Page;
@@ -19,9 +20,33 @@ public class GradoService {
 
     private final GradoRepository gradoRepository;
 
-    // Inyección de dependencias mediante constructor.
     public GradoService(GradoRepository gradoRepository) {
         this.gradoRepository = gradoRepository;
+    }
+
+    // H-06: evita registrar dos veces el mismo nivel.
+    private void validarNivelDuplicado(int nivel) {
+
+        if (gradoRepository.existsByNivel(nivel)) {
+
+            throw new RecursoDuplicadoException(
+                    "Ya existe un grado registrado con el nivel "
+                            + nivel);
+        }
+    }
+
+    // H-06: evita cambiar un grado a otro nivel existente.
+    private void validarNivelDuplicadoAlActualizar(
+            int nivel,
+            UUID gradoId) {
+
+        if (gradoRepository.existsByNivelAndIdNot(
+                nivel, gradoId)) {
+
+            throw new RecursoDuplicadoException(
+                    "Ya existe otro grado registrado con el nivel "
+                            + nivel);
+        }
     }
 
     // Configura automáticamente los datos institucionales
@@ -99,6 +124,9 @@ public class GradoService {
     public GradoResponse registrarGrado(
             CrearGradoRequest request) {
 
+        // H-06: comprobar antes de guardar.
+        validarNivelDuplicado(request.getNivel());
+
         Grado grado = new Grado();
 
         configurarSegunNivel(
@@ -143,6 +171,12 @@ public class GradoService {
                 .orElseThrow(() ->
                         new RecursoNoEncontradoException(
                                 "El grado no existe"));
+
+        // H-06: permite mantener el mismo nivel,
+        // pero impide adoptar uno que pertenezca
+        // a otro grado registrado.
+        validarNivelDuplicadoAlActualizar(
+                request.getNivel(), id);
 
         configurarSegunNivel(
                 grado,
