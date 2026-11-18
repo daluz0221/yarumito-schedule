@@ -8,6 +8,7 @@ import co.edu.ieruralyarumito.backend.entity.AnioEscolar;
 import co.edu.ieruralyarumito.backend.entity.Docente;
 import co.edu.ieruralyarumito.backend.entity.FranjaHoraria;
 import co.edu.ieruralyarumito.backend.entity.RestriccionDocente;
+import co.edu.ieruralyarumito.backend.entity.Usuario;
 import co.edu.ieruralyarumito.backend.entity.enums.DiaSemana;
 import co.edu.ieruralyarumito.backend.entity.enums.EstadoDocente;
 
@@ -20,16 +21,21 @@ import co.edu.ieruralyarumito.backend.repository.AnioEscolarRepository;
 import co.edu.ieruralyarumito.backend.repository.DocenteRepository;
 import co.edu.ieruralyarumito.backend.repository.FranjaHorariaRepository;
 import co.edu.ieruralyarumito.backend.repository.RestriccionDocenteRepository;
+import co.edu.ieruralyarumito.backend.repository.UsuarioRepository;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-// Contiene la lógica de negocio para las restricciones
-// de disponibilidad de los docentes.
 @Service
 public class RestriccionDocenteService {
 
@@ -37,6 +43,10 @@ public class RestriccionDocenteService {
     private final DocenteRepository docenteRepository;
     private final AnioEscolarRepository anioEscolarRepository;
     private final FranjaHorariaRepository franjaHorariaRepository;
+
+    // H-16: integración con Control y Auditoría.
+    private UsuarioRepository usuarioRepository;
+    private RegistroAuditoriaService registroAuditoriaService;
 
     public RestriccionDocenteService(
             RestriccionDocenteRepository restriccionDocenteRepository,
@@ -55,6 +65,20 @@ public class RestriccionDocenteService {
 
         this.franjaHorariaRepository =
                 franjaHorariaRepository;
+    }
+
+    // H-16: conserva el constructor original para las pruebas
+    // y conecta la auditoría en el contexto de Spring.
+    @Autowired
+    public void configurarAuditoria(
+            UsuarioRepository usuarioRepository,
+            RegistroAuditoriaService registroAuditoriaService) {
+
+        this.usuarioRepository =
+                Objects.requireNonNull(usuarioRepository);
+
+        this.registroAuditoriaService =
+                Objects.requireNonNull(registroAuditoriaService);
     }
 
     // Registra una condición de disponibilidad para un docente.
@@ -100,14 +124,23 @@ public class RestriccionDocenteService {
 
         /*
          * aprobadaPor se integrará con el Usuario RECTOR
-         * autenticado cuando el módulo de autenticación esté
-         * disponible en esta rama.
+         * autenticado cuando corresponda.
          *
          * No se recibe usuarioId desde el frontend.
          */
 
         RestriccionDocente guardada =
                 restriccionDocenteRepository.save(restriccion);
+
+        // H-16: auditoría de creación exitosa.
+        if (registroAuditoriaService != null) {
+
+            auditarRestriccion(
+                    RegistroAuditoriaService.ACCION_CREATE,
+                    guardada,
+                    null,
+                    datosRestriccion(guardada));
+        }
 
         return convertirAResponse(guardada);
     }
@@ -235,8 +268,8 @@ public class RestriccionDocenteService {
         RestriccionDocente restriccion =
                 obtenerRestriccion(id);
 
-        // H-04: las restricciones retiradas no pueden
-        // modificarse sin reactivarse previamente.
+        // H-04: una restricción retirada debe reactivarse
+        // antes de permitir modificaciones.
         validarRestriccionActiva(restriccion);
 
         validarDocenteActivo(
@@ -244,6 +277,12 @@ public class RestriccionDocenteService {
 
         validarFranjaAsignable(
                 restriccion.getFranjaHoraria());
+
+        // H-16: instantánea antes de modificar.
+        Map<String, Object> datosAntes =
+                registroAuditoriaService == null
+                        ? null
+                        : datosRestriccion(restriccion);
 
         restriccion.setTipo(request.getTipo());
         restriccion.setMotivo(request.getMotivo());
@@ -255,11 +294,20 @@ public class RestriccionDocenteService {
         RestriccionDocente actualizada =
                 restriccionDocenteRepository.save(restriccion);
 
+        // H-16: auditoría de actualización.
+        if (registroAuditoriaService != null) {
+
+            auditarRestriccion(
+                    RegistroAuditoriaService.ACCION_UPDATE,
+                    actualizada,
+                    datosAntes,
+                    datosRestriccion(actualizada));
+        }
+
         return convertirAResponse(actualizada);
     }
 
-    // H-04: retira una restricción docente sin eliminarla
-    // físicamente de la base de datos.
+    // H-04: retira una restricción sin eliminar su historial.
     @Transactional
     public RestriccionDocenteResponse retirarRestriccion(
             UUID id) {
@@ -269,10 +317,26 @@ public class RestriccionDocenteService {
 
         validarRestriccionActiva(restriccion);
 
+        // H-16: conservar el estado activo previo.
+        Map<String, Object> datosAntes =
+                registroAuditoriaService == null
+                        ? null
+                        : datosRestriccion(restriccion);
+
         restriccion.setActivo(false);
 
         RestriccionDocente retirada =
                 restriccionDocenteRepository.save(restriccion);
+
+        // Una baja lógica es una actualización de estado.
+        if (registroAuditoriaService != null) {
+
+            auditarRestriccion(
+                    RegistroAuditoriaService.ACCION_UPDATE,
+                    retirada,
+                    datosAntes,
+                    datosRestriccion(retirada));
+        }
 
         return convertirAResponse(retirada);
     }
@@ -291,15 +355,12 @@ public class RestriccionDocenteService {
                     "La restricción docente ya se encuentra activa");
         }
 
-        // Conserva las reglas originales de disponibilidad.
         validarDocenteActivo(
                 restriccion.getDocente());
 
         validarFranjaAsignable(
                 restriccion.getFranjaHoraria());
 
-        // Impide reactivar un registro si ya existe
-        // otra condición activa para la misma combinación.
         Optional<RestriccionDocente> condicionActiva =
                 restriccionDocenteRepository
                         .findByDocente_IdAndAnioEscolar_IdAndDiaAndFranjaHoraria_Id(
@@ -316,17 +377,32 @@ public class RestriccionDocenteService {
                             + "el mismo docente, año, día y franja horaria");
         }
 
+        // H-16: conservar el estado retirado previo.
+        Map<String, Object> datosAntes =
+                registroAuditoriaService == null
+                        ? null
+                        : datosRestriccion(restriccion);
+
         restriccion.setActivo(true);
 
         RestriccionDocente reactivada =
                 restriccionDocenteRepository.save(restriccion);
 
+        // H-16: auditoría de reactivación.
+        if (registroAuditoriaService != null) {
+
+            auditarRestriccion(
+                    RegistroAuditoriaService.ACCION_UPDATE,
+                    reactivada,
+                    datosAntes,
+                    datosRestriccion(reactivada));
+        }
+
         return convertirAResponse(reactivada);
     }
 
     // Obtiene una restricción existente.
-    private RestriccionDocente obtenerRestriccion(
-            UUID id) {
+    private RestriccionDocente obtenerRestriccion(UUID id) {
 
         return restriccionDocenteRepository.findById(id)
                 .orElseThrow(() ->
@@ -335,8 +411,7 @@ public class RestriccionDocenteService {
     }
 
     // Obtiene el docente asociado.
-    private Docente obtenerDocente(
-            UUID docenteId) {
+    private Docente obtenerDocente(UUID docenteId) {
 
         return docenteRepository.findById(docenteId)
                 .orElseThrow(() ->
@@ -345,8 +420,7 @@ public class RestriccionDocenteService {
     }
 
     // Obtiene el año escolar asociado.
-    private AnioEscolar obtenerAnioEscolar(
-            UUID anioEscolarId) {
+    private AnioEscolar obtenerAnioEscolar(UUID anioEscolarId) {
 
         return anioEscolarRepository.findById(anioEscolarId)
                 .orElseThrow(() ->
@@ -355,20 +429,16 @@ public class RestriccionDocenteService {
     }
 
     // Obtiene la franja horaria asociada.
-    private FranjaHoraria obtenerFranjaHoraria(
-            UUID franjaHorariaId) {
+    private FranjaHoraria obtenerFranjaHoraria(UUID franjaHorariaId) {
 
-        return franjaHorariaRepository
-                .findById(franjaHorariaId)
+        return franjaHorariaRepository.findById(franjaHorariaId)
                 .orElseThrow(() ->
                         new RecursoNoEncontradoException(
                                 "La franja horaria no existe"));
     }
 
-    // Los docentes deben estar activos para participar
-    // en la programación académica.
-    private void validarDocenteActivo(
-            Docente docente) {
+    // Los docentes deben estar activos.
+    private void validarDocenteActivo(Docente docente) {
 
         if (docente.getEstado() != EstadoDocente.ACTIVO) {
 
@@ -378,7 +448,7 @@ public class RestriccionDocenteService {
         }
     }
 
-    // No se permiten restricciones sobre descansos oficiales.
+    // No se registran restricciones sobre descansos.
     private void validarFranjaAsignable(
             FranjaHoraria franjaHoraria) {
 
@@ -390,7 +460,7 @@ public class RestriccionDocenteService {
         }
     }
 
-    // H-04: protege los registros históricos retirados.
+    // H-04: impide modificar registros retirados.
     private void validarRestriccionActiva(
             RestriccionDocente restriccion) {
 
@@ -402,8 +472,7 @@ public class RestriccionDocenteService {
         }
     }
 
-    // Evita duplicados de docente-año-día-franja,
-    // incluyendo las restricciones retiradas.
+    // Evita duplicados incluso cuando el original está retirado.
     private void validarCondicionDuplicada(
             UUID docenteId,
             UUID anioEscolarId,
@@ -438,6 +507,93 @@ public class RestriccionDocenteService {
         }
 
         return documentoSoporte;
+    }
+
+    // H-16: registra cambios dentro de la transacción
+    // que realiza la operación de negocio.
+    private void auditarRestriccion(
+            String accion,
+            RestriccionDocente restriccion,
+            Object datosAntes,
+            Object datosDespues) {
+
+        // Compatibilidad con las pruebas unitarias existentes.
+        if (registroAuditoriaService == null) {
+            return;
+        }
+
+        Authentication authentication =
+                SecurityContextHolder.getContext()
+                        .getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()) {
+
+            throw new IllegalStateException(
+                    "No hay usuario autenticado para auditar");
+        }
+
+        String correo = authentication.getName();
+
+        Usuario usuario =
+                usuarioRepository.findByCorreo(correo)
+                        .orElseThrow(() ->
+                                new IllegalStateException(
+                                        "Usuario autenticado no identificado "
+                                                + "para auditoría"));
+
+        registroAuditoriaService.registrar(
+                usuario,
+                accion,
+                "RestriccionDocente",
+                restriccion.getId(),
+                datosAntes,
+                datosDespues,
+                null
+        );
+    }
+
+    // H-16: instantánea de los datos relevantes.
+    // No se almacena el contenido binario del soporte.
+    private Map<String, Object> datosRestriccion(
+            RestriccionDocente restriccion) {
+
+        Map<String, Object> datos =
+                new LinkedHashMap<>();
+
+        datos.put("id", restriccion.getId());
+
+        datos.put("docenteId",
+                restriccion.getDocente().getId());
+
+        datos.put("anioEscolarId",
+                restriccion.getAnioEscolar().getId());
+
+        datos.put("dia",
+                restriccion.getDia().name());
+
+        datos.put("franjaHorariaId",
+                restriccion.getFranjaHoraria().getId());
+
+        datos.put("tipo",
+                restriccion.getTipo().name());
+
+        datos.put("motivo",
+                restriccion.getMotivo());
+
+        datos.put("documentoSoportePresente",
+                restriccion.getDocumentoSoporte() != null
+                        && restriccion.getDocumentoSoporte().length > 0);
+
+        datos.put("aprobadaPorId",
+                restriccion.getAprobadaPor() == null
+                        ? null
+                        : restriccion.getAprobadaPor().getId());
+
+        datos.put("activo",
+                restriccion.isActivo());
+
+        return datos;
     }
 
     // Convierte la entidad al DTO devuelto por la API.
@@ -476,7 +632,6 @@ public class RestriccionDocenteService {
                     restriccion.getAprobadaPor().getId());
         }
 
-        // H-04: informa el estado activo o retirado.
         response.setActivo(restriccion.isActivo());
 
         return response;

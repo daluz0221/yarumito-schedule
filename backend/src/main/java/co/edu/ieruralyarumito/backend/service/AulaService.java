@@ -3,40 +3,67 @@ package co.edu.ieruralyarumito.backend.service;
 import co.edu.ieruralyarumito.backend.dto.ActualizarAulaRequest;
 import co.edu.ieruralyarumito.backend.dto.AulaResponse;
 import co.edu.ieruralyarumito.backend.dto.CrearAulaRequest;
+
 import co.edu.ieruralyarumito.backend.entity.Aula;
 import co.edu.ieruralyarumito.backend.entity.Sede;
+import co.edu.ieruralyarumito.backend.entity.Usuario;
 import co.edu.ieruralyarumito.backend.entity.enums.TipoAulaRequerida;
+
 import co.edu.ieruralyarumito.backend.exception.CambioAulaInvalidoException;
 import co.edu.ieruralyarumito.backend.exception.RecursoDuplicadoException;
 import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
+import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
+
 import co.edu.ieruralyarumito.backend.repository.AulaRepository;
 import co.edu.ieruralyarumito.backend.repository.SedeRepository;
+import co.edu.ieruralyarumito.backend.repository.UsuarioRepository;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
-// Contiene la lógica de negocio para la gestión de aulas.
+// Gestión de aulas.
+// H-16: validación de capacidad y auditoría.
 @Service
 public class AulaService {
 
     private final AulaRepository aulaRepository;
     private final SedeRepository sedeRepository;
 
+    private UsuarioRepository usuarioRepository;
+    private RegistroAuditoriaService registroAuditoriaService;
+
+    // Conserva el constructor original.
     public AulaService(
             AulaRepository aulaRepository,
-            SedeRepository sedeRepository){
-
+            SedeRepository sedeRepository) {
 
         this.aulaRepository = aulaRepository;
         this.sedeRepository = sedeRepository;
-
     }
 
-    // Obtiene una sede existente.
-    private Sede obtenerSede(
-            UUID sedeId) {
+    // H-16: integración con Control y Auditoría.
+    @Autowired
+    public void configurarAuditoria(
+            UsuarioRepository usuarioRepository,
+            RegistroAuditoriaService registroAuditoriaService) {
+
+        this.usuarioRepository =
+                Objects.requireNonNull(usuarioRepository);
+
+        this.registroAuditoriaService =
+                Objects.requireNonNull(registroAuditoriaService);
+    }
+
+    private Sede obtenerSede(UUID sedeId) {
 
         return sedeRepository.findById(sedeId)
                 .orElseThrow(() ->
@@ -44,9 +71,7 @@ public class AulaService {
                                 "La sede no existe"));
     }
 
-    // Obtiene un aula existente.
-    private Aula obtenerAula(
-            UUID aulaId) {
+    private Aula obtenerAula(UUID aulaId) {
 
         return aulaRepository.findById(aulaId)
                 .orElseThrow(() ->
@@ -54,34 +79,38 @@ public class AulaService {
                                 "El aula no existe"));
     }
 
-    // Normaliza el nombre del aula eliminando espacios externos
-    // y reduciendo secuencias internas de espacios.
-    private String normalizarNombre(
-            String nombre) {
+    // H-16: capacidad positiva o desconocida.
+    // null significa que no hay capacidad formal registrada.
+    private void validarCapacidad(Integer capacidad) {
 
-        return nombre
-                .trim()
-                .replaceAll("\\s+", " ");
+        if (capacidad != null && capacidad <= 0) {
+
+            throw new RelacionAcademicaInvalidaException(
+                    "La capacidad del aula debe ser mayor "
+                            + "que cero o permanecer sin definir");
+        }
     }
 
-    // Valida que no exista otra aula activa con el mismo nombre
-    // dentro de la misma sede.
+    private String normalizarNombre(String nombre) {
+
+        return nombre.trim().replaceAll("\\s+", " ");
+    }
+
+    // Rechaza aulas activas duplicadas dentro de una sede.
     private void validarDuplicadoActivoAlCrear(
             UUID sedeId,
             String nombre) {
 
         if (aulaRepository
                 .existsBySede_IdAndNombreIgnoreCaseAndActivaTrue(
-                        sedeId,
-                        nombre)) {
+                        sedeId, nombre)) {
 
             throw new RecursoDuplicadoException(
-                    "Ya existe un aula activa con ese nombre en la sede indicada");
+                    "Ya existe un aula activa con ese nombre "
+                            + "en la sede indicada");
         }
     }
 
-    // Valida duplicidad de aula activa al actualizar,
-    // excluyendo el registro actual.
     private void validarDuplicadoActivoAlActualizar(
             UUID sedeId,
             String nombre,
@@ -89,19 +118,16 @@ public class AulaService {
 
         if (aulaRepository
                 .existsBySede_IdAndNombreIgnoreCaseAndActivaTrueAndIdNot(
-                        sedeId,
-                        nombre,
-                        aulaId)) {
+                        sedeId, nombre, aulaId)) {
 
             throw new RecursoDuplicadoException(
-                    "Ya existe otra aula activa con ese nombre en la sede indicada");
+                    "Ya existe otra aula activa con ese nombre "
+                            + "en la sede indicada");
         }
     }
 
-    // Determina si el cambio representa una modificación real
-    // de identidad física/operativa del espacio.
-    //
-    // La capacidad no genera una nueva versión histórica.
+    // Conserva la distinción entre actualización ordinaria
+    // y cambio real de identidad del aula.
     private boolean existeCambioReal(
             Aula aulaActual,
             UUID nuevaSedeId,
@@ -109,160 +135,111 @@ public class AulaService {
             TipoAulaRequerida nuevoTipo) {
 
         boolean cambioNombre =
-                !aulaActual
-                        .getNombre()
-                        .equalsIgnoreCase(
-                                nuevoNombre);
+                !aulaActual.getNombre()
+                        .equalsIgnoreCase(nuevoNombre);
 
         boolean cambioTipo =
-                aulaActual.getTipo()
-                        != nuevoTipo;
+                aulaActual.getTipo() != nuevoTipo;
 
         boolean cambioSede =
-                !aulaActual
-                        .getSede()
-                        .getId()
-                        .equals(
-                                nuevaSedeId);
+                !aulaActual.getSede().getId()
+                        .equals(nuevaSedeId);
 
-        return cambioNombre
-                || cambioTipo
-                || cambioSede;
+        return cambioNombre || cambioTipo || cambioSede;
     }
 
-    // Convierte la entidad Aula en el DTO devuelto por la API.
     private AulaResponse convertirAResponse(
             Aula aula,
             UUID sedeId) {
 
-        AulaResponse response =
-                new AulaResponse();
+        AulaResponse response = new AulaResponse();
 
-        response.setId(
-                aula.getId());
-
-        response.setSedeId(
-                sedeId);
-
-        response.setSedeNombre(
-                aula.getSede().getNombre());
-
-        response.setNombre(
-                aula.getNombre());
-
-        response.setTipo(
-                aula.getTipo());
-
-        response.setCapacidad(
-                aula.getCapacidad());
-
-        response.setActiva(
-                aula.isActiva());
+        response.setId(aula.getId());
+        response.setSedeId(sedeId);
+        response.setSedeNombre(aula.getSede().getNombre());
+        response.setNombre(aula.getNombre());
+        response.setTipo(aula.getTipo());
+        response.setCapacidad(aula.getCapacidad());
+        response.setActiva(aula.isActiva());
 
         return response;
     }
 
-    // Registra un aula nueva.
-    // Toda aula nueva inicia activa.
+    // Crea un aula activa.
     @Transactional
-    public AulaResponse registrarAula(
-            CrearAulaRequest request) {
+    public AulaResponse registrarAula(CrearAulaRequest request) {
 
-        Sede sede =
-                obtenerSede(
-                        request.getSedeId());
+        Sede sede = obtenerSede(request.getSedeId());
 
         String nombreNormalizado =
-                normalizarNombre(
-                        request.getNombre());
+                normalizarNombre(request.getNombre());
 
         validarDuplicadoActivoAlCrear(
                 request.getSedeId(),
                 nombreNormalizado);
 
-        Aula aula =
-                new Aula();
+        // H-16: impide capacidad cero o negativa.
+        validarCapacidad(request.getCapacidad());
 
-        aula.setSede(
-                sede);
+        Aula aula = new Aula();
 
-        aula.setNombre(
-                nombreNormalizado);
+        aula.setSede(sede);
+        aula.setNombre(nombreNormalizado);
+        aula.setTipo(request.getTipo());
+        aula.setCapacidad(request.getCapacidad());
+        aula.setActiva(true);
 
-        aula.setTipo(
-                request.getTipo());
+        Aula guardada = aulaRepository.save(aula);
 
-        aula.setCapacidad(
-                request.getCapacidad());
+        // H-16: auditoría de creación.
+        if (registroAuditoriaService != null) {
 
-        aula.setActiva(
-                true);
-
-        Aula aulaGuardada =
-                aulaRepository.save(
-                        aula);
+            auditar(
+                    RegistroAuditoriaService.ACCION_CREATE,
+                    guardada,
+                    null,
+                    datosAula(guardada));
+        }
 
         return convertirAResponse(
-                aulaGuardada,
+                guardada,
                 request.getSedeId());
     }
 
-    // Consulta un aula por identificador.
     @Transactional(readOnly = true)
-    public AulaResponse consultarAula(
-            UUID id) {
+    public AulaResponse consultarAula(UUID id) {
 
-        Aula aula =
-                obtenerAula(id);
+        Aula aula = obtenerAula(id);
 
         return convertirAResponse(
                 aula,
                 aula.getSede().getId());
     }
 
-    // Lista las aulas pertenecientes a una sede.
     @Transactional(readOnly = true)
-    public List<AulaResponse> listarPorSede(
-            UUID sedeId) {
+    public List<AulaResponse> listarPorSede(UUID sedeId) {
 
-        obtenerSede(
-                sedeId);
+        obtenerSede(sedeId);
 
-        return aulaRepository
-                .findBySede_Id(sedeId)
+        return aulaRepository.findBySede_Id(sedeId)
                 .stream()
-                .map(aula ->
-                        convertirAResponse(
-                                aula,
-                                sedeId))
+                .map(aula -> convertirAResponse(aula, sedeId))
                 .toList();
     }
 
     // Actualiza el mismo registro del aula.
-    //
-    // Este método se utiliza para:
-    // - corrección de errores de digitación;
-    // - actualización de capacidad;
-    // - activación o inactivación temporal;
-    // - corrección de sede cuando el dato original fue erróneo.
-    //
-    // Un cambio real de identidad del espacio debe utilizar
-    // registrarCambioReal().
+    // La capacidad no genera una nueva versión.
     @Transactional
     public AulaResponse actualizarAula(
             UUID id,
             ActualizarAulaRequest request) {
 
-        Aula aula =
-                obtenerAula(id);
+        Aula aula = obtenerAula(id);
 
-        Sede sede =
-                obtenerSede(
-                        request.getSedeId());
+        Sede sede = obtenerSede(request.getSedeId());
 
         String nombreNormalizado =
-                normalizarNombre(
-                        request.getNombre());
+                normalizarNombre(request.getNombre());
 
         if (request.getActiva()) {
 
@@ -272,52 +249,49 @@ public class AulaService {
                     id);
         }
 
-        aula.setSede(
-                sede);
+        validarCapacidad(request.getCapacidad());
 
-        aula.setNombre(
-                nombreNormalizado);
+        // H-16: datos originales antes del cambio.
+        Map<String, Object> antes =
+                registroAuditoriaService == null
+                        ? null
+                        : datosAula(aula);
 
-        aula.setTipo(
-                request.getTipo());
+        aula.setSede(sede);
+        aula.setNombre(nombreNormalizado);
+        aula.setTipo(request.getTipo());
+        aula.setCapacidad(request.getCapacidad());
+        aula.setActiva(request.getActiva());
 
-        aula.setCapacidad(
-                request.getCapacidad());
+        Aula actualizada = aulaRepository.save(aula);
 
-        aula.setActiva(
-                request.getActiva());
+        // H-16: trazabilidad de actualización.
+        if (registroAuditoriaService != null) {
 
-        Aula aulaActualizada =
-                aulaRepository.save(
-                        aula);
+            auditar(
+                    RegistroAuditoriaService.ACCION_UPDATE,
+                    actualizada,
+                    antes,
+                    datosAula(actualizada));
+        }
 
         return convertirAResponse(
-                aulaActualizada,
+                actualizada,
                 request.getSedeId());
     }
 
-    // Registra una nueva versión cuando existe un cambio real
-    // en la identidad operativa del espacio.
-    //
-    // La versión anterior se conserva inactiva.
-    // La nueva versión se registra activa y obtiene un UUID propio
-    // mediante JPA al persistirse.
+    // Conserva el versionado histórico existente.
     @Transactional
     public AulaResponse registrarCambioReal(
             UUID aulaAnteriorId,
             CrearAulaRequest request) {
 
-        Aula aulaAnterior =
-                obtenerAula(
-                        aulaAnteriorId);
+        Aula aulaAnterior = obtenerAula(aulaAnteriorId);
 
-        Sede nuevaSede =
-                obtenerSede(
-                        request.getSedeId());
+        Sede nuevaSede = obtenerSede(request.getSedeId());
 
         String nuevoNombre =
-                normalizarNombre(
-                        request.getNombre());
+                normalizarNombre(request.getNombre());
 
         if (!existeCambioReal(
                 aulaAnterior,
@@ -326,7 +300,8 @@ public class AulaService {
                 request.getTipo())) {
 
             throw new CambioAulaInvalidoException(
-                    "El cambio indicado no requiere una nueva versión del aula");
+                    "El cambio indicado no requiere "
+                            + "una nueva versión del aula");
         }
 
         validarDuplicadoActivoAlActualizar(
@@ -334,61 +309,126 @@ public class AulaService {
                 nuevoNombre,
                 aulaAnteriorId);
 
-        // La versión anterior queda preservada como histórica.
-        aulaAnterior.setActiva(
-                false);
+        validarCapacidad(request.getCapacidad());
 
-        aulaRepository.save(
-                aulaAnterior);
+        // H-16: estado de la versión histórica anterior.
+        Map<String, Object> antes =
+                registroAuditoriaService == null
+                        ? null
+                        : datosAula(aulaAnterior);
 
-        // Se crea una nueva entidad para que JPA genere
-        // un identificador diferente.
-        Aula nuevaAula =
-                new Aula();
+        // La versión anterior permanece en PostgreSQL.
+        aulaAnterior.setActiva(false);
 
-        nuevaAula.setSede(
-                nuevaSede);
+        Aula anteriorActualizada =
+                aulaRepository.save(aulaAnterior);
 
-        nuevaAula.setNombre(
-                nuevoNombre);
+        // Auditoría de la inactivación de la versión anterior.
+        if (registroAuditoriaService != null) {
 
-        nuevaAula.setTipo(
-                request.getTipo());
+            auditar(
+                    RegistroAuditoriaService.ACCION_UPDATE,
+                    anteriorActualizada,
+                    antes,
+                    datosAula(anteriorActualizada));
+        }
 
-        nuevaAula.setCapacidad(
-                request.getCapacidad());
+        // Nueva versión con identificador propio.
+        Aula nuevaAula = new Aula();
 
-        nuevaAula.setActiva(
-                true);
+        nuevaAula.setSede(nuevaSede);
+        nuevaAula.setNombre(nuevoNombre);
+        nuevaAula.setTipo(request.getTipo());
+        nuevaAula.setCapacidad(request.getCapacidad());
+        nuevaAula.setActiva(true);
 
-        Aula nuevaAulaGuardada =
-                aulaRepository.save(
-                        nuevaAula);
+        Aula nuevaGuardada = aulaRepository.save(nuevaAula);
+
+        // Auditoría de la nueva versión.
+        if (registroAuditoriaService != null) {
+
+            auditar(
+                    RegistroAuditoriaService.ACCION_CREATE,
+                    nuevaGuardada,
+                    null,
+                    datosAula(nuevaGuardada));
+        }
 
         return convertirAResponse(
-                nuevaAulaGuardada,
+                nuevaGuardada,
                 request.getSedeId());
     }
 
-    // El borrado físico de Aula se mantiene bloqueado de forma conservadora.
-    //
-    // La regla de negocio permite eliminar únicamente un aula creada por error
-    // y que nunca haya sido utilizada.
-    //
-    // Con el modelo actual no existe trazabilidad suficiente para demostrar
-    // de forma completa la ausencia de uso histórico.
-    //
-    // Mientras esa condición no pueda acreditarse, el registro se preserva.
-
+    // El borrado físico continúa bloqueado.
+    // No se genera auditoría para una operación rechazada.
     @Transactional
-    public void eliminarAula(
-            UUID aulaId) {
+    public void eliminarAula(UUID aulaId) {
 
-        obtenerAula(
-                aulaId);
+        obtenerAula(aulaId);
 
         throw new CambioAulaInvalidoException(
-                "No se puede eliminar físicamente el aula porque el sistema no puede garantizar que nunca haya sido utilizada");
+                "No se puede eliminar físicamente el aula "
+                        + "porque el sistema no puede garantizar "
+                        + "que nunca haya sido utilizada");
+    }
 
+    // H-16: datos de negocio para el historial.
+    private Map<String, Object> datosAula(Aula aula) {
+
+        Map<String, Object> datos = new LinkedHashMap<>();
+
+        datos.put("id", aula.getId());
+
+        datos.put("sedeId",
+                aula.getSede() == null
+                        ? null
+                        : aula.getSede().getId());
+
+        datos.put("nombre", aula.getNombre());
+        datos.put("tipo", aula.getTipo());
+        datos.put("capacidad", aula.getCapacidad());
+        datos.put("activa", aula.isActiva());
+
+        return datos;
+    }
+
+    // H-16: registra las operaciones exitosas
+    // en la misma transacción del servicio.
+    private void auditar(
+            String accion,
+            Aula aula,
+            Object antes,
+            Object despues) {
+
+        if (registroAuditoriaService == null) {
+            return;
+        }
+
+        Authentication authentication =
+                SecurityContextHolder.getContext()
+                        .getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()) {
+
+            throw new IllegalStateException(
+                    "No hay usuario autenticado para auditar");
+        }
+
+        Usuario usuario = usuarioRepository
+                .findByCorreo(authentication.getName())
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Usuario autenticado no identificado "
+                                        + "para auditoría"));
+
+        registroAuditoriaService.registrar(
+                usuario,
+                accion,
+                "Aula",
+                aula.getId(),
+                antes,
+                despues,
+                null);
     }
 }

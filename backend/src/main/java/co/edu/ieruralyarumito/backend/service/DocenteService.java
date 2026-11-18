@@ -1,38 +1,53 @@
 package co.edu.ieruralyarumito.backend.service;
 
-import co.edu.ieruralyarumito.backend.repository.AreaRepository;
-import co.edu.ieruralyarumito.backend.repository.DocenteRepository;
-import org.springframework.stereotype.Service;
-import co.edu.ieruralyarumito.backend.entity.Area;
-import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
-import java.util.UUID;
-import co.edu.ieruralyarumito.backend.exception.RecursoDuplicadoException;
-import co.edu.ieruralyarumito.backend.dto.DocenteResponse;
-import co.edu.ieruralyarumito.backend.entity.Docente;
-import co.edu.ieruralyarumito.backend.dto.CrearDocenteRequest;
-import org.springframework.transaction.annotation.Transactional;
 import co.edu.ieruralyarumito.backend.dto.ActualizarDocenteRequest;
+import co.edu.ieruralyarumito.backend.dto.CambiarEstadoDocenteRequest;
+import co.edu.ieruralyarumito.backend.dto.CrearDocenteRequest;
+import co.edu.ieruralyarumito.backend.dto.DocenteResponse;
+
+import co.edu.ieruralyarumito.backend.entity.Area;
+import co.edu.ieruralyarumito.backend.entity.Docente;
+import co.edu.ieruralyarumito.backend.entity.Usuario;
 import co.edu.ieruralyarumito.backend.entity.enums.EstadoDocente;
 import co.edu.ieruralyarumito.backend.entity.enums.TipoVinculacion;
+
+import co.edu.ieruralyarumito.backend.exception.RecursoDuplicadoException;
+import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
+import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
+import co.edu.ieruralyarumito.backend.exception.TransicionEstadoNoPermitidaException;
+
+import co.edu.ieruralyarumito.backend.repository.AreaRepository;
+import co.edu.ieruralyarumito.backend.repository.DocenteRepository;
+import co.edu.ieruralyarumito.backend.repository.UsuarioRepository;
 import co.edu.ieruralyarumito.backend.specification.DocenteSpecification;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import co.edu.ieruralyarumito.backend.dto.CambiarEstadoDocenteRequest;
-import co.edu.ieruralyarumito.backend.exception.TransicionEstadoNoPermitidaException;
-import co.edu.ieruralyarumito.backend.exception.RelacionAcademicaInvalidaException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-// Contiene la lógica de negocio para la gestión de docentes.
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+
+// Gestión institucional de docentes.
+// H-16: integración con Control y Auditoría.
 @Service
 public class DocenteService {
 
-    // Acceso a los datos de docentes.
     private final DocenteRepository docenteRepository;
-
-    // Permite validar y consultar el área de nombramiento del docente.
     private final AreaRepository areaRepository;
 
-    // Inyección de dependencias mediante constructor.
+    // H-16: dependencias de auditoría.
+    private UsuarioRepository usuarioRepository;
+    private RegistroAuditoriaService registroAuditoriaService;
+
+    // Conserva el constructor utilizado por las pruebas existentes.
     public DocenteService(
             DocenteRepository docenteRepository,
             AreaRepository areaRepository) {
@@ -41,37 +56,58 @@ public class DocenteService {
         this.areaRepository = areaRepository;
     }
 
-    // Busca el área indicada y rechaza la operación si no existe.
+    @Autowired
+    public void configurarAuditoria(
+            UsuarioRepository usuarioRepository,
+            RegistroAuditoriaService registroAuditoriaService) {
+
+        this.usuarioRepository =
+                Objects.requireNonNull(usuarioRepository);
+
+        this.registroAuditoriaService =
+                Objects.requireNonNull(registroAuditoriaService);
+    }
+
     private Area obtenerArea(UUID areaId) {
+
         return areaRepository.findById(areaId)
                 .orElseThrow(() ->
                         new RecursoNoEncontradoException(
                                 "El área de nombramiento no existe"));
     }
 
-    // Valida que el número de documento no esté registrado por otro docente.
+    private Docente obtenerDocente(UUID id) {
+
+        return docenteRepository.findById(id)
+                .orElseThrow(() ->
+                        new RecursoNoEncontradoException(
+                                "El docente no existe"));
+    }
+
+    // Conserva la validación original de documentos duplicados.
     private void validarDocumentoDuplicado(String numeroDocumento) {
+
         if (docenteRepository.existsByNumeroDocumento(numeroDocumento)) {
+
             throw new RecursoDuplicadoException(
                     "Ya existe un docente con ese número de documento");
         }
-
     }
 
-    // Valida que el número de documento no pertenezca a otro docente.
     private void validarDocumentoDuplicadoAlActualizar(
             String numeroDocumento,
             UUID id) {
 
         if (docenteRepository.existsByNumeroDocumentoAndIdNot(
-                numeroDocumento, id)) {
+                numeroDocumento,
+                id)) {
 
             throw new RecursoDuplicadoException(
                     "Ya existe otro docente con ese número de documento");
         }
     }
 
-    // Lista docentes aplicando búsqueda, filtros y paginación.
+    // Consulta paginada con los filtros existentes.
     @Transactional(readOnly = true)
     public Page<DocenteResponse> listarDocentes(
             String texto,
@@ -80,56 +116,61 @@ public class DocenteService {
             TipoVinculacion tipoVinculacion,
             Pageable pageable) {
 
-        // Combina los filtros enviados en una sola consulta dinámica.
         Specification<Docente> specification =
                 DocenteSpecification.buscarPorTexto(texto)
                         .and(DocenteSpecification.porArea(areaId))
                         .and(DocenteSpecification.porEstado(estado))
-                        .and(DocenteSpecification.porTipoVinculacion(tipoVinculacion));
+                        .and(DocenteSpecification.porTipoVinculacion(
+                                tipoVinculacion));
 
-        // Ejecuta la consulta paginada y convierte cada entidad en DTO.
         return docenteRepository.findAll(specification, pageable)
                 .map(this::convertirAResponse);
     }
 
-    // Administra el cambio de estado de un docente existente.
+    // Cambia el estado administrativo.
     @Transactional
     public DocenteResponse cambiarEstado(
             UUID id,
             CambiarEstadoDocenteRequest request) {
 
-        // Verifica que el docente exista.
-        Docente docente = docenteRepository.findById(id)
-                .orElseThrow(() ->
-                        new RecursoNoEncontradoException(
-                                "El docente no existe"));
+        Docente docente = obtenerDocente(id);
 
-        // Valida que la transición solicitada esté permitida.
         validarTransicionEstado(
                 docente.getEstado(),
-                request.getNuevoEstado()
-        );
+                request.getNuevoEstado());
+
+        // H-16: conservar el estado anterior.
+        Map<String, Object> antes =
+                registroAuditoriaService == null
+                        ? null
+                        : datosDocente(docente);
 
         /*
-         * Las responsabilidades académicas vigentes no bloquean
-         * el paso a LICENCIA ni a RETIRADO.
+         * Se conserva la regla institucional:
          *
-         * En LICENCIA el docente conserva su vínculo, nombramiento,
-         * idoneidades e histórico de carga.
+         * LICENCIA y RETIRADO no requieren eliminar
+         * las responsabilidades académicas históricas.
          *
-         * En RETIRADO la salida puede producirse aunque exista carga
-         * académica vigente; su posterior cobertura corresponde al
-         * proceso de asignación académica.
+         * La cobertura posterior de asignaciones corresponde
+         * al proceso de asignación académica.
          */
         docente.setEstado(request.getNuevoEstado());
 
-        // Guarda el nuevo estado conservando el mismo registro.
-        Docente docenteActualizado = docenteRepository.save(docente);
+        Docente actualizado = docenteRepository.save(docente);
 
-        return convertirAResponse(docenteActualizado);
+        if (registroAuditoriaService != null) {
+
+            auditar(
+                    RegistroAuditoriaService.ACCION_UPDATE,
+                    actualizado,
+                    antes,
+                    datosDocente(actualizado));
+        }
+
+        return convertirAResponse(actualizado);
     }
 
-    // Valida las transiciones permitidas entre estados del docente.
+    // Conserva las transiciones de estado permitidas.
     private void validarTransicionEstado(
             EstadoDocente estadoActual,
             EstadoDocente nuevoEstado) {
@@ -144,20 +185,19 @@ public class DocenteService {
                     nuevoEstado == EstadoDocente.ACTIVO
                             || nuevoEstado == EstadoDocente.RETIRADO;
 
-            // Un docente retirado requiere un nuevo nombramiento
-            // para volver a estar activo.
+            // RETIRADO requiere nuevo nombramiento.
             case RETIRADO -> false;
         };
 
         if (!transicionPermitida) {
+
             throw new TransicionEstadoNoPermitidaException(
                     "No se permite cambiar el estado del docente de "
-                            + estadoActual + " a " + nuevoEstado
-            );
+                            + estadoActual + " a " + nuevoEstado);
         }
     }
 
-    // Convierte la entidad Docente en el DTO que será devuelto por la API.
+    // Conversión a DTO de respuesta.
     private DocenteResponse convertirAResponse(Docente docente) {
 
         DocenteResponse response = new DocenteResponse();
@@ -170,30 +210,36 @@ public class DocenteService {
         response.setTelefono(docente.getTelefono());
         response.setCorreoInstitucional(docente.getCorreoInstitucional());
         response.setTipoVinculacion(docente.getTipoVinculacion());
-        response.setAreaNombramientoId(docente.getAreaNombramiento().getId());
+
+        response.setAreaNombramientoId(
+                docente.getAreaNombramiento().getId());
+
         response.setNumeroDecreto(docente.getNumeroDecreto());
         response.setFechaDecreto(docente.getFechaDecreto());
         response.setEscalafon(docente.getEscalafon());
-        response.setHorasSemanalesContratadas(docente.getHorasSemanalesContratadas());
+
+        response.setHorasSemanalesContratadas(
+                docente.getHorasSemanalesContratadas());
+
         response.setMaxHorasExtra(docente.getMaxHorasExtra());
-        response.setEsExclusivoMediaTecnica(docente.isEsExclusivoMediaTecnica());
+
+        response.setEsExclusivoMediaTecnica(
+                docente.isEsExclusivoMediaTecnica());
+
         response.setEstado(docente.getEstado());
         response.setFechaVinculacion(docente.getFechaVinculacion());
 
         return response;
     }
 
-    // Registra un nuevo docente después de validar sus datos principales.
+    // Registra un docente.
     @Transactional
     public DocenteResponse registrarDocente(CrearDocenteRequest request) {
 
-        // Evita registrar dos docentes con el mismo número de documento.
         validarDocumentoDuplicado(request.getNumeroDocumento());
 
-        // Valida que el área de nombramiento exista.
         Area area = obtenerArea(request.getAreaNombramientoId());
 
-        // Construye la entidad Docente con los datos recibidos.
         Docente docente = new Docente();
 
         docente.setNombres(request.getNombres());
@@ -210,53 +256,58 @@ public class DocenteService {
         docente.setEstado(request.getEstado());
         docente.setFechaVinculacion(request.getFechaVinculacion());
 
-        // Guarda el docente en la base de datos.
-        Docente docenteGuardado = docenteRepository.save(docente);
+        // Conserva los valores predeterminados del modelo:
+        // 22 horas ordinarias y hasta 10 extraordinarias.
+        Docente guardado = docenteRepository.save(docente);
 
-        return convertirAResponse(docenteGuardado);
+        // H-16: auditoría de creación.
+        if (registroAuditoriaService != null) {
+
+            auditar(
+                    RegistroAuditoriaService.ACCION_CREATE,
+                    guardado,
+                    null,
+                    datosDocente(guardado));
+        }
+
+        return convertirAResponse(guardado);
     }
 
-    // Consulta un docente por su identificador.
     @Transactional(readOnly = true)
     public DocenteResponse consultarDocente(UUID id) {
 
-        Docente docente = docenteRepository.findById(id)
-                .orElseThrow(() ->
-                        new RecursoNoEncontradoException(
-                                "El docente no existe"));
-
-        return convertirAResponse(docente);
+        return convertirAResponse(obtenerDocente(id));
     }
 
-    // Actualiza los datos básicos e institucionales de un docente existente.
+    // Actualiza datos permitidos sin modificar el área
+    // de nombramiento mediante esta operación.
     @Transactional
     public DocenteResponse actualizarDocente(
             UUID id,
             ActualizarDocenteRequest request) {
 
-        // Verifica que el docente exista.
-        Docente docente = docenteRepository.findById(id)
-                .orElseThrow(() ->
-                        new RecursoNoEncontradoException(
-                                "El docente no existe"));
+        Docente docente = obtenerDocente(id);
 
-        // Evita asignar un documento que pertenezca a otro docente.
         validarDocumentoDuplicadoAlActualizar(
-                request.getNumeroDocumento(), id);
+                request.getNumeroDocumento(),
+                id);
 
-        // Valida que el área de nombramiento exista.
         Area area = obtenerArea(request.getAreaNombramientoId());
 
-        // El área de nombramiento no puede modificarse mediante
-        // la actualización ordinaria del docente.
-        // Un cambio de área requiere un nuevo nombramiento respaldado por decreto.
-        if (!docente.getAreaNombramiento().getId().equals(area.getId())) {
+        if (!docente.getAreaNombramiento().getId()
+                .equals(area.getId())) {
+
             throw new RelacionAcademicaInvalidaException(
-                    "El cambio de área de nombramiento requiere un nuevo nombramiento"
-            );
+                    "El cambio de área de nombramiento requiere "
+                            + "un nuevo nombramiento");
         }
 
-        // Actualiza los datos permitidos en esta HU.
+        // H-16: instantánea antes de modificar.
+        Map<String, Object> antes =
+                registroAuditoriaService == null
+                        ? null
+                        : datosDocente(docente);
+
         docente.setNombres(request.getNombres());
         docente.setApellidos(request.getApellidos());
         docente.setTipoDocumento(request.getTipoDocumento());
@@ -269,9 +320,97 @@ public class DocenteService {
         docente.setEscalafon(request.getEscalafon());
         docente.setFechaVinculacion(request.getFechaVinculacion());
 
-        // Guarda los cambios realizados.
-        Docente docenteActualizado = docenteRepository.save(docente);
+        Docente actualizado = docenteRepository.save(docente);
 
-        return convertirAResponse(docenteActualizado);
+        // H-16: auditoría de modificación.
+        if (registroAuditoriaService != null) {
+
+            auditar(
+                    RegistroAuditoriaService.ACCION_UPDATE,
+                    actualizado,
+                    antes,
+                    datosDocente(actualizado));
+        }
+
+        return convertirAResponse(actualizado);
+    }
+
+    // H-16: instantánea de los datos institucionales.
+    // No serializar directamente la entidad JPA.
+    private Map<String, Object> datosDocente(Docente docente) {
+
+        Map<String, Object> datos = new LinkedHashMap<>();
+
+        datos.put("id", docente.getId());
+        datos.put("nombres", docente.getNombres());
+        datos.put("apellidos", docente.getApellidos());
+        datos.put("tipoDocumento", docente.getTipoDocumento());
+        datos.put("numeroDocumento", docente.getNumeroDocumento());
+        datos.put("telefono", docente.getTelefono());
+        datos.put("correoInstitucional",
+                docente.getCorreoInstitucional());
+
+        datos.put("tipoVinculacion", docente.getTipoVinculacion());
+
+        datos.put("areaNombramientoId",
+                docente.getAreaNombramiento() == null
+                        ? null
+                        : docente.getAreaNombramiento().getId());
+
+        datos.put("numeroDecreto", docente.getNumeroDecreto());
+        datos.put("fechaDecreto", docente.getFechaDecreto());
+        datos.put("escalafon", docente.getEscalafon());
+
+        datos.put("horasSemanalesContratadas",
+                docente.getHorasSemanalesContratadas());
+
+        datos.put("maxHorasExtra", docente.getMaxHorasExtra());
+
+        datos.put("esExclusivoMediaTecnica",
+                docente.isEsExclusivoMediaTecnica());
+
+        datos.put("estado", docente.getEstado());
+        datos.put("fechaVinculacion", docente.getFechaVinculacion());
+
+        return datos;
+    }
+
+    // H-16: reutiliza HU-14 dentro de la transacción.
+    private void auditar(
+            String accion,
+            Docente docente,
+            Object antes,
+            Object despues) {
+
+        // Compatibilidad con las pruebas anteriores.
+        if (registroAuditoriaService == null) {
+            return;
+        }
+
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()) {
+
+            throw new IllegalStateException(
+                    "No hay usuario autenticado para auditar");
+        }
+
+        Usuario usuario = usuarioRepository
+                .findByCorreo(authentication.getName())
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Usuario autenticado no identificado "
+                                        + "para auditoría"));
+
+        registroAuditoriaService.registrar(
+                usuario,
+                accion,
+                "Docente",
+                docente.getId(),
+                antes,
+                despues,
+                null);
     }
 }
