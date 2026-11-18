@@ -123,10 +123,12 @@ public class AsignacionAcademicaService {
         // H-06A: únicamente docentes activos.
         validarDocenteActivo(docente);
 
-        // Reglas académicas existentes.
+        // CA-12: una asignatura tiene una sola asignación
+        // docente por grupo y año escolar.
+        // Distintos grupos pueden tener docentes diferentes.
         validarUnicidad(anioEscolar, grupo, asignatura);
-        validarContinuidadDocente(
-                anioEscolar, grupo, asignatura, docente);
+
+        // CA-07: idoneidad profesional vigente.
         validarIdoneidadDocente(docente, asignatura);
 
         AsignacionAcademica asignacion =
@@ -275,6 +277,7 @@ public class AsignacionAcademicaService {
     }
 
     // CA-12: no duplicar asignaciones.
+    // Unicidad: año escolar + grupo + asignatura.
     private void validarUnicidad(
             AnioEscolar anioEscolar,
             Grupo grupo,
@@ -293,38 +296,6 @@ public class AsignacionAcademicaService {
                     "Ya existe una asignación académica "
                             + "para el año escolar, grupo "
                             + "y asignatura indicados");
-        }
-    }
-
-    // CA-09: continuidad del docente en un mismo grado.
-    private void validarContinuidadDocente(
-            AnioEscolar anioEscolar,
-            Grupo grupo,
-            Asignatura asignatura,
-            Docente docente) {
-
-        List<AsignacionAcademica> asignacionesExistentes =
-                asignacionAcademicaRepository
-                        .findByAnioEscolar_IdAndGrupo_Grado_IdAndAsignatura_Id(
-                                anioEscolar.getId(),
-                                grupo.getGrado().getId(),
-                                asignatura.getId());
-
-        boolean asignadaAOtroDocente =
-                asignacionesExistentes.stream()
-                        .anyMatch(asignacion ->
-                                !asignacion.getDocente()
-                                        .getId()
-                                        .equals(docente.getId()));
-
-        if (asignadaAOtroDocente) {
-
-            throw new RelacionAcademicaInvalidaException(
-                    "La asignatura ya está asignada "
-                            + "a otro docente en el grado "
-                            + grupo.getGrado().getNombre()
-                            + "; debe ser dictada por el mismo "
-                            + "docente en todos los grupos del grado");
         }
     }
 
