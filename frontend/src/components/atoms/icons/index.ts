@@ -2,6 +2,7 @@ export { EyeIcon } from './EyeIcon'
 export { EyeOffIcon } from './EyeOffIcon'
 export { IconFrame } from './IconFrame'
 export {
+  ArchiveIcon,
   BanIcon,
   BookIcon,
   BookOpenIcon,
@@ -21,6 +22,7 @@ export {
   PencilIcon,
   PlusIcon,
   PublishIcon,
+  RestoreIcon,
   SearchIcon,
   ShieldIcon,
   TrashIcon,

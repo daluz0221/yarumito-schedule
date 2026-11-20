@@ -15,7 +15,9 @@ import {
   listarPlanesEstudio,
   listarRestriccionesPorAnio,
   opcionesAniosEscolares,
+  actualizarAsignacion,
   registrarAsignacion,
+  retirarAsignacion,
   useCatalogoAniosEscolares,
   useCatalogoGrupos,
 } from '../../../api'
@@ -40,6 +42,7 @@ import { Card } from '../../atoms/Card'
 import { Text } from '../../atoms/Text'
 import { ActivityAssignmentFormModal, type ActivityAssignmentFormValues } from '../ActivityAssignmentFormModal'
 import { AssignmentFormModal, type AssignmentFormValues } from '../AssignmentFormModal'
+import { ConfirmActionModal } from '../ConfirmActionModal'
 import { AssignmentSection } from '../AssignmentSection'
 import { AssignmentSelector } from '../AssignmentSelector'
 import { AssignmentSummary } from '../AssignmentSummary'
@@ -58,6 +61,8 @@ type Dialog =
   | { name: 'pick-subject' }
   | { name: 'create'; row?: AssignmentRow }
   | { name: 'create-activity'; row?: AssignmentRow }
+  | { name: 'edit'; row: AssignmentRow }
+  | { name: 'remove'; row: AssignmentRow }
 
 type Catalog = {
   teachers: Teacher[]
@@ -461,6 +466,57 @@ export function AssignmentWorkspace() {
     }
   }
 
+  // H-04: corrige una asignación en BORRADOR (docente, horas y observación).
+  const updateAssignment = async (values: AssignmentFormValues) => {
+    if (dialog?.name !== 'edit' || !dialog.row.assignmentId) {
+      return
+    }
+
+    if (!values.teacherId) {
+      setSaveError('Selecciona un docente registrado.')
+      return
+    }
+
+    setSaving(true)
+    setSaveError('')
+
+    try {
+      await actualizarAsignacion(dialog.row.assignmentId, {
+        docenteId: values.teacherId,
+        horasSemanales: values.assignedHours,
+        observacion: values.note.trim() || null,
+      })
+      setRevision((current) => current + 1)
+      setDialog(null)
+      setActionError('')
+    } catch (cause) {
+      setSaveError(mensajeError(cause, 'No se pudo actualizar la asignación académica.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // H-04: retira una asignación en BORRADOR sin clases programadas.
+  const removeAssignment = async () => {
+    if (dialog?.name !== 'remove' || !dialog.row.assignmentId) {
+      return
+    }
+
+    setSaving(true)
+    setSaveError('')
+
+    try {
+      await retirarAsignacion(dialog.row.assignmentId)
+      setRevision((current) => current + 1)
+      setDialog(null)
+      setActionError('')
+    } catch (cause) {
+      setSaveError(mensajeError(cause, 'No se pudo quitar la asignación académica.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const confirmAssignment = async (row: AssignmentRow) => {
     if (!row.assignmentId || confirmingId) {
       return
@@ -666,8 +722,14 @@ export function AssignmentWorkspace() {
               tab === 'curricular' ? { name: 'create', row } : { name: 'create-activity', row },
             )
           }}
-          onEdit={() => undefined}
-          onRemove={() => undefined}
+          onEdit={(row) => {
+            setSaveError('')
+            setDialog({ name: 'edit', row })
+          }}
+          onRemove={(row) => {
+            setSaveError('')
+            setDialog({ name: 'remove', row })
+          }}
           onConfirm={(row) => {
             void confirmAssignment(row)
           }}
@@ -704,6 +766,45 @@ export function AssignmentWorkspace() {
           onClose={closeDialog}
           onSubmit={(values) => {
             void upsertAssignment(values)
+          }}
+        />
+      ) : null}
+
+      {dialog?.name === 'edit' && group && year ? (
+        <AssignmentFormModal
+          key={`edit-${dialog.row.key}`}
+          open
+          mode="edit"
+          year={year.year}
+          restrictionCounts={conteoRestricciones}
+          groupCode={group.codigo}
+          gradeLabel={gradeLabel}
+          subjects={curricularRows}
+          teachers={teachers}
+          areas={areas}
+          row={dialog.row}
+          saving={saving}
+          error={saveError}
+          onClose={closeDialog}
+          onSubmit={(values) => {
+            void updateAssignment(values)
+          }}
+        />
+      ) : null}
+
+      {dialog?.name === 'remove' ? (
+        <ConfirmActionModal
+          open
+          title="Quitar asignación"
+          description={`¿Quitar la asignación de ${dialog.row.subject}${dialog.row.teacherName ? ` a ${dialog.row.teacherName}` : ''}?`}
+          note="Solo se pueden quitar asignaciones en borrador y sin clases programadas."
+          confirmLabel="Quitar asignación"
+          busyLabel="Quitando..."
+          submitting={saving}
+          error={saveError}
+          onClose={closeDialog}
+          onConfirm={() => {
+            void removeAssignment()
           }}
         />
       ) : null}

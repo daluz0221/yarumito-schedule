@@ -18,6 +18,9 @@ public class RestriccionDocenteResponse {
     private byte[] documentoSoporte;
     private UUID aprobadaPorId;
 
+    // H-04: indica si la restricción está activa o retirada.
+    private boolean activo;
+
     public UUID getId() {
         return id;
     }
@@ -88,5 +91,15 @@ public class RestriccionDocenteResponse {
 
     public void setAprobadaPorId(UUID aprobadaPorId) {
         this.aprobadaPorId = aprobadaPorId;
+    }
+
+    // H-04: consulta el estado de la restricción.
+    public boolean isActivo() {
+        return activo;
+    }
+
+    // H-04: establece el estado de la restricción.
+    public void setActivo(boolean activo) {
+        this.activo = activo;
     }
 }

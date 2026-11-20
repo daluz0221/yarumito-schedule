@@ -1,6 +1,7 @@
 import { labelAvailability, restrictionEffect } from '../../../content/teacherRestrictions'
 import type { RestriccionDocenteVista } from '../../../api/restriccionesDocentes'
 import { Button } from '../../atoms/Button'
+import { IconAction } from '../../atoms/IconAction'
 import { Modal } from '../../atoms/Modal'
 import styles from './RestrictionDetailModal.module.css'
 
@@ -15,6 +16,8 @@ export type RestrictionDetailModalProps = {
   readOnly?: boolean
   yearClosed?: boolean
   onEdit: () => void
+  // H-04: baja lógica de la restricción.
+  onRetire?: () => void
   onClose: () => void
 }
 
@@ -29,6 +32,7 @@ export function RestrictionDetailModal({
   readOnly = false,
   yearClosed = false,
   onEdit,
+  onRetire,
   onClose,
 }: RestrictionDetailModalProps) {
   const canEdit = !readOnly && Boolean(restriction) && !loading && !error
@@ -46,6 +50,11 @@ export function RestrictionDetailModal({
       footer={
         canEdit ? (
           <div className={styles.actions}>
+            {onRetire ? (
+              <span className={styles.retire}>
+                <IconAction tone="danger" label="Retirar restricción" onClick={onRetire} />
+              </span>
+            ) : null}
             <Button variant="primary" size="sm" onClick={onEdit}>
               Editar
             </Button>

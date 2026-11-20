@@ -16,17 +16,20 @@ public class TituloProfesionalResponse {
     // Nivel académico del título profesional.
     private NivelTituloProfesional nivel;
 
-    // Nombre del título profesional.
+    // Nombre oficial del título obtenido.
     private String nombreTitulo;
 
     // Institución que otorgó el título.
     private String institucion;
 
-    // Año de graduación.
+    // Año en que el docente obtuvo el título.
     private Integer anioGraduacion;
 
     // Referencia al archivo o soporte documental del título.
     private String archivoSoporte;
+
+    // H-04: identifica si el título está activo o retirado.
+    private boolean activo;
 
     public UUID getId() {
         return id;
@@ -82,5 +85,15 @@ public class TituloProfesionalResponse {
 
     public void setArchivoSoporte(String archivoSoporte) {
         this.archivoSoporte = archivoSoporte;
+    }
+
+    // H-04: consulta si el título profesional está activo.
+    public boolean isActivo() {
+        return activo;
+    }
+
+    // H-04: establece el estado del título profesional.
+    public void setActivo(boolean activo) {
+        this.activo = activo;
     }
 }

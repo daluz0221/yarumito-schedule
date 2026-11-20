@@ -22,6 +22,7 @@ export type PlanEstudiosResponse = {
   horasSemanales: number
   turnoId: string | null
   observacion: string | null
+  activo?: boolean
 }
 
 type PaginaPlanesEstudio = {
@@ -65,6 +66,35 @@ export async function listarPlanesEstudio(signal?: AbortSignal) {
   for (let page = 1; page < totalPages; page += 1) {
     const next = await listarPagina(page, signal)
     planes.push(...(next.content ?? []))
+  }
+
+  return planes
+}
+
+// H-04: baja lógica del plan; conserva el histórico.
+export function retirarPlanEstudios(id: string) {
+  return api.patch<PlanEstudiosResponse>(`/api/v1/planes-estudio/${id}/retirar`)
+}
+
+export function reactivarPlanEstudios(id: string) {
+  return api.patch<PlanEstudiosResponse>(`/api/v1/planes-estudio/${id}/reactivar`)
+}
+
+export async function listarPlanesEstudioRetirados(signal?: AbortSignal) {
+  const planes: PlanEstudiosResponse[] = []
+  let page = 0
+  let totalPages = 1
+
+  while (page < totalPages) {
+    const search = new URLSearchParams({ page: String(page), size: String(PAGE_SIZE) })
+    const result = await api.get<PaginaPlanesEstudio>(
+      `/api/v1/planes-estudio/retirados?${search.toString()}`,
+      { signal },
+    )
+
+    planes.push(...(result.content ?? []))
+    totalPages = result.totalPages ?? 1
+    page += 1
   }
 
   return planes

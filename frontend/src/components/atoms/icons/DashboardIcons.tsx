@@ -225,3 +225,22 @@ export function LayersIcon() {
     </IconFrame>
   )
 }
+
+export function RestoreIcon({ size = 18 }: { size?: number } = {}) {
+  return (
+    <IconFrame size={size}>
+      <path d="M4 12a8 8 0 1 0 2.4-5.7" {...stroke} />
+      <path d="M4 4v4.5h4.5" {...stroke} />
+    </IconFrame>
+  )
+}
+
+export function ArchiveIcon({ size = 18 }: { size?: number } = {}) {
+  return (
+    <IconFrame size={size}>
+      <rect x="3.5" y="4.5" width="17" height="4.5" rx="1" {...stroke} />
+      <path d="M5.5 9v9a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5V9" {...stroke} />
+      <path d="M10 13h4" {...stroke} />
+    </IconFrame>
+  )
+}

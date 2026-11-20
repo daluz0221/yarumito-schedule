@@ -25,6 +25,10 @@ public class PlanEstudiosResponse {
 
     private String observacion;
 
+    // H-04: permite identificar si el registro
+    // está activo o fue retirado del plan de estudios.
+    private boolean activo;
+
     public UUID getId() {
         return id;
     }
@@ -119,5 +123,15 @@ public class PlanEstudiosResponse {
 
     public void setObservacion(String observacion) {
         this.observacion = observacion;
+    }
+
+    // H-04: consulta el estado del registro.
+    public boolean isActivo() {
+        return activo;
+    }
+
+    // H-04: establece el estado del registro.
+    public void setActivo(boolean activo) {
+        this.activo = activo;
     }
 }
