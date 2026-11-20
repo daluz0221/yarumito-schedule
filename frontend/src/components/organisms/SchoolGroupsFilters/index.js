@@ -1,1 +1,0 @@
-export { SchoolGroupsFilters } from './SchoolGroupsFilters';

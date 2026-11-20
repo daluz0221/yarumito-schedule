@@ -1,1 +1,0 @@
-export { StudyPlanSelector } from './StudyPlanSelector';

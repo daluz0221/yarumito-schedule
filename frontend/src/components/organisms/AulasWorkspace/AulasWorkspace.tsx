@@ -54,11 +54,17 @@ type ModalState =
 
 export function AulasWorkspace() {
   const { sedes, error: sedesError } = useCatalogoSedes()
-  const [sedeId, setSedeId] = useState('')
+  const [chosenSedeId, setSedeId] = useState('')
+  const sedeId =
+    chosenSedeId ||
+    (sedes?.length
+      ? (sedes.find((sede) => sede.esPrincipal)?.id ?? sedes[0].id)
+      : '')
   const [aulas, setAulas] = useState<AulaResponse[]>([])
+  const [loadedSedeId, setLoadedSedeId] = useState('')
   const [query, setQuery] = useState('')
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const loading = Boolean(sedeId) && loadedSedeId !== sedeId
   const [modal, setModal] = useState<ModalState>({ name: 'closed' })
   const [editing, setEditing] = useState<AulaResponse | null>(null)
   const [editLoading, setEditLoading] = useState(false)
@@ -69,26 +75,18 @@ export function AulasWorkspace() {
   const detailRequest = useRef<AbortController | null>(null)
 
   useEffect(() => {
-    if (sedeId || !sedes?.length) {
-      return
-    }
-
-    const principal = sedes.find((sede) => sede.esPrincipal)
-    setSedeId(principal?.id ?? sedes[0].id)
-  }, [sedes, sedeId])
-
-  useEffect(() => {
     if (!sedeId) {
       return
     }
 
     const controller = new AbortController()
-    setLoading(true)
-    setError('')
+    const requestedSedeId = sedeId
 
-    listarAulasPorSede(sedeId, controller.signal)
+    listarAulasPorSede(requestedSedeId, controller.signal)
       .then((items) => {
         setAulas(items)
+        setError('')
+        setLoadedSedeId(requestedSedeId)
       })
       .catch((cause) => {
         if (isAbortError(cause) || controller.signal.aborted) {
@@ -101,11 +99,7 @@ export function AulasWorkspace() {
             ? cause.message
             : 'No se pudo cargar el catálogo de aulas.',
         )
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false)
-        }
+        setLoadedSedeId(requestedSedeId)
       })
 
     return () => controller.abort()

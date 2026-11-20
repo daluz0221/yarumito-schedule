@@ -1,1 +1,0 @@
-export { SidebarBrand } from './SidebarBrand';

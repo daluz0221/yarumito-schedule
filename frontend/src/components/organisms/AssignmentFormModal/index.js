@@ -1,1 +1,0 @@
-export { AssignmentFormModal } from './AssignmentFormModal';

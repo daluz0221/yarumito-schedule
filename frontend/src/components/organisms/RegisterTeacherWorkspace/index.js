@@ -1,1 +1,0 @@
-export { RegisterTeacherWorkspace } from './RegisterTeacherWorkspace';

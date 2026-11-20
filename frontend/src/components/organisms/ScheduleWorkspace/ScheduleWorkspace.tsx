@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { idDisponible } from '../../../content/idDisponible'
 import {
   actualizarClaseProgramada,
   anioEscolarVisible,
@@ -110,9 +111,9 @@ export function ScheduleWorkspace() {
   const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
   const { grupos, error: gruposError, loading: gruposLoading } = useCatalogoGrupos()
   const { sedes, error: sedesError } = useCatalogoSedes()
-  const [yearId, setYearId] = useState('')
+  const [yearElegido, setYearElegido] = useState('')
   const [campusId, setCampusId] = useState('')
-  const [groupId, setGroupId] = useState('')
+  const [groupElegido, setGroupElegido] = useState('')
   const [tableroGrupoId, setTableroGrupoId] = useState('')
   const [clases, setClases] = useState<ClaseVista[]>([])
   const [pending, setPending] = useState<PendingPlacement[]>([])
@@ -151,15 +152,12 @@ export function ScheduleWorkspace() {
     setHorarioError('')
   }, [])
 
-  useEffect(() => {
-    if (!anios?.length) {
-      return
-    }
-
-    setYearId((current) =>
-      anios.some((year) => year.id === current) ? current : (anioEscolarVisible(anios)?.id ?? ''),
-    )
-  }, [anios])
+  const yearId = idDisponible(
+    yearElegido,
+    anios,
+    Boolean(anios?.length),
+    anioEscolarVisible(anios ?? [])?.id ?? '',
+  )
 
   const campusSeleccionada = sedes?.some((sede) => sede.id === campusId)
     ? campusId
@@ -179,44 +177,20 @@ export function ScheduleWorkspace() {
       )
   }, [campusSeleccionada, gruposDelAnio])
 
-  useEffect(() => {
-    if (!yearId || grupos === null) {
-      return
-    }
+  const groupId = idDisponible(
+    groupElegido,
+    yearGroups,
+    Boolean(yearId) && grupos !== null,
+    yearGroups[0]?.id ?? '',
+  )
+  const [grupoVisto, setGrupoVisto] = useState(groupId)
 
-    setGroupId((current) =>
-      yearGroups.some((group) => group.id === current) ? current : (yearGroups[0]?.id ?? ''),
-    )
-  }, [grupos, yearGroups, yearId])
-
-  useEffect(() => {
+  if (grupoVisto !== groupId) {
+    setGrupoVisto(groupId)
     setClassDialog(null)
     setRemoveId(null)
     setSaveError('')
     setRemoveError('')
-  }, [groupId])
-
-  useEffect(() => {
-    const solicitud = ++solicitudRef.current
-
-    if (!groupId) {
-      setTableroGrupoId('')
-      setClases([])
-      setPending([])
-      setResumen(null)
-      setEstadoHorario(null)
-      setTurnoId('')
-      setTurnoNombre('')
-      setFranjas([])
-      setContexto({ codigo: '', grado: '', anio: 0 })
-      setHorarioError('')
-      setHorarioLoading(false)
-      return
-    }
-
-    const controller = new AbortController()
-    setHorarioLoading(true)
-    setHorarioError('')
     setTableroGrupoId('')
     setClases([])
     setPending([])
@@ -226,6 +200,17 @@ export function ScheduleWorkspace() {
     setTurnoNombre('')
     setFranjas([])
     setContexto({ codigo: '', grado: '', anio: 0 })
+    setHorarioError('')
+    setHorarioLoading(Boolean(groupId))
+  }
+
+  useEffect(() => {
+    if (!groupId) {
+      return
+    }
+
+    const solicitud = ++solicitudRef.current
+    const controller = new AbortController()
 
     consultarHorarioGrupo(groupId, controller.signal)
       .then((tablero) => {
@@ -240,15 +225,6 @@ export function ScheduleWorkspace() {
           return
         }
 
-        setTableroGrupoId('')
-        setClases([])
-        setPending([])
-        setResumen(null)
-        setEstadoHorario(null)
-        setTurnoId('')
-        setTurnoNombre('')
-        setFranjas([])
-        setContexto({ codigo: '', grado: '', anio: 0 })
         setHorarioError(mensajeError(cause, 'No se pudo cargar el horario de este grupo.'))
       })
       .finally(() => {
@@ -264,16 +240,20 @@ export function ScheduleWorkspace() {
   const grupo = yearGroups.find((item) => item.id === groupId) ?? null
   const sedeDelGrupo = grupo?.sedeId ?? ''
 
+  const [sedeVista, setSedeVista] = useState(sedeDelGrupo)
+
+  if (sedeVista !== sedeDelGrupo) {
+    setSedeVista(sedeDelGrupo)
+    setAulas(sedeDelGrupo ? null : [])
+    setAulasError('')
+  }
+
   useEffect(() => {
     if (!sedeDelGrupo) {
-      setAulas([])
-      setAulasError('')
       return
     }
 
     const controller = new AbortController()
-    setAulas(null)
-    setAulasError('')
 
     listarAulasPorSede(sedeDelGrupo, controller.signal)
       .then((lista) => {
@@ -320,7 +300,7 @@ export function ScheduleWorkspace() {
   const hayAulasActivas = (aulas ?? []).some((aula) => aula.activa)
 
   const selectYear = (nextYearId: string) => {
-    setYearId(nextYearId)
+    setYearElegido(nextYearId)
   }
 
   const openCreate = (day: WeekDay, bandId: string, subjectKey = pending[0]?.key ?? '') => {
@@ -534,7 +514,7 @@ export function ScheduleWorkspace() {
         onYearChange={selectYear}
         onCampusChange={setCampusId}
         onShiftChange={() => undefined}
-        onGroupChange={setGroupId}
+        onGroupChange={setGroupElegido}
       />
 
       {aniosError ? (

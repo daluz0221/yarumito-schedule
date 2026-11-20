@@ -1,1 +1,0 @@
-export { AssignmentTable } from './AssignmentTable';

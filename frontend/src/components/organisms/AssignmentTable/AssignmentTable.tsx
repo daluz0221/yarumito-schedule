@@ -163,7 +163,7 @@ function RowActions({
   onConfirm?: (row: AssignmentRow) => void
 }) {
   const historial = <HistorialAsignacion row={row} groupId={groupId} />
-  let accion: ReactNode = null
+  let accion: ReactNode
 
   if (readOnly) {
     accion = <span className={styles.muted}>Solo consulta</span>

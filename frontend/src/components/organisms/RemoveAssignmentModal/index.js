@@ -1,1 +1,0 @@
-export { RemoveAssignmentModal } from './RemoveAssignmentModal';

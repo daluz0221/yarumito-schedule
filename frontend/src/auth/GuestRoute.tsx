@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
-import { useAuth } from './AuthContext'
+import { useAuth } from './useAuth'
 import { SessionGate } from './SessionGate'
 
 export function GuestRoute({ children }: { children: ReactNode }) {

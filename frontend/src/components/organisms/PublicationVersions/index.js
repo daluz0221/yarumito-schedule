@@ -1,1 +1,0 @@
-export { PublicationVersions } from './PublicationVersions';

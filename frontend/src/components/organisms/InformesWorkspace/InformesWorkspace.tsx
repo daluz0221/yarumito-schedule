@@ -252,24 +252,21 @@ export function InformesWorkspace() {
     return () => controller.abort()
   }, [esRector])
 
-  useEffect(() => {
-    if (areaId && areas && !areas.some((area) => area.id === areaId)) {
-      setAreaId('')
-    }
-  }, [areaId, areas])
+  const areaActiva = areaId && areas && !areas.some((area) => area.id === areaId) ? '' : areaId
+  const docenteActivo =
+    docenteId && docentes.some((docente) => docente.id === docenteId) ? docenteId : ''
+  const [tipoVisto, setTipoVisto] = useState(tipo)
 
-  useEffect(() => {
-    if (docenteId && !docentes.some((docente) => docente.id === docenteId)) {
-      setDocenteId('')
-    }
-  }, [docenteId, docentes])
+  if (tipoVisto !== tipo) {
+    setTipoVisto(tipo)
+    setConsulta({ estado: 'inicial' })
+    setDescarga(null)
+    setDescargaError('')
+  }
 
   useEffect(() => {
     consultaAbort.current?.abort()
     descargaAbort.current?.abort()
-    setConsulta({ estado: 'inicial' })
-    setDescarga(null)
-    setDescargaError('')
   }, [tipo])
 
   useEffect(
@@ -292,7 +289,7 @@ export function InformesWorkspace() {
 
   function filtrosPlanta() {
     return {
-      areaNombramientoId: areaId || undefined,
+      areaNombramientoId: areaActiva || undefined,
       estado: estado || undefined,
       tipoVinculacion: vinculacion || undefined,
     }
@@ -300,15 +297,15 @@ export function InformesWorkspace() {
 
   function filtrosAreas() {
     return {
-      areaId: areaId || undefined,
+      areaId: areaActiva || undefined,
       activa: activa === '' ? undefined : activa === 'true',
     }
   }
 
   function filtrosPerfiles() {
     return {
-      docenteId: docenteId || undefined,
-      areaId: areaId || undefined,
+      docenteId: docenteActivo || undefined,
+      areaId: areaActiva || undefined,
       tipo: tipoIdoneidad || undefined,
     }
   }
@@ -450,7 +447,7 @@ export function InformesWorkspace() {
               id="informe-teacher"
               label="Docente"
               name="teacher"
-              value={docenteId}
+              value={docenteActivo}
               options={[
                 { value: '', label: 'Todos los docentes' },
                 ...docentes.map((docente) => ({
@@ -472,7 +469,7 @@ export function InformesWorkspace() {
                   : 'Área'
             }
             name="area"
-            value={areas ? areaId : ''}
+            value={areas ? areaActiva : ''}
             options={opcionesAreas}
             disabled={!esRector || areas === null || Boolean(areasError)}
             onChange={setAreaId}

@@ -1,1 +1,0 @@
-export { TeacherSuitabilitySection } from './TeacherSuitabilitySection';

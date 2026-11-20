@@ -153,14 +153,89 @@ export function GroupFormModal({
   const [submitError, setSubmitError] = useState('')
   const [directores, setDirectores] = useState<Teacher[] | null>(null)
   const [directoresError, setDirectoresError] = useState('')
-  const [aulas, setAulas] = useState<AulaResponse[] | null>(null)
-  const [aulasError, setAulasError] = useState('')
-  const [codigoSugeridoEstado, setCodigoSugeridoEstado] = useState<
-    'idle' | 'loading' | 'ready' | 'error'
-  >('idle')
+  const [directoresOpen, setDirectoresOpen] = useState(open)
+  const [createSync, setCreateSync] = useState<{
+    open: boolean
+    mode: GroupFormMode
+  } | null>(null)
+  const [editSync, setEditSync] = useState<{
+    open: boolean
+    mode: GroupFormMode
+    grupo?: GrupoResponse
+  } | null>(null)
+  const [sedeSync, setSedeSync] = useState<{ open: boolean; sedes: unknown }>({
+    open: false,
+    sedes: undefined,
+  })
+  const [aulasResult, setAulasResult] = useState<{
+    sedeId: string
+    aulas: AulaResponse[]
+    error: string
+  } | null>(null)
+  const [resultadoSugerencia, setResultadoSugerencia] = useState<{
+    clave: string
+    estado: 'ready' | 'error'
+  } | null>(null)
   const sugeridoAplicado = useRef('')
+  const sedeClave = open && esUuid(values.sedeId) ? values.sedeId : ''
+  const aulasPendientes = Boolean(sedeClave) && aulasResult?.sedeId !== sedeClave
+  const aulas = aulasPendientes ? null : (aulasResult?.aulas ?? null)
+  const aulasError = aulasPendientes ? '' : (aulasResult?.error ?? '')
+  const puedeSugerir =
+    open && mode === 'create' && esUuid(values.grade) && esUuid(year.id)
+  const claveSugerencia = puedeSugerir ? `${values.grade}|${year.id}` : ''
+  const codigoSugeridoEstado: 'idle' | 'loading' | 'ready' | 'error' = puedeSugerir
+    ? resultadoSugerencia?.clave === claveSugerencia
+      ? resultadoSugerencia.estado
+      : 'loading'
+    : (resultadoSugerencia?.estado ?? 'idle')
+
+  if (directoresOpen !== open) {
+    setDirectoresOpen(open)
+    if (open) {
+      setDirectores(null)
+      setDirectoresError('')
+    }
+  }
   const { grados, error: gradosError } = useCatalogoGrados(open)
   const { sedes, error: sedesError } = useCatalogoSedes(open)
+
+  if (!createSync || createSync.open !== open || createSync.mode !== mode) {
+    setCreateSync({ open, mode })
+    if (open && mode === 'create') {
+      setValues(createValues)
+      setAttempted(false)
+      setSubmitError('')
+      setResultadoSugerencia(null)
+    }
+  }
+
+  if (!editSync || editSync.open !== open || editSync.mode !== mode || editSync.grupo !== grupo) {
+    setEditSync({ open, mode, grupo })
+    if (open && mode === 'edit' && grupo) {
+      setValues({
+        code: grupo.codigo,
+        grade: grupo.gradoId,
+        students: grupo.cantidadEstudiantes == null ? '' : String(grupo.cantidadEstudiantes),
+        directorId: grupo.directorGrupoId ?? '',
+        status: grupo.activo ? 'ACTIVO' : 'INACTIVO',
+        classroomId: grupo.aulaFijaId && esUuid(grupo.aulaFijaId) ? grupo.aulaFijaId : '',
+        sedeId: grupo.sedeId,
+      })
+      setAttempted(false)
+      setSubmitError('')
+    }
+  }
+
+  if (sedeSync.open !== open || sedeSync.sedes !== sedes) {
+    setSedeSync({ open, sedes })
+    if (open && sedes?.length) {
+      const sedeId = sedeVisible(sedes)?.id ?? ''
+      setValues((current) =>
+        sedes.some((sede) => sede.id === current.sedeId) ? current : { ...current, sedeId },
+      )
+    }
+  }
   const gradeOptions = opcionesGradoRequerido(grados, gradosError)
   const sedeOptions = opcionesCatalogoSedes(sedes, sedesError)
   const gradoLista = Boolean(grados?.length) && !gradosError
@@ -219,30 +294,24 @@ export function GroupFormModal({
   }
 
   useEffect(() => {
-    if (!open || mode !== 'create') {
-      return
+    if (open && mode === 'create') {
+      sugeridoAplicado.current = ''
     }
-
-    setValues(createValues)
-    setAttempted(false)
-    setSubmitError('')
-    sugeridoAplicado.current = ''
-    setCodigoSugeridoEstado('idle')
   }, [mode, open])
 
   useEffect(() => {
-    if (!open || mode !== 'create' || !esUuid(values.grade) || !esUuid(year.id)) {
+    if (!puedeSugerir) {
       return
     }
 
     const controller = new AbortController()
     const gradoId = values.grade
     const anioId = year.id
-    setCodigoSugeridoEstado('loading')
+    const clave = claveSugerencia
 
     sugerirCodigoGrupo(gradoId, anioId, controller.signal)
       .then((codigo) => {
-        setCodigoSugeridoEstado('ready')
+        setResultadoSugerencia({ clave, estado: 'ready' })
         setValues((current) => {
           if (current.grade !== gradoId) {
             return current
@@ -263,29 +332,11 @@ export function GroupFormModal({
           return
         }
 
-        setCodigoSugeridoEstado('error')
+        setResultadoSugerencia({ clave, estado: 'error' })
       })
 
     return () => controller.abort()
-  }, [mode, open, values.grade, year.id])
-
-  useEffect(() => {
-    if (!open || mode !== 'edit' || !grupo) {
-      return
-    }
-
-    setValues({
-      code: grupo.codigo,
-      grade: grupo.gradoId,
-      students: grupo.cantidadEstudiantes == null ? '' : String(grupo.cantidadEstudiantes),
-      directorId: grupo.directorGrupoId ?? '',
-      status: grupo.activo ? 'ACTIVO' : 'INACTIVO',
-      classroomId: grupo.aulaFijaId && esUuid(grupo.aulaFijaId) ? grupo.aulaFijaId : '',
-      sedeId: grupo.sedeId,
-    })
-    setAttempted(false)
-    setSubmitError('')
-  }, [grupo, mode, open])
+  }, [claveSugerencia, puedeSugerir, values.grade, year.id])
 
   useEffect(() => {
     if (!open) {
@@ -293,8 +344,6 @@ export function GroupFormModal({
     }
 
     const controller = new AbortController()
-    setDirectores(null)
-    setDirectoresError('')
 
     const cargar = async () => {
       const size = 100
@@ -336,26 +385,12 @@ export function GroupFormModal({
   }, [open])
 
   useEffect(() => {
-    if (!open || !sedes?.length) {
-      return
-    }
-
-    const sedeId = sedeVisible(sedes)?.id ?? ''
-
-    setValues((current) =>
-      sedes.some((sede) => sede.id === current.sedeId) ? current : { ...current, sedeId },
-    )
-  }, [open, sedes])
-
-  useEffect(() => {
-    if (!open || !esUuid(values.sedeId)) {
+    if (!sedeClave) {
       return
     }
 
     const controller = new AbortController()
-    const sedeId = values.sedeId
-    setAulas(null)
-    setAulasError('')
+    const sedeId = sedeClave
 
     listarAulasPorSede(sedeId, controller.signal)
       .then((items) => {
@@ -363,20 +398,22 @@ export function GroupFormModal({
           return
         }
 
-        setAulas(items)
-        setAulasError('')
+        setAulasResult({ sedeId, aulas: items, error: '' })
       })
       .catch((cause) => {
         if (cause instanceof DOMException && cause.name === 'AbortError') {
           return
         }
 
-        setAulas([])
-        setAulasError('No se pudieron cargar las aulas. Puedes guardar el grupo sin aula.')
+        setAulasResult({
+          sedeId,
+          aulas: [],
+          error: 'No se pudieron cargar las aulas. Puedes guardar el grupo sin aula.',
+        })
       })
 
     return () => controller.abort()
-  }, [open, values.sedeId])
+  }, [sedeClave])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()

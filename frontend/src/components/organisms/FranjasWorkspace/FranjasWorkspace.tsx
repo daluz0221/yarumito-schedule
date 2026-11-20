@@ -50,10 +50,13 @@ function coincide(franja: FranjaHorariaResponse, query: string) {
 export function FranjasWorkspace() {
   const [turnos, setTurnos] = useState<TurnoResponse[]>([])
   const [turnosError, setTurnosError] = useState('')
-  const [turnoId, setTurnoId] = useState('')
-  const [franjas, setFranjas] = useState<FranjaHorariaResponse[]>([])
+  const [chosenTurnoId, setTurnoId] = useState('')
+  const turnoId = chosenTurnoId || turnos[0]?.id || ''
+  const [franjasState, setFranjas] = useState<FranjaHorariaResponse[]>([])
+  const [loadedTurnoId, setLoadedTurnoId] = useState('')
+  const franjas = turnoId && loadedTurnoId === turnoId ? franjasState : []
   const [query, setQuery] = useState('')
-  const [loading, setLoading] = useState(false)
+  const loading = Boolean(turnoId) && loadedTurnoId !== turnoId
   const [error, setError] = useState('')
   const [modal, setModal] = useState<
     { name: 'closed' } | { name: 'create' } | { name: 'edit'; id: string }
@@ -88,28 +91,19 @@ export function FranjasWorkspace() {
   }, [])
 
   useEffect(() => {
-    if (turnoId || turnos.length === 0) {
-      return
-    }
-
-    setTurnoId(turnos[0].id)
-  }, [turnos, turnoId])
-
-  useEffect(() => {
     if (!turnoId) {
-      setFranjas([])
-      setLoading(false)
       return
     }
 
     const controller = new AbortController()
-    setLoading(true)
-    setError('')
+    const requestedTurnoId = turnoId
 
-    listarFranjasPorTurno(turnoId, controller.signal)
+    listarFranjasPorTurno(requestedTurnoId, controller.signal)
       .then((items) => {
         if (!controller.signal.aborted) {
           setFranjas(items ?? [])
+          setError('')
+          setLoadedTurnoId(requestedTurnoId)
         }
       })
       .catch((cause) => {
@@ -123,11 +117,7 @@ export function FranjasWorkspace() {
             ? cause.message
             : 'No se pudieron cargar las franjas del turno.',
         )
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false)
-        }
+        setLoadedTurnoId(requestedTurnoId)
       })
 
     return () => controller.abort()

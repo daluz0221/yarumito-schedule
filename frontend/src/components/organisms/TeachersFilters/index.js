@@ -1,1 +1,0 @@
-export { TeachersFilters } from './TeachersFilters';

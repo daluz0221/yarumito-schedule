@@ -1,1 +1,0 @@
-export { PublicationWorkspace } from './PublicationWorkspace';

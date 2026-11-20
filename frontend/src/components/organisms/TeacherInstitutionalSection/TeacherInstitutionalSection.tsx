@@ -43,18 +43,21 @@ export function TeacherInstitutionalSection({
   errors = {},
   onChange,
 }: TeacherInstitutionalSectionProps) {
-  const [regimen, setRegimen] = useState(() => regimenDesdeEscalafon(values.escalafon))
+  const [regimenElegido, setRegimen] = useState('')
+  const regimen = regimenElegido || regimenDesdeEscalafon(values.escalafon)
   const [regimenes, setRegimenes] = useState<OpcionCatalogo[]>([])
-  const [escalafones, setEscalafones] = useState<OpcionCatalogo[]>([])
-  const [escalafonesError, setEscalafonesError] = useState('')
+  const [escalafonResult, setEscalafonResult] = useState<{
+    regimen: string
+    items: OpcionCatalogo[]
+    error: string
+  }>({ regimen: '', items: [], error: '' })
   const sinEscalafon = regimen === 'ETNO_AFRO' || regimen === 'NO_APLICA'
-
-  useEffect(() => {
-    const inferido = regimenDesdeEscalafon(values.escalafon)
-    if (inferido) {
-      setRegimen((current) => current || inferido)
-    }
-  }, [values.escalafon])
+  const escalafones =
+    regimen && !sinEscalafon && escalafonResult.regimen === regimen
+      ? escalafonResult.items
+      : []
+  const escalafonesError =
+    regimen && escalafonResult.regimen === regimen ? escalafonResult.error : ''
 
   useEffect(() => {
     const controller = new AbortController()
@@ -76,27 +79,29 @@ export function TeacherInstitutionalSection({
 
   useEffect(() => {
     if (!regimen) {
-      setEscalafones([])
-      setEscalafonesError('')
       return
     }
 
     const controller = new AbortController()
-    setEscalafonesError('')
-    if (regimen === 'ETNO_AFRO' || regimen === 'NO_APLICA') {
-      setEscalafones([])
-    }
+    const regimenActual = regimen
 
-    listarEscalafones(regimen, controller.signal)
+    listarEscalafones(regimenActual, controller.signal)
       .then((items) => {
         if (!controller.signal.aborted) {
-          setEscalafones(items ?? [])
+          setEscalafonResult({
+            regimen: regimenActual,
+            items: items ?? [],
+            error: '',
+          })
         }
       })
       .catch(() => {
         if (!controller.signal.aborted) {
-          setEscalafones([])
-          setEscalafonesError('No se pudieron cargar los escalafones.')
+          setEscalafonResult({
+            regimen: regimenActual,
+            items: [],
+            error: 'No se pudieron cargar los escalafones.',
+          })
         }
       })
 

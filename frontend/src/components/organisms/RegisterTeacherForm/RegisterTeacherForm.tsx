@@ -104,9 +104,6 @@ export function RegisterTeacherForm({
   useEffect(() => {
     const controller = new AbortController()
 
-    setAreasLoading(true)
-    setAreasError('')
-
     listarAreas(controller.signal)
       .then((areas) => {
         setAreaOptions(toAreaSelectOptions(areas))

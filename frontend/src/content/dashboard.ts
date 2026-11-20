@@ -58,11 +58,15 @@ export type StatWash =
   | 'success'
   | 'neutral'
 
+export type StatBadgeTone = 'neutral' | 'success' | 'warning' | 'muted'
+
 export type StatItemData = {
   id: string
   value: string
   label: string
   wash?: StatWash
+  badge?: string
+  badgeTone?: StatBadgeTone
 }
 
 export type AlertItemData = {
@@ -185,13 +189,6 @@ export const sidebarAccountNav: NavItemData[] = [
   { id: 'logout', label: 'Cerrar sesión', icon: 'logout' },
 ]
 
-export const dashboardStats: StatItemData[] = [
-  { id: 'teachers', value: '12', label: 'Docentes activos' },
-  { id: 'groups', value: '10', label: 'Grupos activos' },
-  { id: 'areas', value: '9', label: 'Áreas académicas' },
-  { id: 'year', value: '2026', label: 'Año lectivo' },
-]
-
 export const dashboardModules: ModuleItemData[] = [
   {
     id: 'teachers',
@@ -282,23 +279,5 @@ export const dashboardModules: ModuleItemData[] = [
     icon: 'clipboard',
     available: true,
     to: '/dashboard/informes',
-  },
-]
-
-export const dashboardAlerts: AlertItemData[] = [
-  {
-    id: 'teachers-open',
-    message: '2 docentes sin restricciones: disponibles',
-    tone: 'warning',
-  },
-  {
-    id: 'plan-pending',
-    message: '1 grado con plan de estudios pendiente',
-    tone: 'alert',
-  },
-  {
-    id: 'validation-pending',
-    message: 'Validación horaria pendiente',
-    tone: 'success',
   },
 ]

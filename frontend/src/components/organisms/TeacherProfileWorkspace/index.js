@@ -1,1 +1,0 @@
-export { TeacherProfileWorkspace } from './TeacherProfileWorkspace';

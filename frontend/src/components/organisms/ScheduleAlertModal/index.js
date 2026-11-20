@@ -1,1 +1,0 @@
-export { ScheduleAlertModal } from './ScheduleAlertModal';

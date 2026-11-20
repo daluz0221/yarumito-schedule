@@ -1,1 +1,0 @@
-export { AreasWorkspace } from './AreasWorkspace';

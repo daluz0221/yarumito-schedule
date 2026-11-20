@@ -150,7 +150,7 @@ export function listarDocentes(
     }))
 }
 
-async function countDocentes(
+export async function contarDocentes(
   estado: TeacherStatus | undefined,
   signal?: AbortSignal,
 ) {
@@ -170,10 +170,10 @@ export async function consultarResumenDocentes(
   signal?: AbortSignal,
 ): Promise<StatItemData[]> {
   const [total, active, license, retired] = await Promise.all([
-    countDocentes(undefined, signal),
-    countDocentes('ACTIVO', signal),
-    countDocentes('LICENCIA', signal),
-    countDocentes('RETIRADO', signal),
+    contarDocentes(undefined, signal),
+    contarDocentes('ACTIVO', signal),
+    contarDocentes('LICENCIA', signal),
+    contarDocentes('RETIRADO', signal),
   ])
 
   return teacherStatsFromCounts({ total, active, license, retired })
