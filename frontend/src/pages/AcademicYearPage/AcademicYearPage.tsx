@@ -10,8 +10,8 @@ export function AcademicYearPage() {
       sidebar={({ onNavigate }) => <Sidebar onNavigate={onNavigate} />}
       header={({ onMenuClick }) => (
         <DashboardHeader
-          title="Año lectivo y grupos"
-          subtitle="Configuración del período académico y sus grupos activos"
+          title="Año lectivo"
+          subtitle="Configuración del período académico"
           onMenuClick={onMenuClick}
         />
       )}
@@ -19,7 +19,7 @@ export function AcademicYearPage() {
       <Breadcrumb
         items={[
           { label: 'Configuración académica' },
-          { label: 'Año lectivo y grupos' },
+          { label: 'Año lectivo' },
         ]}
       />
       <AcademicYearWorkspace />
