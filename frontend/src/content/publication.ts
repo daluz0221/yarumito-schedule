@@ -1,6 +1,5 @@
-import type { AuthUser } from '../api'
+import type { DatosPublicacion } from '../api/publicacionHorario'
 import type { AcademicYear } from './academicYear'
-import { seedPlacements, type SchedulePlacement } from './scheduleConstruction'
 import {
   publishReadiness,
   scheduleNameForYear,
@@ -17,13 +16,6 @@ export type PublicationCheck = {
   passed: boolean
 }
 
-export type PublicationRecord = {
-  version: number
-  action: 'Publicado'
-  actor: string
-  at: string
-}
-
 export type PublicationView = {
   scheduleName: string
   yearLabel: string
@@ -35,11 +27,12 @@ export type PublicationView = {
   classes: number
   errors: number
   warnings: number
-  author: string
+  pendingHours: number
   publicationLabel: 'Pendiente' | 'Publicado'
   readiness: PublishReadiness
   checks: PublicationCheck[]
   versionCaption: string
+  hasSchedule: boolean
 }
 
 export type PublicationWarningItem = {
@@ -47,9 +40,7 @@ export type PublicationWarningItem = {
   title: string
 }
 
-export type PublicationModal = 'none' | 'warnings' | 'confirm' | 'blocked' | 'success'
-
-export const publicationVersion = 1
+export type PublicationModal = 'none' | 'warnings' | 'blocked'
 
 export const publicationCopy = {
   pageTitle: 'Publicación del horario',
@@ -57,13 +48,13 @@ export const publicationCopy = {
   summaryTitle: 'Resumen final',
   checksTitle: 'Comprobaciones antes de publicar',
   versionsTitle: 'Versiones del horario',
-  currentVersion: 'v1 · Actual',
   previousTitle: 'Versiones anteriores',
   previousEmpty:
-    'No se muestran versiones anteriores publicadas en este ejemplo. Si existen, deben preservarse; el archivado automático de una versión previa queda pendiente de regla de negocio explícita.',
+    'El servidor aún no expone el historial de versiones. Las versiones anteriores deben preservarse; el archivado de una versión previa queda pendiente de regla de negocio explícita.',
   logTitle: 'Registro de publicación',
-  logEmpty: 'Aún no hay registros de publicación para este horario.',
-  logNote: 'El backend aún no conserva la publicación. Este registro queda en la sesión actual.',
+  logEmpty: 'El servidor aún no entrega el registro de publicaciones de este horario.',
+  logPublished: 'Este horario ya figura como publicado en el servidor.',
+  logNote: 'La publicación desde esta pantalla se habilitará cuando el servidor la soporte.',
   publish: 'Publicar horario',
   published: 'Publicado',
   seeWarnings: 'Ver advertencias',
@@ -73,62 +64,36 @@ export const publicationCopy = {
   warningsNote: 'Existen advertencias pendientes. Revisa su impacto antes de publicar.',
   blockingNote: 'Existen errores pendientes. Corrige el horario y vuelve a validar antes de publicar.',
   readyNote: 'No hay errores ni advertencias pendientes. Puedes publicar esta versión.',
+  noScheduleNote: 'Este año aún no tiene horarios construidos para sus grupos activos.',
   warningsTitle: 'Advertencias pendientes',
   warningsLead: (count: number) =>
     `Este horario no contiene errores bloqueantes, pero mantiene ${count} ${count === 1 ? 'advertencia' : 'advertencias'}.`,
   warningsDisclaimer: 'Las advertencias no bloquean por sí mismas este flujo de publicación.',
   warningsReview: 'Volver a revisar',
-  warningsPublish: 'Publicar de todas formas',
-  confirmTitle: 'Publicar horario',
-  confirmLead: (version: number, scheduleName: string, campus: string) =>
-    `Se publicará la versión ${version} del ${scheduleName} para la ${campus}.`,
-  confirmEffects: [
-    'El horario pasará de BORRADOR a PUBLICADO.',
-    'Se registrará la fecha de publicación.',
-    'Esta versión será disponible para consulta.',
-    'Las versiones anteriores, si existen, deben preservarse.',
-  ],
-  confirmCancel: 'Cancelar',
-  confirmAction: 'Publicar horario',
   blockedTitle: 'Publicación bloqueada',
   blockedLead: 'No es posible publicar mientras existan errores pendientes.',
   blockedHint: 'Vuelve a Validaciones y conflictos, corrige el horario y ejecuta una nueva validación.',
   blockedAction: 'Volver a validaciones',
-  successTitle: 'Horario publicado',
-  successLead: (version: number, scheduleName: string) =>
-    `La versión ${version} del ${scheduleName} fue publicada correctamente.`,
-  successSeeSchedule: 'Ver horario',
-  successClose: 'Cerrar',
-}
-
-export function publicationAuthor(user: AuthUser | null) {
-  if (user?.rol === 'DOCENTE') {
-    return 'Docente'
-  }
-
-  return 'Rector / Administrador'
 }
 
 export function buildPublicationView({
   year,
-  placements = seedPlacements,
-  conflicts,
-  author,
-  published,
+  datos,
   campusName,
 }: {
   year: AcademicYear
-  placements?: SchedulePlacement[]
-  conflicts: ReviewedConflict[]
-  author: string
-  published: boolean
+  datos: DatosPublicacion
   campusName: string
 }): PublicationView {
-  const yearPlacements = placements.filter((item) => item.yearId === year.id)
-  const pending = conflicts.filter((item) => item.status === 'PENDIENTE')
+  const { tableros, conflictos } = datos
+  const scheduleName = scheduleNameForYear(year)
+  const conRegistro = tableros.filter((item) => item.horarioId)
+  const pending = conflictos.filter((item) => item.status === 'PENDIENTE')
   const errors = pending.filter((item) => item.severity === 'ERROR').length
   const warnings = pending.filter((item) => item.severity === 'ADVERTENCIA').length
-  const scheduleName = scheduleNameForYear(year)
+  const pendingHours = tableros.reduce((total, item) => total + (item.resumen?.horasPendientes ?? 0), 0)
+  const published =
+    conRegistro.length > 0 && conRegistro.every((item) => item.estadoHorario === 'PUBLICADO')
   const campusFull = campusName.trim() || 'Sede no disponible'
 
   return {
@@ -136,19 +101,20 @@ export function buildPublicationView({
     yearLabel: String(year.year),
     campus: campusFull.replace(/^Sede\s+/i, ''),
     campusFull,
-    version: publicationVersion,
+    version: conRegistro.reduce((max, item) => Math.max(max, item.versionHorario || 1), 0),
     status: published ? 'PUBLICADO' : 'BORRADOR',
-    groups: new Set(yearPlacements.map((item) => item.groupId)).size,
-    classes: yearPlacements.length,
+    groups: tableros.filter((item) => (item.clasesProgramadas ?? []).length > 0).length,
+    classes: tableros.reduce((total, item) => total + (item.clasesProgramadas ?? []).length, 0),
     errors,
     warnings,
-    author,
+    pendingHours,
     publicationLabel: published ? 'Publicado' : 'Pendiente',
     readiness: publishReadiness(errors, warnings),
-    checks: publicationChecks(pending),
+    checks: publicationChecks(pending, pendingHours),
     versionCaption: published
-      ? `${scheduleName} · publicado en esta sesión`
+      ? `${scheduleName} · publicado`
       : `${scheduleName} · pendiente de publicación`,
+    hasSchedule: conRegistro.length > 0,
   }
 }
 
@@ -163,7 +129,7 @@ export function pendingPublicationWarnings(conflicts: ReviewedConflict[]): Publi
 
 export function publicationWarningTitle(conflict: ReviewedConflict) {
   if (conflict.kind === 'capacity') {
-    return conflict.classroom ? `Sobreaforo — ${conflict.classroom}` : 'Sobreaforo'
+    return conflict.classroom ? `Sobreaforo — ${conflict.classroom}` : conflict.message || 'Sobreaforo'
   }
 
   if (conflict.kind === 'preference') {
@@ -174,26 +140,18 @@ export function publicationWarningTitle(conflict: ReviewedConflict) {
     return conflict.subject ? `Aula no requerida — ${conflict.subject}` : 'Aula no requerida'
   }
 
-  if (conflict.kind === 'incomplete-hours') {
-    return conflict.subject && conflict.groupCode
-      ? `${conflict.subject} — grupo ${conflict.groupCode}`
-      : conflict.message
-  }
-
   return conflict.message
 }
 
-export function publicationChecks(pending: ReviewedConflict[]): PublicationCheck[] {
+export function publicationChecks(pending: ReviewedConflict[], pendingHours: number): PublicationCheck[] {
   const hasError = (...kinds: ConflictKind[]) =>
     pending.some((item) => item.severity === 'ERROR' && kinds.includes(item.kind))
-
-  const incomplete = pending.some((item) => item.kind === 'incomplete-hours')
 
   return [
     {
       id: 'assignments',
       label: 'Asignaciones académicas programadas',
-      passed: !incomplete,
+      passed: pendingHours === 0,
     },
     {
       id: 'teacher',

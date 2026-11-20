@@ -37,11 +37,13 @@ export function PublicationReadiness({
         ) : null}
       </div>
       <p>
-        {blocked
-          ? publicationCopy.blockingNote
-          : view.warnings > 0
-            ? publicationCopy.warningsNote
-            : publicationCopy.readyNote}
+        {!view.hasSchedule
+          ? publicationCopy.noScheduleNote
+          : blocked
+            ? publicationCopy.blockingNote
+            : view.warnings > 0
+              ? publicationCopy.warningsNote
+              : publicationCopy.readyNote}
       </p>
     </div>
   )

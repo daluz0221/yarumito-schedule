@@ -18,7 +18,6 @@ import {
 import type { AreaResponse } from '../../../api/areas'
 import type { GradoResponse } from '../../../api/grados'
 import type { PlanEstudiosResponse } from '../../../api/planesEstudio'
-import { academicYears } from '../../../content/academicYear'
 import {
   configuredWeeklyHours,
   filterStudyPlanEntries,
@@ -73,7 +72,7 @@ function vistaGrado(grado: GradoResponse): StudyPlanGrade {
 
 export function StudyPlanWorkspace() {
   const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
-  const catalogo = aniosError ? academicYears : anios
+  const catalogo = anios
   const [yearId, setYearId] = useState('')
   const [gradeId, setGradeId] = useState('')
   const [area, setArea] = useState('')
@@ -284,8 +283,7 @@ export function StudyPlanWorkspace() {
       {aniosLoading ? <p className={styles.notice}>Cargando años escolares…</p> : null}
       {aniosError ? (
         <p className={styles.alert} role="alert">
-          {aniosError} Se muestran los años de referencia locales para que puedas seguir
-          revisando el plan.
+          {aniosError}
         </p>
       ) : null}
       {planesError ? (
