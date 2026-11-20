@@ -6,6 +6,7 @@ import {
   ProtectedRoute,
 } from './auth'
 import { AcademicYearPage } from './pages/AcademicYearPage'
+import { SchoolGroupsPage } from './pages/SchoolGroupsPage'
 import { AuditoriaPage } from './pages/AuditoriaPage'
 import { AulasPage } from './pages/AulasPage'
 import { AreasPage } from './pages/AreasPage'
@@ -47,6 +48,7 @@ export default function App() {
               path="/dashboard/anio-lectivo"
               element={<AcademicYearPage />}
             />
+            <Route path="/dashboard/grupos" element={<SchoolGroupsPage />} />
             <Route path="/dashboard/sedes" element={<SedesPage />} />
             <Route path="/dashboard/aulas" element={<AulasPage />} />
             <Route path="/dashboard/turnos" element={<TurnosPage />} />

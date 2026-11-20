@@ -7,9 +7,11 @@ import {
   listarAsignaturas,
   listarCatalogoTurnos,
   listarPlanesEstudio,
+  listarPlanesEstudioRetirados,
   opcionesAniosEscolares,
   opcionesSelectorPlan,
   planDesdeGrado,
+  reactivarPlanEstudios,
   useCatalogoAniosEscolares,
   useCatalogoGrados,
 } from '../../../api'
@@ -83,6 +85,10 @@ export function StudyPlanWorkspace() {
   const [turnoPorId, setTurnoPorId] = useState<ReadonlyMap<string, string>>(() => new Map())
   const [planes, setPlanes] = useState<PlanEstudiosResponse[] | null>(null)
   const [planesError, setPlanesError] = useState('')
+  const [retirados, setRetirados] = useState<PlanEstudiosResponse[]>([])
+  const [retiradosLoading, setRetiradosLoading] = useState(false)
+  const [retiradosError, setRetiradosError] = useState('')
+  const [showRetired, setShowRetired] = useState(false)
   const { grados, error: gradosError, loading: gradosLoading } = useCatalogoGrados()
 
   useEffect(() => {
@@ -175,30 +181,18 @@ export function StudyPlanWorkspace() {
     return () => controller.abort()
   }, [])
 
-  useEffect(() => {
-    if (!catalogo?.length) {
-      return
-    }
-
-    setYearId((current) =>
-      catalogo.some((year) => year.id === current)
-        ? current
-        : (anioEscolarVisible(catalogo)?.id ?? ''),
-    )
-  }, [catalogo])
-
-  useEffect(() => {
-    if (!grados?.length) {
-      return
-    }
-
-    setGradeId((current) =>
-      grados.some((grado) => grado.id === current) ? current : grados[0].id,
-    )
-  }, [grados])
-
-  const year = catalogo?.find((item) => item.id === yearId) ?? null
-  const grado = grados?.find((item) => item.id === gradeId) ?? null
+  const selectedYearId = catalogo?.some((year) => year.id === yearId)
+    ? yearId
+    : catalogo?.length
+      ? (anioEscolarVisible(catalogo)?.id ?? '')
+      : ''
+  const selectedGradeId = grados?.some((grado) => grado.id === gradeId)
+    ? gradeId
+    : grados?.length
+      ? grados[0].id
+      : ''
+  const year = catalogo?.find((item) => item.id === selectedYearId) ?? null
+  const grado = grados?.find((item) => item.id === selectedGradeId) ?? null
   const grade = grado ? vistaGrado(grado) : null
   const planesLoading = planes === null && !planesError
   const entriesDelAnio = (planes ?? [])
@@ -214,6 +208,54 @@ export function StudyPlanWorkspace() {
   const areaNames = areas.length
     ? areas.map((item) => item.nombre)
     : [...new Set(planEntries.map((entry) => entry.area))]
+
+  const cargarRetirados = async () => {
+    setRetiradosLoading(true)
+    setRetiradosError('')
+
+    try {
+      setRetirados(await listarPlanesEstudioRetirados())
+    } catch (cause) {
+      setRetirados([])
+      setRetiradosError(mensajeError(cause, 'No se pudieron cargar las asignaturas retiradas.'))
+    } finally {
+      setRetiradosLoading(false)
+    }
+  }
+
+  const toggleRetired = () => {
+    const next = !showRetired
+
+    setShowRetired(next)
+
+    if (next) {
+      void cargarRetirados()
+    }
+  }
+
+  // H-04: reactiva una asignatura retirada y la devuelve al plan activo.
+  const restaurarPlan = async (planId: string) => {
+    setRetiradosError('')
+
+    try {
+      const plan = await reactivarPlanEstudios(planId)
+
+      setRetirados((current) => current.filter((item) => item.id !== planId))
+      setPlanes((current) => {
+        const list = current ?? []
+
+        return list.some((item) => item.id === plan.id)
+          ? list.map((item) => (item.id === plan.id ? plan : item))
+          : [...list, plan]
+      })
+    } catch (cause) {
+      setRetiradosError(mensajeError(cause, 'No se pudo reactivar la asignatura.'))
+    }
+  }
+
+  const retiredRows = retirados
+    .filter((plan) => plan.anioEscolarId === year?.id && plan.gradoId === grado?.id)
+    .map((plan) => entradaDesdePlan(plan, areaPorAsignatura, turnoPorId))
 
   const selectYear = (nextYearId: string) => {
     setYearId(nextYearId)
@@ -319,6 +361,17 @@ export function StudyPlanWorkspace() {
               }
               onAreaChange={setArea}
               onQueryChange={setQuery}
+              showRetired={showRetired}
+              onToggleRetired={toggleRetired}
+              retiredRows={retiredRows}
+              retiredLoading={retiradosLoading}
+              retiredError={retiradosError}
+              onRestore={(entry) => {
+                void restaurarPlan(entry.id)
+              }}
+              onRetired={(plan) => {
+                setRetirados((current) => [...current.filter((item) => item.id !== plan.id), plan])
+              }}
             />
           </>
         )

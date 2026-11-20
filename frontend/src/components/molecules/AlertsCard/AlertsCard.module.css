@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-height: 100%;
+  width: 100%;
 }
 
 .list {
@@ -12,4 +12,19 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+@media (min-width: 861px) {
+  .list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    column-gap: 28px;
+    row-gap: 12px;
+  }
+
+  .list > li {
+    flex: 1 1 280px;
+    max-width: 100%;
+  }
 }

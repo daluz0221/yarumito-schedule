@@ -173,7 +173,10 @@ function FranjaFormFields({
   const [values, setValues] = useState<FormValues>(() =>
     creating ? sugerir(turnoInicial, franjas) : valuesFromFranja(franja as FranjaHorariaResponse),
   )
-  const [hermanas, setHermanas] = useState<FranjaHorariaResponse[]>(franjas)
+  const [hermanasCargadas, setHermanas] = useState<FranjaHorariaResponse[]>(franjas)
+  const [hermanasDe, setHermanasDe] = useState(values.turnoId)
+  const hermanas =
+    values.turnoId && hermanasDe === values.turnoId ? hermanasCargadas : []
   const [attempted, setAttempted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -211,16 +214,17 @@ function FranjaFormFields({
 
   useEffect(() => {
     if (!values.turnoId) {
-      setHermanas([])
       return
     }
 
     const controller = new AbortController()
+    const turnoId = values.turnoId
 
-    listarFranjasPorTurno(values.turnoId, controller.signal)
+    listarFranjasPorTurno(turnoId, controller.signal)
       .then((items) => {
         if (!controller.signal.aborted) {
           setHermanas(items ?? [])
+          setHermanasDe(turnoId)
         }
       })
       .catch((cause) => {
@@ -229,6 +233,7 @@ function FranjaFormFields({
         }
 
         setHermanas([])
+        setHermanasDe(turnoId)
       })
 
     return () => controller.abort()

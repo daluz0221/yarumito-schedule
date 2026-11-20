@@ -15,6 +15,7 @@ export type RestriccionDocenteResponse = {
   motivo: string | null
   documentoSoporte: string | null
   aprobadaPorId: string | null
+  activo?: boolean
 }
 
 export type CrearRestriccionDocenteRequest = {
@@ -138,5 +139,51 @@ export function actualizarRestriccion(id: string, payload: ActualizarRestriccion
   return api.put<RestriccionDocenteResponse, ActualizarRestriccionDocenteRequest>(
     `/api/v1/restricciones-docentes/${id}`,
     payload,
+  )
+}
+
+function listarCrudas(path: string, signal?: AbortSignal) {
+  return api
+    .get<RestriccionDocenteResponse[]>(path, { signal })
+    .then((items) => (Array.isArray(items) ? items : []))
+}
+
+// H-04: baja lógica. Las retiradas e históricas se devuelven sin transformar
+// para conservar el campo `activo`.
+export function retirarRestriccion(id: string) {
+  return api.patch<RestriccionDocenteResponse>(`/api/v1/restricciones-docentes/${id}/retirar`)
+}
+
+export function reactivarRestriccion(id: string) {
+  return api.patch<RestriccionDocenteResponse>(`/api/v1/restricciones-docentes/${id}/reactivar`)
+}
+
+export function listarRestriccionesRetiradasPorAnio(anioEscolarId: string, signal?: AbortSignal) {
+  return listarCrudas(`/api/v1/restricciones-docentes/anio/${anioEscolarId}/retiradas`, signal)
+}
+
+export function listarRestriccionesRetiradasPorDocenteYAnio(
+  docenteId: string,
+  anioEscolarId: string,
+  signal?: AbortSignal,
+) {
+  return listarCrudas(
+    `/api/v1/restricciones-docentes/docente/${docenteId}/anio/${anioEscolarId}/retiradas`,
+    signal,
+  )
+}
+
+export function listarHistoricoRestriccionesPorAnio(anioEscolarId: string, signal?: AbortSignal) {
+  return listarCrudas(`/api/v1/restricciones-docentes/anio/${anioEscolarId}/historico`, signal)
+}
+
+export function listarHistoricoRestriccionesPorDocenteYAnio(
+  docenteId: string,
+  anioEscolarId: string,
+  signal?: AbortSignal,
+) {
+  return listarCrudas(
+    `/api/v1/restricciones-docentes/docente/${docenteId}/anio/${anioEscolarId}/historico`,
+    signal,
   )
 }

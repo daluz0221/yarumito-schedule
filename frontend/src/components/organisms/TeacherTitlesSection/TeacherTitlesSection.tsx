@@ -4,7 +4,7 @@ import {
 } from '../../../content/teacherProfile'
 import { Button } from '../../atoms/Button'
 import { Card } from '../../atoms/Card'
-import { IconAction } from '../../atoms/IconAction'
+import { IconAction, IconActions } from '../../atoms/IconAction'
 import { PlusIcon } from '../../atoms/icons'
 import { Table } from '../../atoms/Table'
 import { Text } from '../../atoms/Text'
@@ -20,6 +20,14 @@ export type TeacherTitlesSectionProps = {
   onRetry?: () => void
   onAdd?: () => void
   onEdit?: (item: ProfessionalTitle) => void
+  onRetire?: (item: ProfessionalTitle) => void
+  // H-04: títulos retirados y su reactivación.
+  retiredItems?: ProfessionalTitle[]
+  retiredLoading?: boolean
+  retiredError?: string
+  showRetired?: boolean
+  onToggleRetired?: () => void
+  onRestore?: (item: ProfessionalTitle) => void
 }
 
 export function TeacherTitlesSection({
@@ -29,45 +37,103 @@ export function TeacherTitlesSection({
   onRetry,
   onAdd,
   onEdit,
+  onRetire,
+  retiredItems = [],
+  retiredLoading = false,
+  retiredError = '',
+  showRetired = false,
+  onToggleRetired,
+  onRestore,
 }: TeacherTitlesSectionProps) {
+  const viewingRetired = showRetired && Boolean(onToggleRetired)
+  const rows = viewingRetired ? retiredItems : items
+  const isLoading = viewingRetired ? retiredLoading : loading
+  const currentError = viewingRetired ? retiredError : error
+  const hasActions = viewingRetired ? Boolean(onRestore) : Boolean(onEdit || onRetire)
+  const emptyMessage = viewingRetired
+    ? 'Este docente no tiene títulos retirados.'
+    : 'No hay títulos profesionales registrados para este docente.'
+
+  const renderActions = (item: ProfessionalTitle) => (
+    <RowActions>
+      {viewingRetired ? (
+        onRestore ? (
+          <IconAction
+            tone="restore"
+            label={`Reactivar ${item.name || 'título'}`}
+            onClick={() => onRestore(item)}
+          />
+        ) : null
+      ) : (
+        <>
+          {onEdit ? (
+            <IconAction
+              label={`Editar ${item.name || 'título'}`}
+              onClick={() => onEdit(item)}
+            />
+          ) : null}
+          {onRetire ? (
+            <IconAction
+              tone="danger"
+              label={`Retirar ${item.name || 'título'}`}
+              onClick={() => onRetire(item)}
+            />
+          ) : null}
+        </>
+      )}
+    </RowActions>
+  )
+
   return (
     <section className={styles.section}>
       <SectionHeader
-        title="Títulos profesionales"
-        description="Formación académica registrada como soporte del perfil profesional del docente."
+        title={viewingRetired ? 'Títulos retirados' : 'Títulos profesionales'}
+        description={
+          viewingRetired
+            ? 'Títulos dados de baja. Puedes reactivarlos si vuelven a ser válidos.'
+            : 'Formación académica registrada como soporte del perfil profesional del docente.'
+        }
         action={
-          onAdd ? (
-            <Button size="sm" onClick={onAdd}>
-              <PlusIcon />
-              Agregar título
-            </Button>
-          ) : null
+          <IconActions>
+            {onToggleRetired ? (
+              <IconAction
+                tone="archive"
+                pressed={viewingRetired}
+                label={viewingRetired ? 'Ver títulos activos' : 'Ver títulos retirados'}
+                onClick={onToggleRetired}
+              />
+            ) : null}
+            {onAdd && !viewingRetired ? (
+              <Button size="sm" onClick={onAdd}>
+                <PlusIcon />
+                Agregar título
+              </Button>
+            ) : null}
+          </IconActions>
         }
       />
       <Card padding="sm" className={styles.card}>
-        {loading ? (
+        {isLoading ? (
           <p className={styles.status}>Cargando títulos...</p>
-        ) : error && items.length === 0 ? (
+        ) : currentError && rows.length === 0 ? (
           <div className={styles.feedback}>
             <p className={styles.error} role="alert">
-              {error}
+              {currentError}
             </p>
-            {onRetry ? (
+            {onRetry && !viewingRetired ? (
               <TextLink onClick={onRetry}>Reintentar</TextLink>
             ) : null}
           </div>
-        ) : items.length === 0 ? (
-          <p className={styles.empty}>
-            No hay títulos profesionales registrados para este docente.
-          </p>
+        ) : rows.length === 0 ? (
+          <p className={styles.empty}>{emptyMessage}</p>
         ) : (
           <>
-            {error ? (
+            {currentError ? (
               <div className={styles.feedback}>
                 <p className={styles.error} role="alert">
-                  {error}
+                  {currentError}
                 </p>
-                {onRetry ? (
+                {onRetry && !viewingRetired ? (
                   <TextLink onClick={onRetry}>Reintentar</TextLink>
                 ) : null}
               </div>
@@ -80,33 +146,24 @@ export function TeacherTitlesSection({
                   <th>Institución</th>
                   <th>Año</th>
                   <th>Soporte</th>
-                  {onEdit ? <th>Acciones</th> : null}
+                  {hasActions ? <th>Acciones</th> : null}
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => (
+                {rows.map((item) => (
                   <tr key={item.id}>
                     <td>{labelNivelTitulo(item.level)}</td>
                     <td className={styles.strong}>{item.name || 'Sin nombre'}</td>
                     <td>{item.institution || '—'}</td>
                     <td>{item.year || '—'}</td>
                     <td>{item.supportFile || 'Sin archivo'}</td>
-                    {onEdit ? (
-                      <td>
-                        <RowActions>
-                          <IconAction
-                            label={`Editar ${item.name || 'título'}`}
-                            onClick={() => onEdit(item)}
-                          />
-                        </RowActions>
-                      </td>
-                    ) : null}
+                    {hasActions ? <td>{renderActions(item)}</td> : null}
                   </tr>
                 ))}
               </tbody>
             </Table>
             <ul className={styles.cards}>
-              {items.map((item) => (
+              {rows.map((item) => (
                 <li key={item.id} className={styles.mobileCard}>
                   <strong>
                     {labelNivelTitulo(item.level)} · {item.name || 'Sin nombre'}
@@ -118,14 +175,7 @@ export function TeacherTitlesSection({
                   <Text variant="caption">
                     {item.supportFile || 'Sin archivo de soporte'}
                   </Text>
-                  {onEdit ? (
-                    <RowActions>
-                      <IconAction
-                        label={`Editar ${item.name || 'título'}`}
-                        onClick={() => onEdit(item)}
-                      />
-                    </RowActions>
-                  ) : null}
+                  {hasActions ? renderActions(item) : null}
                 </li>
               ))}
             </ul>

@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom'
-import { useAuth } from './AuthContext'
+import { useAuth } from './useAuth'
 import { SessionGate } from './SessionGate'
 
 export function HomeRedirect() {

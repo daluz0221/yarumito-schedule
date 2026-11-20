@@ -168,7 +168,8 @@ function SubjectFormFields({
   const [attempted, setAttempted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
-  const [catalogo, setCatalogo] = useState<OpcionAsignaturaPredefinida[]>([])
+  const [catalogoCargado, setCatalogo] = useState<OpcionAsignaturaPredefinida[]>([])
+  const [catalogoDe, setCatalogoDe] = useState('')
   const [catalogoCodigo, setCatalogoCodigo] = useState('')
   const formId = `subject-${mode}-form`
   const creating = mode === 'create'
@@ -188,24 +189,27 @@ function SubjectFormFields({
   }
 
   const areaCodigo = areas.find((item) => item.id === values.areaId)?.codigo ?? ''
+  const catalogo = areaCodigo && catalogoDe === areaCodigo ? catalogoCargado : []
 
   useEffect(() => {
     if (!areaCodigo) {
-      setCatalogo([])
       return
     }
 
     const controller = new AbortController()
+    const codigo = areaCodigo
 
-    listarAsignaturasPredefinidas(areaCodigo, controller.signal)
+    listarAsignaturasPredefinidas(codigo, controller.signal)
       .then((items) => {
         if (!controller.signal.aborted) {
           setCatalogo(items ?? [])
+          setCatalogoDe(codigo)
         }
       })
       .catch(() => {
         if (!controller.signal.aborted) {
           setCatalogo([])
+          setCatalogoDe(codigo)
         }
       })
 

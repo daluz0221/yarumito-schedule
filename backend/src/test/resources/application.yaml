@@ -1,0 +1,17 @@
+spring:
+  docker:
+    compose:
+      enabled: false
+
+app:
+  jwt:
+    secret: yarumito-dev-jwt-secret-key-32chars
+    expiration: 8h
+    remember-expiration: 7d
+  seed:
+    email: rector@yarumito.edu.co
+    password: Admin123!
+    demo: false
+    exit-after: false
+  cors:
+    allowed-origins: "http://localhost:5173,http://127.0.0.1:5173"

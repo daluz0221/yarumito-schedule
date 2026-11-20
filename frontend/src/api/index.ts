@@ -98,7 +98,10 @@ export {
   actualizarPlanEstudios,
   consultarPlanEstudios,
   listarPlanesEstudio,
+  listarPlanesEstudioRetirados,
+  reactivarPlanEstudios,
   registrarPlanEstudios,
+  retirarPlanEstudios,
 } from './planesEstudio'
 export type { PlanEstudiosRequest, PlanEstudiosResponse } from './planesEstudio'
 export {
@@ -114,8 +117,12 @@ export type { SedeRequest, SedeResponse } from './sedes'
 export {
   actualizarTituloProfesional,
   consultarTituloProfesional,
+  listarTitulosActivosPorDocente,
   listarTitulosPorDocente,
+  listarTitulosRetiradosPorDocente,
+  reactivarTituloProfesional,
   registrarTituloProfesional,
+  retirarTituloProfesional,
 } from './titulos'
 export {
   actualizarGrupo,
@@ -157,12 +164,14 @@ export type {
   ResumenHorarioResponse,
 } from './horarios'
 export {
+  actualizarAsignacion,
   confirmarAsignacion,
   consultarAsignacion,
   listarAsignacionesPorDocente,
   listarAsignacionesPorGrupo,
   listarBorradores,
   registrarAsignacion,
+  retirarAsignacion,
 } from './asignaciones'
 export { asignarActividadDocente, listarActividadesDocente } from './actividadesDocente'
 export type {
@@ -171,6 +180,7 @@ export type {
   TipoActividadInstitucional,
 } from './actividadesDocente'
 export type {
+  ActualizarAsignacionRequest,
   AsignacionAcademicaResponse,
   CrearAsignacionAcademicaRequest,
   EstadoAsignacionAcademica,
@@ -227,9 +237,15 @@ export {
   aRestriccionVista,
   consultarRestriccion,
   diaApi,
+  listarHistoricoRestriccionesPorAnio,
+  listarHistoricoRestriccionesPorDocenteYAnio,
   listarRestriccionesPorAnio,
   listarRestriccionesPorDocenteYAnio,
+  listarRestriccionesRetiradasPorAnio,
+  listarRestriccionesRetiradasPorDocenteYAnio,
+  reactivarRestriccion,
   registrarRestriccion,
+  retirarRestriccion,
   tipoApi,
 } from './restriccionesDocentes'
 export type {

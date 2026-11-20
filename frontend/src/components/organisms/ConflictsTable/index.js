@@ -1,1 +1,0 @@
-export { ConflictsTable } from './ConflictsTable';

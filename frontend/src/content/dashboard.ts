@@ -58,11 +58,15 @@ export type StatWash =
   | 'success'
   | 'neutral'
 
+export type StatBadgeTone = 'neutral' | 'success' | 'warning' | 'muted'
+
 export type StatItemData = {
   id: string
   value: string
   label: string
   wash?: StatWash
+  badge?: string
+  badgeTone?: StatBadgeTone
 }
 
 export type AlertItemData = {
@@ -71,125 +75,123 @@ export type AlertItemData = {
   tone: StatusDotTone
 }
 
-export const sidebarPrimaryNav: NavItemData[] = [
+export type SidebarSection = {
+  id: string
+  label: string
+  items: NavItemData[]
+}
+
+// Acceso directo al tablero, sin encabezado de grupo.
+export const sidebarHomeNav: NavItemData[] = [
   { id: 'home', label: 'Inicio', icon: 'home', to: '/dashboard', end: true },
-  { id: 'teachers', label: 'Docentes', icon: 'users', to: '/dashboard/docentes' },
-  {
-    id: 'year',
-    label: 'Año lectivo y grupos',
-    icon: 'calendar',
-    to: '/dashboard/anio-lectivo',
-  },
-  {
-    id: 'sedes',
-    label: 'Sedes',
-    icon: 'bookOpen',
-    to: '/dashboard/sedes',
-  },
-  {
-    id: 'aulas',
-    label: 'Aulas',
-    icon: 'grid',
-    to: '/dashboard/aulas',
-  },
-  {
-    id: 'turnos',
-    label: 'Turnos',
-    icon: 'clock',
-    to: '/dashboard/turnos',
-  },
-  {
-    id: 'franjas',
-    label: 'Franjas horarias',
-    icon: 'list',
-    to: '/dashboard/franjas',
-  },
-  {
-    id: 'grados',
-    label: 'Grados',
-    icon: 'list',
-    to: '/dashboard/grados',
-  },
-  {
-    id: 'areas',
-    label: 'Áreas y asignaturas',
-    icon: 'book',
-    to: '/dashboard/areas',
-  },
-  {
-    id: 'plan',
-    label: 'Plan de estudios',
-    icon: 'list',
-    to: '/dashboard/plan-estudios',
-  },
 ]
 
-export const sidebarSecondaryNav: NavItemData[] = [
+// Grupos plegables, ordenados según el flujo de trabajo:
+// configurar la estructura, cargar el personal, planificar y controlar.
+export const sidebarSections: SidebarSection[] = [
   {
-    id: 'restrictions',
-    label: 'Restricciones docentes',
-    icon: 'clock',
-    to: '/dashboard/restricciones',
+    id: 'institutional',
+    label: 'Estructura institucional',
+    items: [
+      { id: 'sedes', label: 'Sedes', icon: 'bookOpen', to: '/dashboard/sedes' },
+      { id: 'aulas', label: 'Aulas', icon: 'grid', to: '/dashboard/aulas' },
+      { id: 'turnos', label: 'Turnos', icon: 'clock', to: '/dashboard/turnos' },
+      {
+        id: 'franjas',
+        label: 'Franjas horarias',
+        icon: 'list',
+        to: '/dashboard/franjas',
+      },
+    ],
   },
   {
-    id: 'assignment',
-    label: 'Asignación académica',
-    icon: 'clipboard',
-    to: '/dashboard/asignacion',
+    id: 'academic',
+    label: 'Estructura académica',
+    items: [
+      {
+        id: 'year',
+        label: 'Año lectivo',
+        icon: 'calendar',
+        to: '/dashboard/anio-lectivo',
+      },
+      { id: 'grados', label: 'Grados', icon: 'list', to: '/dashboard/grados' },
+      { id: 'groups', label: 'Grupos', icon: 'users', to: '/dashboard/grupos' },
+      {
+        id: 'areas',
+        label: 'Áreas y asignaturas',
+        icon: 'book',
+        to: '/dashboard/areas',
+      },
+      {
+        id: 'plan',
+        label: 'Plan de estudios',
+        icon: 'list',
+        to: '/dashboard/plan-estudios',
+      },
+    ],
   },
   {
-    id: 'schedule',
-    label: 'Construcción de horario',
-    icon: 'grid',
-    to: '/dashboard/horario',
+    id: 'staff',
+    label: 'Personal docente',
+    items: [
+      { id: 'teachers', label: 'Docentes', icon: 'users', to: '/dashboard/docentes' },
+      {
+        id: 'restrictions',
+        label: 'Restricciones docentes',
+        icon: 'clock',
+        to: '/dashboard/restricciones',
+      },
+    ],
   },
   {
-    id: 'validations',
-    label: 'Validaciones',
-    icon: 'shield',
-    to: '/dashboard/validaciones',
-    indented: true,
+    id: 'planning',
+    label: 'Planificación',
+    items: [
+      {
+        id: 'assignment',
+        label: 'Asignación académica',
+        icon: 'clipboard',
+        to: '/dashboard/asignacion',
+      },
+      {
+        id: 'schedule',
+        label: 'Construcción de horario',
+        icon: 'grid',
+        to: '/dashboard/horario',
+      },
+    ],
   },
   {
-    id: 'publication',
-    label: 'Publicación',
-    icon: 'publish',
-    to: '/dashboard/publicacion',
-    indented: true,
-  },
-  {
-    id: 'audit',
-    label: 'Auditoría',
-    icon: 'search',
-    to: '/dashboard/auditoria',
-    indented: true,
-  },
-  {
-    id: 'queries',
-    label: 'Consultas',
-    icon: 'search',
-    to: '/dashboard/consultas',
-    indented: true,
-  },
-  {
-    id: 'reports',
-    label: 'Informes',
-    icon: 'clipboard',
-    to: '/dashboard/informes',
-    indented: true,
+    id: 'control',
+    label: 'Control y salida',
+    items: [
+      {
+        id: 'validations',
+        label: 'Validaciones',
+        icon: 'shield',
+        to: '/dashboard/validaciones',
+      },
+      {
+        id: 'publication',
+        label: 'Publicación',
+        icon: 'publish',
+        to: '/dashboard/publicacion',
+      },
+      { id: 'audit', label: 'Auditoría', icon: 'search', to: '/dashboard/auditoria' },
+      { id: 'queries', label: 'Consultas', icon: 'search', to: '/dashboard/consultas' },
+      {
+        id: 'reports',
+        label: 'Informes',
+        icon: 'clipboard',
+        to: '/dashboard/informes',
+      },
+    ],
   },
 ]
 
 export const sidebarAccountNav: NavItemData[] = [
   { id: 'profile', label: 'Perfil', icon: 'user' },
   { id: 'logout', label: 'Cerrar sesión', icon: 'logout' },
-]
-
-export const dashboardStats: StatItemData[] = [
-  { id: 'teachers', value: '12', label: 'Docentes activos' },
-  { id: 'groups', value: '10', label: 'Grupos activos' },
-  { id: 'areas', value: '9', label: 'Áreas académicas' },
-  { id: 'year', value: '2026', label: 'Año lectivo' },
 ]
 
 export const dashboardModules: ModuleItemData[] = [
@@ -211,11 +213,19 @@ export const dashboardModules: ModuleItemData[] = [
   },
   {
     id: 'year',
-    title: 'Año lectivo y grupos',
-    description: 'Defina el año lectivo activo y cree los grupos de cada grado.',
+    title: 'Año lectivo',
+    description: 'Defina el año lectivo activo y sus parámetros institucionales.',
     icon: 'calendar',
     available: true,
     to: '/dashboard/anio-lectivo',
+  },
+  {
+    id: 'groups',
+    title: 'Grupos',
+    description: 'Cree y consulte los grupos de cada grado por año lectivo.',
+    icon: 'users',
+    available: true,
+    to: '/dashboard/grupos',
   },
   {
     id: 'restrictions',
@@ -282,23 +292,5 @@ export const dashboardModules: ModuleItemData[] = [
     icon: 'clipboard',
     available: true,
     to: '/dashboard/informes',
-  },
-]
-
-export const dashboardAlerts: AlertItemData[] = [
-  {
-    id: 'teachers-open',
-    message: '2 docentes sin restricciones: disponibles',
-    tone: 'warning',
-  },
-  {
-    id: 'plan-pending',
-    message: '1 grado con plan de estudios pendiente',
-    tone: 'alert',
-  },
-  {
-    id: 'validation-pending',
-    message: 'Validación horaria pendiente',
-    tone: 'success',
   },
 ]

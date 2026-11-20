@@ -1,28 +1,35 @@
-import { Modal } from '../../atoms/Modal'
-import { Text } from '../../atoms/Text'
-import { Callout } from '../../molecules/Callout'
-import { ModalActions } from '../../molecules/ModalActions'
+import { ConfirmActionModal } from '../ConfirmActionModal'
 
 export type DeleteTitleModalProps = {
   open: boolean
+  titleName?: string
+  submitting?: boolean
+  error?: string
   onClose: () => void
+  onConfirm: () => void
 }
 
-export function DeleteTitleModal({ open, onClose }: DeleteTitleModalProps) {
+// H-04: retira (baja lógica) un título profesional; no lo elimina.
+export function DeleteTitleModal({
+  open,
+  titleName,
+  submitting,
+  error,
+  onClose,
+  onConfirm,
+}: DeleteTitleModalProps) {
   return (
-    <Modal
+    <ConfirmActionModal
       open={open}
-      title="Eliminar título profesional"
-      description="¿Deseas eliminar este título profesional?"
+      title="Retirar título profesional"
+      description={`¿Deseas retirar ${titleName || 'este título profesional'}?`}
+      note="El título se conserva como histórico y podrá reactivarse. No se puede retirar mientras respalde una idoneidad vigente."
+      confirmLabel="Retirar título"
+      busyLabel="Retirando..."
+      submitting={submitting}
+      error={error}
       onClose={onClose}
-      footer={<ModalActions onCancel={onClose} />}
-    >
-      <Callout>
-        <Text variant="body">
-          Esta acción solo estará disponible cuando el título no esté siendo
-          utilizado como soporte de una idoneidad.
-        </Text>
-      </Callout>
-    </Modal>
+      onConfirm={onConfirm}
+    />
   )
 }

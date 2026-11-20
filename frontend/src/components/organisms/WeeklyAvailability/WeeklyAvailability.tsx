@@ -6,6 +6,7 @@ import {
   diaApi,
   aRestriccionVista,
   registrarRestriccion,
+  retirarRestriccion,
   tipoApi,
 } from '../../../api'
 import type { RestriccionDocenteVista } from '../../../api/restriccionesDocentes'
@@ -20,6 +21,7 @@ import { Select } from '../../atoms/Select'
 import { Button } from '../../atoms/Button'
 import { Card } from '../../atoms/Card'
 import { Text } from '../../atoms/Text'
+import { ConfirmActionModal } from '../ConfirmActionModal'
 import { RestrictionDetailModal } from '../RestrictionDetailModal'
 import { RestrictionFormModal, type RestrictionFormValues } from '../RestrictionFormModal'
 import { RestrictionTypeModal } from '../RestrictionTypeModal'
@@ -30,6 +32,7 @@ type AvailabilityDialog =
   | { name: 'create'; day: WeekDay | ''; bandId: string; tipo: RestrictionKind }
   | { name: 'edit'; day: WeekDay; bandId: string }
   | { name: 'detail'; day: WeekDay; bandId: string }
+  | { name: 'retire'; day: WeekDay; bandId: string }
 
 export type AvailabilityBand = {
   id: string
@@ -99,10 +102,11 @@ export function WeeklyAvailability({
   onSaved,
 }: WeeklyAvailabilityProps) {
   const [dialog, setDialog] = useState<AvailabilityDialog | null>(null)
-  const [consulted, setConsulted] = useState<RestriccionDocenteVista | null>(null)
-  const [consultKey, setConsultKey] = useState('')
-  const [consulting, setConsulting] = useState(false)
-  const [consultError, setConsultError] = useState('')
+  const [consultaDetalle, setConsultaDetalle] = useState<{
+    key: string
+    consulted: RestriccionDocenteVista | null
+    error: string
+  } | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const closeDialog = () => {
@@ -117,7 +121,13 @@ export function WeeklyAvailability({
     dialog && dialog.name !== 'create' && dialog.name !== 'type' && dialog.day
       ? findRestriction(restrictions, dialog.bandId, dialog.day)
       : undefined
-  const restriction = consultKey === detailKey && consulted ? consulted : listed
+  const consulted = consultaDetalle?.key === detailKey ? consultaDetalle.consulted : null
+  const consultError = consultaDetalle?.key === detailKey ? consultaDetalle.error : ''
+  const restriction = consulted ?? listed
+  const puedeConsultar = Boolean(
+    dialog?.name === 'detail' && dialog.day && findRestriction(restrictions, dialog.bandId, dialog.day),
+  )
+  const consulting = puedeConsultar && consultaDetalle?.key !== detailKey
   const classBands = bands.filter((band) => band.kind === 'class')
   const bandLabel = (bandId: string) => bands.find((band) => band.id === bandId)?.label ?? ''
 
@@ -133,10 +143,6 @@ export function WeeklyAvailability({
 
     const controller = new AbortController()
     const key = `${dialog.day}-${dialog.bandId}`
-    setConsulting(true)
-    setConsultError('')
-    setConsulted(null)
-    setConsultKey(key)
 
     consultarRestriccion(current.id, controller.signal)
       .then((dto) => {
@@ -146,24 +152,22 @@ export function WeeklyAvailability({
 
         const vista = aRestriccionVista(dto)
         if (!vista) {
-          setConsultError('No se pudo leer la restricción.')
+          setConsultaDetalle({ key, consulted: null, error: 'No se pudo leer la restricción.' })
           return
         }
 
-        setConsulted(vista)
-        setConsultKey(key)
+        setConsultaDetalle({ key, consulted: vista, error: '' })
       })
       .catch((cause) => {
         if (isAbortError(cause) || controller.signal.aborted) {
           return
         }
 
-        setConsultError(mensajeError(cause, 'No se pudo consultar la restricción.'))
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setConsulting(false)
-        }
+        setConsultaDetalle({
+          key,
+          consulted: null,
+          error: mensajeError(cause, 'No se pudo consultar la restricción.'),
+        })
       })
 
     return () => controller.abort()
@@ -187,6 +191,27 @@ export function WeeklyAvailability({
         ? { name: 'type', day, bandId }
         : { name: 'detail', day, bandId },
     )
+  }
+
+  // H-04: baja lógica; la restricción queda en el histórico.
+  const retireRestriction = async () => {
+    if (!restriction) {
+      setSaveError('No se pudo identificar la restricción.')
+      return
+    }
+
+    setSaving(true)
+    setSaveError('')
+
+    try {
+      await retirarRestriccion(restriction.id)
+      closeDialog()
+      onSaved()
+    } catch (cause) {
+      setSaveError(mensajeError(cause, 'No se pudo retirar la restricción.'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const saveRestriction = async (values: RestrictionFormValues) => {
@@ -382,7 +407,32 @@ export function WeeklyAvailability({
             setSaveError('')
             setDialog({ name: 'edit', day: dialog.day, bandId: dialog.bandId })
           }}
+          onRetire={
+            readOnly
+              ? undefined
+              : () => {
+                  setSaveError('')
+                  setDialog({ name: 'retire', day: dialog.day, bandId: dialog.bandId })
+                }
+          }
           onClose={closeDialog}
+        />
+      ) : null}
+
+      {dialog?.name === 'retire' ? (
+        <ConfirmActionModal
+          open
+          title="Retirar restricción"
+          description={`¿Retirar la restricción de ${dialog.day} · ${bandLabel(dialog.bandId)}?`}
+          note="La restricción se conserva en el histórico y puede reactivarse mientras la franja siga libre."
+          confirmLabel="Retirar restricción"
+          busyLabel="Retirando..."
+          submitting={saving}
+          error={saveError}
+          onClose={closeDialog}
+          onConfirm={() => {
+            void retireRestriction()
+          }}
         />
       ) : null}
     </Card>

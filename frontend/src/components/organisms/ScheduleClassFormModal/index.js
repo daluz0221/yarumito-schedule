@@ -1,1 +1,0 @@
-export { ScheduleClassFormModal } from './ScheduleClassFormModal';

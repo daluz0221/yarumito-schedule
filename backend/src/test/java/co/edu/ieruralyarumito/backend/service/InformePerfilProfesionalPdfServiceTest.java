@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * - Títulos personalizados.
  * - Generación consecutiva.
  * - Caracteres españoles.
- * - Separación del anexo técnico.
+ * - Exclusión de identificadores internos del PDF.
  *
  * No requiere Spring Boot ni PostgreSQL.
  */
@@ -111,6 +111,7 @@ class InformePerfilProfesionalPdfServiceTest {
         }
     }
 
+
     @Test
     void debeConservarTitulosSinMultiplicarlos()
             throws IOException {
@@ -119,43 +120,30 @@ class InformePerfilProfesionalPdfServiceTest {
                 informeEjemplo();
 
         byte[] archivo = servicio.exportarPerfilProfesional(
-                informe,
-                null
+                informe, null
         );
 
         try (PDDocument documento = Loader.loadPDF(archivo)) {
 
             String texto = extraerTexto(documento);
 
-            assertEquals(
-                    1,
-                    contarApariciones(
-                            texto,
-                            "Licenciatura en Literatura"
-                    ),
-                    "La licenciatura no debe duplicarse"
-            );
+            assertEquals(1, contarApariciones(
+                    texto, "Licenciatura en Literatura"
+            ));
 
-            assertEquals(
-                    1,
-                    contarApariciones(
-                            texto,
-                            "Maestría en Educación"
-                    ),
-                    "La maestría no debe duplicarse"
-            );
+            assertEquals(1, contarApariciones(
+                    texto, "Maestría en Educación"
+            ));
 
-            for (InformeTituloProfesionalDetalleResponse titulo
-                    : informe.docentes().get(0).titulos()) {
-
-                assertTrue(
+            for (var titulo : informe.docentes().get(0).titulos()) {
+                assertFalse(
                         texto.contains(titulo.tituloId().toString()),
-                        "Falta el identificador del título "
-                                + titulo.tituloId()
+                        "El UUID del titulo no debe aparecer en el PDF"
                 );
             }
         }
     }
+
 
     @Test
     void debeConservarIdoneidadesYVigencias()
@@ -165,8 +153,7 @@ class InformePerfilProfesionalPdfServiceTest {
                 informeEjemplo();
 
         byte[] archivo = servicio.exportarPerfilProfesional(
-                informe,
-                null
+                informe, null
         );
 
         try (PDDocument documento = Loader.loadPDF(archivo)) {
@@ -184,28 +171,16 @@ class InformePerfilProfesionalPdfServiceTest {
             assertTrue(texto.contains("Literatura"));
             assertTrue(texto.contains("No aplica"));
 
-            for (InformeIdoneidadDetalleResponse idoneidad
-                    : informe.docentes().get(0).idoneidades()) {
-
-                assertTrue(
-                        texto.contains(
-                                idoneidad.idoneidadId().toString()
-                        ),
-                        "Falta la idoneidad "
-                                + idoneidad.idoneidadId()
+            for (var idoneidad : informe.docentes().get(0).idoneidades()) {
+                assertFalse(
+                        texto.contains(idoneidad.idoneidadId().toString())
                 );
-
-                assertTrue(
-                        texto.contains(
-                                idoneidad.areaId().toString()
-                        ),
-                        "Falta el identificador del área "
-                                + idoneidad.areaId()
+                assertFalse(
+                        texto.contains(idoneidad.areaId().toString())
                 );
             }
         }
     }
-
 
     @Test
     void debeIdentificarDocenteEnContinuacionesDeIdoneidades()
@@ -510,7 +485,7 @@ class InformePerfilProfesionalPdfServiceTest {
                     )
             );
 
-            assertTrue(
+            assertFalse(
                     extraerTexto(documento2).contains(
                             "ANEXO TÉCNICO"
                     )
@@ -595,8 +570,9 @@ class InformePerfilProfesionalPdfServiceTest {
         }
     }
 
+
     @Test
-    void debeSepararInformeAdministrativoDelAnexoTecnico()
+    void noDebeImprimirIdentificadoresInternosNiAnexo()
             throws IOException {
 
         InformePerfilProfesionalResponse informe =
@@ -609,141 +585,52 @@ class InformePerfilProfesionalPdfServiceTest {
 
         try (PDDocument documento = Loader.loadPDF(archivo)) {
 
-            int totalPaginas = documento.getNumberOfPages();
+            String texto = extraerTexto(documento);
 
-            assertTrue(
-                    totalPaginas >= 2,
-                    "El anexo debe comenzar en otra página"
-            );
+            assertFalse(texto.contains("ANEXO TÉCNICO"));
 
-            int primeraPaginaAnexo = -1;
+            assertTrue(texto.contains("Licenciatura en Literatura"));
+            assertTrue(texto.contains("Maestría en Educación"));
 
-            for (int pagina = 1;
-                 pagina <= totalPaginas;
-                 pagina++) {
+            for (var docente : informe.docentes()) {
 
-                String textoPagina =
-                        extraerPagina(documento, pagina);
-
-                if (textoPagina.contains(
-                        "ANEXO TÉCNICO - IDENTIFICADORES DE REGISTROS"
-                )) {
-                    primeraPaginaAnexo = pagina;
-                    break;
-                }
-            }
-
-            assertTrue(
-                    primeraPaginaAnexo > 1,
-                    "El anexo debe comenzar después del informe"
-            );
-
-            String textoAdministrativo = extraerRango(
-                    documento,
-                    1,
-                    primeraPaginaAnexo - 1
-            );
-
-            String textoAnexo = extraerRango(
-                    documento,
-                    primeraPaginaAnexo,
-                    totalPaginas
-            );
-
-            var docente = informe.docentes().get(0);
-
-            assertTrue(
-                    textoAdministrativo.contains(
-                            docente.nombreCompleto()
-                    )
-            );
-
-            assertTrue(
-                    textoAdministrativo.contains(
-                            "Licenciatura en Literatura"
-                    )
-            );
-
-            assertTrue(
-                    textoAdministrativo.contains(
-                            "Maestría en Educación"
-                    )
-            );
-
-            assertFalse(
-                    textoAdministrativo.contains(
-                            docente.docenteId().toString()
-                    ),
-                    "El UUID del docente no debe aparecer "
-                            + "en el informe administrativo"
-            );
-
-            assertTrue(
-                    textoAnexo.contains(
-                            docente.docenteId().toString()
-                    ),
-                    "Falta el UUID del docente en el anexo"
-            );
-
-            for (InformeTituloProfesionalDetalleResponse titulo
-                    : docente.titulos()) {
-
-                String id = titulo.tituloId().toString();
+                assertTrue(texto.contains(docente.nombreCompleto()));
 
                 assertFalse(
-                        textoAdministrativo.contains(id),
-                        "El UUID del título aparece "
-                                + "en el informe administrativo"
+                        texto.contains(docente.docenteId().toString())
                 );
 
-                assertTrue(
-                        textoAnexo.contains(id),
-                        "Falta el UUID del título en el anexo"
-                );
-            }
-
-            for (InformeIdoneidadDetalleResponse idoneidad
-                    : docente.idoneidades()) {
-
-                String id =
-                        idoneidad.idoneidadId().toString();
-
-                assertFalse(
-                        textoAdministrativo.contains(id),
-                        "El UUID de la idoneidad aparece "
-                                + "en el informe administrativo"
-                );
-
-                assertTrue(
-                        textoAnexo.contains(id),
-                        "Falta el UUID de la idoneidad"
-                );
-
-                assertTrue(
-                        textoAnexo.contains(
-                                idoneidad.areaId().toString()
-                        ),
-                        "Falta el UUID del área"
-                );
-
-                if (idoneidad.asignaturaId() != null) {
-
-                    assertTrue(
-                            textoAnexo.contains(
-                                    idoneidad.asignaturaId().toString()
-                            ),
-                            "Falta el UUID de la asignatura"
+                for (var titulo : docente.titulos()) {
+                    assertFalse(
+                            texto.contains(titulo.tituloId().toString())
                     );
                 }
 
-                if (idoneidad.tituloSoporteId() != null) {
+                for (var idoneidad : docente.idoneidades()) {
 
-                    assertTrue(
-                            textoAnexo.contains(
-                                    idoneidad.tituloSoporteId().toString()
-                            ),
-                            "Falta el UUID del título de soporte"
+                    assertFalse(
+                            texto.contains(idoneidad.idoneidadId().toString())
                     );
+
+                    assertFalse(
+                            texto.contains(idoneidad.areaId().toString())
+                    );
+
+                    if (idoneidad.asignaturaId() != null) {
+                        assertFalse(
+                                texto.contains(
+                                        idoneidad.asignaturaId().toString()
+                                )
+                        );
+                    }
+
+                    if (idoneidad.tituloSoporteId() != null) {
+                        assertFalse(
+                                texto.contains(
+                                        idoneidad.tituloSoporteId().toString()
+                                )
+                        );
+                    }
                 }
             }
         }

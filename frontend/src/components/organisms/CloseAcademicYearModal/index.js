@@ -1,1 +1,0 @@
-export { CloseAcademicYearModal } from './CloseAcademicYearModal';

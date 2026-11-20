@@ -1,1 +1,0 @@
-export { SidebarNavGroup } from './SidebarNavGroup';

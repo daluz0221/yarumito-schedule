@@ -163,7 +163,7 @@ function RowActions({
   onConfirm?: (row: AssignmentRow) => void
 }) {
   const historial = <HistorialAsignacion row={row} groupId={groupId} />
-  let accion: ReactNode = null
+  let accion: ReactNode
 
   if (readOnly) {
     accion = <span className={styles.muted}>Solo consulta</span>
@@ -172,15 +172,34 @@ function RowActions({
   } else if (row.estado === 'BORRADOR' && onConfirm) {
     const pending = confirmingId === row.assignmentId
 
+    const subject = row.subject || 'asignación'
+
     accion = (
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={pending || Boolean(confirmingId)}
-        onClick={() => onConfirm(row)}
-      >
-        {pending ? 'Confirmando…' : 'Confirmar'}
-      </Button>
+      <>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={pending || Boolean(confirmingId)}
+          onClick={() => onConfirm(row)}
+        >
+          {pending ? 'Confirmando…' : 'Confirmar'}
+        </Button>
+        {editableAssigned ? (
+          <IconActions>
+            <IconAction
+              label={`Editar ${subject}`}
+              disabled={pending || Boolean(confirmingId)}
+              onClick={() => onEdit(row)}
+            />
+            <IconAction
+              tone="danger"
+              label={`Quitar asignación de ${subject}`}
+              disabled={pending || Boolean(confirmingId)}
+              onClick={() => onRemove(row)}
+            />
+          </IconActions>
+        ) : null}
+      </>
     )
   } else if (!row.assigned) {
     accion = (

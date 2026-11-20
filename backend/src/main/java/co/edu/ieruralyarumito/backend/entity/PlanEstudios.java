@@ -48,19 +48,21 @@ public class PlanEstudios {
     @JoinColumn(name = "asignatura_id")
     private Asignatura asignatura;
 
-    @Column(
-            name = "horas_semanales",
-            nullable = false)
+    @Column(name = "horas_semanales", nullable = false)
     private int horasSemanales;
 
     // El turno es opcional durante la preparación del plan.
-    // Si se asigna, debe corresponder a una entidad Turno existente.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "turno_id")
     private Turno turno;
 
     @Column(columnDefinition = "TEXT")
     private String observacion;
+
+    // H-04: permite retirar una asignatura del plan de estudios
+    // sin eliminar su registro histórico.
+    @Column(name = "activo", nullable = false)
+    private boolean activo = true;
 
     public UUID getId() {
         return id;
@@ -70,9 +72,7 @@ public class PlanEstudios {
         return anioEscolar;
     }
 
-    public void setAnioEscolar(
-            AnioEscolar anioEscolar) {
-
+    public void setAnioEscolar(AnioEscolar anioEscolar) {
         this.anioEscolar = anioEscolar;
     }
 
@@ -80,9 +80,7 @@ public class PlanEstudios {
         return grado;
     }
 
-    public void setGrado(
-            Grado grado) {
-
+    public void setGrado(Grado grado) {
         this.grado = grado;
     }
 
@@ -90,9 +88,7 @@ public class PlanEstudios {
         return asignatura;
     }
 
-    public void setAsignatura(
-            Asignatura asignatura) {
-
+    public void setAsignatura(Asignatura asignatura) {
         this.asignatura = asignatura;
     }
 
@@ -100,9 +96,7 @@ public class PlanEstudios {
         return horasSemanales;
     }
 
-    public void setHorasSemanales(
-            int horasSemanales) {
-
+    public void setHorasSemanales(int horasSemanales) {
         this.horasSemanales = horasSemanales;
     }
 
@@ -110,9 +104,7 @@ public class PlanEstudios {
         return turno;
     }
 
-    public void setTurno(
-            Turno turno) {
-
+    public void setTurno(Turno turno) {
         this.turno = turno;
     }
 
@@ -120,9 +112,17 @@ public class PlanEstudios {
         return observacion;
     }
 
-    public void setObservacion(
-            String observacion) {
-
+    public void setObservacion(String observacion) {
         this.observacion = observacion;
+    }
+
+    // H-04: indica si el registro participa actualmente
+    // en el plan de estudios.
+    public boolean isActivo() {
+        return activo;
+    }
+
+    public void setActivo(boolean activo) {
+        this.activo = activo;
     }
 }

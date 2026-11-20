@@ -1,0 +1,7 @@
+{
+	email administracion@lufep.co
+}
+
+yarumito.lufep.co {
+	reverse_proxy frontend:80
+}

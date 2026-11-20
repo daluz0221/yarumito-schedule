@@ -1,1 +1,0 @@
-export { AssignmentKindModal } from './AssignmentKindModal';

@@ -1,1 +1,0 @@
-export { ConflictDetailModal } from './ConflictDetailModal';

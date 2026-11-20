@@ -1,1 +1,0 @@
-export { TeacherInstitutionalSection } from './TeacherInstitutionalSection';

@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { ApiError, retirarPlanEstudios } from '../../../api'
+import type { PlanEstudiosResponse } from '../../../api/planesEstudio'
 import { Modal } from '../../atoms/Modal'
 import { Callout } from '../../molecules/Callout'
 import { ModalActions } from '../../molecules/ModalActions'
@@ -7,7 +10,9 @@ export type RemovePlanSubjectModalProps = {
   subjectName: string
   gradeLabel: string
   year: number
+  planId: string
   onClose: () => void
+  onRemoved?: (plan: PlanEstudiosResponse) => void
 }
 
 export function RemovePlanSubjectModal({
@@ -15,8 +20,32 @@ export function RemovePlanSubjectModal({
   subjectName,
   gradeLabel,
   year,
+  planId,
   onClose,
+  onRemoved,
 }: RemovePlanSubjectModalProps) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const confirm = async () => {
+    setBusy(true)
+    setError('')
+
+    try {
+      const plan = await retirarPlanEstudios(planId)
+      onRemoved?.(plan)
+      onClose()
+    } catch (cause) {
+      setError(
+        cause instanceof ApiError
+          ? cause.message
+          : 'No se pudo quitar la asignatura del plan.',
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <Modal
       open={open}
@@ -25,9 +54,9 @@ export function RemovePlanSubjectModal({
       onClose={onClose}
       footer={
         <ModalActions
-          confirmLabel="Quitar del plan"
+          confirmLabel={busy ? 'Quitando...' : 'Quitar del plan'}
           onCancel={onClose}
-          onConfirm={onClose}
+          onConfirm={confirm}
         />
       }
     >
@@ -37,6 +66,7 @@ export function RemovePlanSubjectModal({
           quitará su relación con este plan.
         </p>
       </Callout>
+      {error ? <p role="alert">{error}</p> : null}
     </Modal>
   )
 }

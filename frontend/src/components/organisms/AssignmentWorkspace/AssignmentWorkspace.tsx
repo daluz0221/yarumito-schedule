@@ -15,7 +15,9 @@ import {
   listarPlanesEstudio,
   listarRestriccionesPorAnio,
   opcionesAniosEscolares,
+  actualizarAsignacion,
   registrarAsignacion,
+  retirarAsignacion,
   useCatalogoAniosEscolares,
   useCatalogoGrupos,
 } from '../../../api'
@@ -35,11 +37,13 @@ import {
   type CurricularAssignmentSource,
 } from '../../../content/academicAssignment'
 import type { AcademicYearStatus } from '../../../content/academicYear'
+import { idDisponible } from '../../../content/idDisponible'
 import { formatTeacherName, type Teacher } from '../../../content/teachers'
 import { Card } from '../../atoms/Card'
 import { Text } from '../../atoms/Text'
 import { ActivityAssignmentFormModal, type ActivityAssignmentFormValues } from '../ActivityAssignmentFormModal'
 import { AssignmentFormModal, type AssignmentFormValues } from '../AssignmentFormModal'
+import { ConfirmActionModal } from '../ConfirmActionModal'
 import { AssignmentSection } from '../AssignmentSection'
 import { AssignmentSelector } from '../AssignmentSelector'
 import { AssignmentSummary } from '../AssignmentSummary'
@@ -58,6 +62,8 @@ type Dialog =
   | { name: 'pick-subject' }
   | { name: 'create'; row?: AssignmentRow }
   | { name: 'create-activity'; row?: AssignmentRow }
+  | { name: 'edit'; row: AssignmentRow }
+  | { name: 'remove'; row: AssignmentRow }
 
 type Catalog = {
   teachers: Teacher[]
@@ -113,17 +119,19 @@ function fuenteAsignacion(item: AsignacionAcademicaResponse): CurricularAssignme
 export function AssignmentWorkspace() {
   const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
   const { grupos, error: gruposError, loading: gruposLoading } = useCatalogoGrupos()
-  const [yearId, setYearId] = useState('')
-  const [groupId, setGroupId] = useState('')
+  const [yearElegido, setYearElegido] = useState('')
+  const [groupElegido, setGroupElegido] = useState('')
   const [tab, setTab] = useState<AssignmentTab>('curricular')
-  const [actividadesDocentes, setActividadesDocentes] = useState<AsignacionActividadResponse[] | null>(
-    null,
-  )
-  const [actividadesError, setActividadesError] = useState('')
-  const [asignacionesGrupo, setAsignacionesGrupo] = useState<AsignacionAcademicaResponse[] | null>(
-    null,
-  )
-  const [asignacionesError, setAsignacionesError] = useState('')
+  const [actividadesCarga, setActividadesCarga] = useState<{
+    clave: string
+    items: AsignacionActividadResponse[]
+    error: string
+  } | null>(null)
+  const [asignacionesCarga, setAsignacionesCarga] = useState<{
+    clave: string
+    items: AsignacionAcademicaResponse[]
+    error: string
+  } | null>(null)
   const [borradores, setBorradores] = useState<AsignacionAcademicaResponse[] | null>(null)
   const [borradoresError, setBorradoresError] = useState('')
   const [planes, setPlanes] = useState<PlanEstudiosResponse[] | null>(null)
@@ -138,29 +146,27 @@ export function AssignmentWorkspace() {
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState('')
   const [revision, setRevision] = useState(0)
-  const [conteoRestricciones, setConteoRestricciones] = useState<Record<string, number>>({})
-
-  useEffect(() => {
-    if (!anios?.length) {
-      return
-    }
-
-    setYearId((current) =>
-      anios.some((year) => year.id === current)
-        ? current
-        : (anioEscolarVisible(anios)?.id ?? ''),
-    )
-  }, [anios])
+  const [conteoCarga, setConteoCarga] = useState<{
+    yearId: string
+    counts: Record<string, number>
+  } | null>(null)
+  const yearId = idDisponible(
+    yearElegido,
+    anios,
+    Boolean(anios?.length),
+    anioEscolarVisible(anios ?? [])?.id ?? '',
+  )
+  const conteoRestricciones = conteoCarga?.yearId === yearId ? conteoCarga.counts : {}
 
   useEffect(() => {
     if (!yearId) {
-      setConteoRestricciones({})
       return
     }
 
     const controller = new AbortController()
+    const solicitado = yearId
 
-    listarRestriccionesPorAnio(yearId, controller.signal)
+    listarRestriccionesPorAnio(solicitado, controller.signal)
       .then((items) => {
         if (controller.signal.aborted) {
           return
@@ -170,14 +176,14 @@ export function AssignmentWorkspace() {
         items.forEach((item) => {
           counts[item.docenteId] = (counts[item.docenteId] ?? 0) + 1
         })
-        setConteoRestricciones(counts)
+        setConteoCarga({ yearId: solicitado, counts })
       })
       .catch((cause) => {
         if (isAbortError(cause) || controller.signal.aborted) {
           return
         }
 
-        setConteoRestricciones({})
+        setConteoCarga({ yearId: solicitado, counts: {} })
       })
 
     return () => controller.abort()
@@ -191,16 +197,12 @@ export function AssignmentWorkspace() {
           left.gradoNivel - right.gradoNivel || left.codigo.localeCompare(right.codigo, 'es'),
       )
   }, [grupos, yearId])
-
-  useEffect(() => {
-    if (!yearId || grupos === null) {
-      return
-    }
-
-    setGroupId((current) =>
-      yearGroups.some((group) => group.id === current) ? current : (yearGroups[0]?.id ?? ''),
-    )
-  }, [grupos, yearGroups, yearId])
+  const groupId = idDisponible(
+    groupElegido,
+    yearGroups,
+    Boolean(yearId) && grupos !== null,
+    yearGroups[0]?.id ?? '',
+  )
 
   useEffect(() => {
     const controller = new AbortController()
@@ -296,48 +298,47 @@ export function AssignmentWorkspace() {
     return () => controller.abort()
   }, [revision])
 
+  const asignacionesClave = groupId ? `${groupId}:${revision}` : ''
+
   useEffect(() => {
     if (!groupId) {
-      setAsignacionesGrupo([])
-      setAsignacionesError('')
       return
     }
 
     const controller = new AbortController()
-    setAsignacionesGrupo(null)
-    setAsignacionesError('')
+    const clave = `${groupId}:${revision}`
 
     listarAsignacionesPorGrupo(groupId, controller.signal)
       .then((items) => {
-        setAsignacionesGrupo(items)
-        setAsignacionesError('')
+        setAsignacionesCarga({ clave, items, error: '' })
       })
       .catch((cause) => {
         if (isAbortError(cause) || controller.signal.aborted) {
           return
         }
 
-        setAsignacionesGrupo([])
-        setAsignacionesError(
-          mensajeError(cause, 'No se pudieron cargar las asignaciones de este grupo.'),
-        )
+        setAsignacionesCarga({
+          clave,
+          items: [],
+          error: mensajeError(cause, 'No se pudieron cargar las asignaciones de este grupo.'),
+        })
       })
 
     return () => controller.abort()
   }, [groupId, revision])
 
-  useEffect(() => {
-    if (!catalog) {
-      return
-    }
+  const actividadesClave =
+    catalog && catalog.teachers.length > 0
+      ? `${catalog.teachers.map((teacher) => teacher.id).join(',')}:${revision}`
+      : ''
 
-    if (catalog.teachers.length === 0) {
-      setActividadesDocentes([])
-      setActividadesError('')
+  useEffect(() => {
+    if (!catalog || catalog.teachers.length === 0) {
       return
     }
 
     const controller = new AbortController()
+    const clave = `${catalog.teachers.map((teacher) => teacher.id).join(',')}:${revision}`
 
     Promise.all(
       catalog.teachers.map(async (teacher) => {
@@ -358,20 +359,22 @@ export function AssignmentWorkspace() {
         }
 
         const failed = groups.some((groupItems) => groupItems === null)
-        setActividadesDocentes(groups.flatMap((groupItems) => groupItems ?? []))
-        setActividadesError(
-          failed ? 'No se pudieron cargar las actividades de todos los docentes.' : '',
-        )
+        setActividadesCarga({
+          clave,
+          items: groups.flatMap((groupItems) => groupItems ?? []),
+          error: failed ? 'No se pudieron cargar las actividades de todos los docentes.' : '',
+        })
       })
       .catch((cause) => {
         if (isAbortError(cause) || controller.signal.aborted) {
           return
         }
 
-        setActividadesDocentes([])
-        setActividadesError(
-          mensajeError(cause, 'No se pudieron cargar las actividades de los docentes.'),
-        )
+        setActividadesCarga({
+          clave,
+          items: [],
+          error: mensajeError(cause, 'No se pudieron cargar las actividades de los docentes.'),
+        })
       })
 
     return () => controller.abort()
@@ -384,6 +387,22 @@ export function AssignmentWorkspace() {
   const readOnly = yearStatus === 'CERRADO'
   const teachers = catalog?.teachers ?? []
   const areas = catalog?.areas ?? []
+  const asignacionesGrupo = !groupId
+    ? []
+    : asignacionesCarga?.clave === asignacionesClave
+      ? asignacionesCarga.items
+      : null
+  const asignacionesError =
+    groupId && asignacionesCarga?.clave === asignacionesClave ? asignacionesCarga.error : ''
+  const actividadesDocentes = !catalog
+    ? null
+    : catalog.teachers.length === 0
+      ? []
+      : actividadesCarga?.clave === actividadesClave
+        ? actividadesCarga.items
+        : null
+  const actividadesError =
+    catalog && actividadesCarga?.clave === actividadesClave ? actividadesCarga.error : ''
   const subjects = group
     ? materiasDelGrado(planes ?? [], yearId, group.gradoId, areaPorAsignatura)
     : []
@@ -423,7 +442,7 @@ export function AssignmentWorkspace() {
   }
 
   const selectYear = (nextYearId: string) => {
-    setYearId(nextYearId)
+    setYearElegido(nextYearId)
     setDialog(null)
     setActionError('')
   }
@@ -456,6 +475,57 @@ export function AssignmentWorkspace() {
       setActionError('')
     } catch (cause) {
       setSaveError(mensajeError(cause, 'No se pudo guardar la asignación académica.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // H-04: corrige una asignación en BORRADOR (docente, horas y observación).
+  const updateAssignment = async (values: AssignmentFormValues) => {
+    if (dialog?.name !== 'edit' || !dialog.row.assignmentId) {
+      return
+    }
+
+    if (!values.teacherId) {
+      setSaveError('Selecciona un docente registrado.')
+      return
+    }
+
+    setSaving(true)
+    setSaveError('')
+
+    try {
+      await actualizarAsignacion(dialog.row.assignmentId, {
+        docenteId: values.teacherId,
+        horasSemanales: values.assignedHours,
+        observacion: values.note.trim() || null,
+      })
+      setRevision((current) => current + 1)
+      setDialog(null)
+      setActionError('')
+    } catch (cause) {
+      setSaveError(mensajeError(cause, 'No se pudo actualizar la asignación académica.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // H-04: retira una asignación en BORRADOR sin clases programadas.
+  const removeAssignment = async () => {
+    if (dialog?.name !== 'remove' || !dialog.row.assignmentId) {
+      return
+    }
+
+    setSaving(true)
+    setSaveError('')
+
+    try {
+      await retirarAsignacion(dialog.row.assignmentId)
+      setRevision((current) => current + 1)
+      setDialog(null)
+      setActionError('')
+    } catch (cause) {
+      setSaveError(mensajeError(cause, 'No se pudo quitar la asignación académica.'))
     } finally {
       setSaving(false)
     }
@@ -579,7 +649,7 @@ export function AssignmentWorkspace() {
         groupsDisabled={gruposLoading || Boolean(gruposError)}
         onYearChange={selectYear}
         onGroupChange={(nextGroupId) => {
-          setGroupId(nextGroupId)
+          setGroupElegido(nextGroupId)
           setDialog(null)
           setActionError('')
         }}
@@ -666,8 +736,14 @@ export function AssignmentWorkspace() {
               tab === 'curricular' ? { name: 'create', row } : { name: 'create-activity', row },
             )
           }}
-          onEdit={() => undefined}
-          onRemove={() => undefined}
+          onEdit={(row) => {
+            setSaveError('')
+            setDialog({ name: 'edit', row })
+          }}
+          onRemove={(row) => {
+            setSaveError('')
+            setDialog({ name: 'remove', row })
+          }}
           onConfirm={(row) => {
             void confirmAssignment(row)
           }}
@@ -704,6 +780,45 @@ export function AssignmentWorkspace() {
           onClose={closeDialog}
           onSubmit={(values) => {
             void upsertAssignment(values)
+          }}
+        />
+      ) : null}
+
+      {dialog?.name === 'edit' && group && year ? (
+        <AssignmentFormModal
+          key={`edit-${dialog.row.key}`}
+          open
+          mode="edit"
+          year={year.year}
+          restrictionCounts={conteoRestricciones}
+          groupCode={group.codigo}
+          gradeLabel={gradeLabel}
+          subjects={curricularRows}
+          teachers={teachers}
+          areas={areas}
+          row={dialog.row}
+          saving={saving}
+          error={saveError}
+          onClose={closeDialog}
+          onSubmit={(values) => {
+            void updateAssignment(values)
+          }}
+        />
+      ) : null}
+
+      {dialog?.name === 'remove' ? (
+        <ConfirmActionModal
+          open
+          title="Quitar asignación"
+          description={`¿Quitar la asignación de ${dialog.row.subject}${dialog.row.teacherName ? ` a ${dialog.row.teacherName}` : ''}?`}
+          note="Solo se pueden quitar asignaciones en borrador y sin clases programadas."
+          confirmLabel="Quitar asignación"
+          busyLabel="Quitando..."
+          submitting={saving}
+          error={saveError}
+          onClose={closeDialog}
+          onConfirm={() => {
+            void removeAssignment()
           }}
         />
       ) : null}

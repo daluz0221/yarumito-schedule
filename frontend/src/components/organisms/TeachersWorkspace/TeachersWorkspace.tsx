@@ -44,15 +44,37 @@ export function TeachersWorkspace() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(6)
   const [rows, setRows] = useState<Teacher[]>([])
-  const [summaries, setSummaries] = useState<
+  const [loadedSummaries, setSummaries] = useState<
     Record<string, ResumenAcademicoDocente>
   >({})
-  const [areas, setAreas] = useState<CatalogoAreasTabla>({ estado: 'cargando' })
+  const [summariesKey, setSummariesKey] = useState('')
+  const [areasState, setAreas] = useState<CatalogoAreasTabla>({ estado: 'cargando' })
+  const [areasReload, setAreasReload] = useState<number | null>(null)
   const [total, setTotal] = useState(0)
   const [stats, setStats] = useState<StatItemData[]>(emptyStats)
-  const [loading, setLoading] = useState(true)
+  const [settledListKey, setSettledListKey] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
+  const listKey = [
+    debouncedQuery,
+    filters.status,
+    filters.contract,
+    filters.area,
+    String(page),
+    String(pageSize),
+    String(reloadKey),
+  ].join('|')
+  const [errorKey, setErrorKey] = useState(listKey)
+
+  if (errorKey !== listKey) {
+    setErrorKey(listKey)
+    setError('')
+  }
+
+  const loading = settledListKey !== listKey
+  const rowsKey = rows.map((teacher) => teacher.id).join('|')
+  const summaries = rows.length > 0 && summariesKey === rowsKey ? loadedSummaries : {}
+  const areas = areasReload === reloadKey ? areasState : { estado: 'cargando' as const }
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -64,9 +86,7 @@ export function TeachersWorkspace() {
 
   useEffect(() => {
     const controller = new AbortController()
-
-    setLoading(true)
-    setError('')
+    const requestedKey = listKey
 
     listarDocentes(
       {
@@ -88,6 +108,7 @@ export function TeachersWorkspace() {
 
         setRows(result.content)
         setTotal(result.total)
+        setSettledListKey(requestedKey)
       })
       .catch((cause) => {
         if (isAbortError(cause)) {
@@ -101,33 +122,25 @@ export function TeachersWorkspace() {
             ? cause.message
             : 'No se pudo cargar el listado de docentes.',
         )
+        setSettledListKey(requestedKey)
       })
       .finally(() => {
         if (!controller.signal.aborted) {
-          setLoading(false)
+          setSettledListKey(requestedKey)
         }
       })
 
     return () => controller.abort()
-  }, [
-    debouncedQuery,
-    filters.status,
-    filters.contract,
-    filters.area,
-    page,
-    pageSize,
-    reloadKey,
-  ])
+  }, [debouncedQuery, filters.area, filters.contract, filters.status, listKey, page, pageSize])
 
   useEffect(() => {
     if (rows.length === 0) {
-      setSummaries({})
       return
     }
 
     const controller = new AbortController()
     let active = true
-    setSummaries({})
+    const requestedKey = rowsKey
 
     void Promise.all(
       rows.map(async (teacher) => {
@@ -166,17 +179,18 @@ export function TeachersWorkspace() {
       }
 
       setSummaries(next)
+      setSummariesKey(requestedKey)
     })
 
     return () => {
       active = false
       controller.abort()
     }
-  }, [rows])
+  }, [rows, rowsKey])
 
   useEffect(() => {
     const controller = new AbortController()
-    setAreas({ estado: 'cargando' })
+    const requestedReload = reloadKey
 
     listarCatalogoAreas(controller.signal)
       .then((catalog) => {
@@ -191,10 +205,12 @@ export function TeachersWorkspace() {
         }
 
         setAreas({ estado: 'listo', porId })
+        setAreasReload(requestedReload)
       })
       .catch((cause) => {
         if (!isAbortError(cause)) {
           setAreas({ estado: 'error' })
+          setAreasReload(requestedReload)
         }
       })
 

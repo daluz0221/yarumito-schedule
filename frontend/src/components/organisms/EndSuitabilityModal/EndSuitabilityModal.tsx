@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import {
   formatVigencia,
   labelTipoIdoneidad,
@@ -33,12 +33,15 @@ export function EndSuitabilityModal({
   const [vigenteHasta, setVigenteHasta] = useState('')
   const [localError, setLocalError] = useState('')
 
-  useEffect(() => {
+  const [wasOpen, setWasOpen] = useState(open)
+
+  if (open !== wasOpen) {
+    setWasOpen(open)
     if (open) {
       setVigenteHasta('')
       setLocalError('')
     }
-  }, [open])
+  }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()

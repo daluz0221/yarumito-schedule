@@ -11,9 +11,12 @@ import {
   listarIdoneidadesPorDocente,
   actualizarTituloProfesional,
   consultarTituloProfesional,
-  listarTitulosPorDocente,
+  listarTitulosActivosPorDocente,
+  listarTitulosRetiradosPorDocente,
+  reactivarTituloProfesional,
   registrarIdoneidad,
   registrarTituloProfesional,
+  retirarTituloProfesional,
 } from '../../../api'
 import type { AreaResponse } from '../../../api/areas'
 import type { Teacher } from '../../../content/teachers'
@@ -37,6 +40,7 @@ import { SuitabilityFormModal } from '../SuitabilityFormModal'
 import { TitleFormModal } from '../TitleFormModal'
 import { TeacherSuitabilitySection } from '../TeacherSuitabilitySection'
 import { TeacherSummaryCard } from '../TeacherSummaryCard'
+import { DeleteTitleModal } from '../DeleteTitleModal'
 import { TeacherTitlesSection } from '../TeacherTitlesSection'
 import styles from './TeacherProfileWorkspace.module.css'
 
@@ -44,6 +48,7 @@ type ProfileModal =
   | { name: 'closed' }
   | { name: 'addTitle' }
   | { name: 'editTitle'; id: string }
+  | { name: 'retireTitle'; item: ProfessionalTitle }
   | { name: 'addSuitability' }
   | { name: 'editSuitability'; id: string }
   | { name: 'endSuitability'; item: Idoneidad }
@@ -141,11 +146,25 @@ export function TeacherProfileWorkspace() {
   const [items, setItems] = useState<Idoneidad[]>([])
   const [titles, setTitles] = useState<ProfessionalTitle[]>([])
   const [titlesError, setTitlesError] = useState('')
+  const [loadedId, setLoadedId] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState('')
+  const loading = Boolean(teacherId) && loadedId !== teacherId
+  const error = teacherId
+    ? loadedId === teacherId
+      ? fetchError
+      : ''
+    : 'No se indicó el docente.'
+  const visibleTeacher = loadedId === teacherId ? teacher : null
+  const visibleItems = loadedId === teacherId ? items : []
+  const visibleTitles = loadedId === teacherId ? titles : []
+  const visibleTitlesError = loadedId === teacherId ? titlesError : ''
   const [titlesLoading, setTitlesLoading] = useState(false)
+  const [retiredTitles, setRetiredTitles] = useState<ProfessionalTitle[]>([])
+  const [retiredLoading, setRetiredLoading] = useState(false)
+  const [retiredError, setRetiredError] = useState('')
+  const [showRetiredTitles, setShowRetiredTitles] = useState(false)
   const [areas, setAreas] = useState<AreaResponse[]>([])
   const [subjectNames, setSubjectNames] = useState<Record<string, string>>({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [modal, setModal] = useState<ProfileModal>({ name: 'closed' })
   const [editingTitle, setEditingTitle] = useState<ProfessionalTitle | null>(null)
   const [titleDetailLoading, setTitleDetailLoading] = useState(false)
@@ -183,7 +202,7 @@ export function TeacherProfileWorkspace() {
         consultarDocente(id, signal),
         listarIdoneidadesPorDocente(id, signal),
         listarAreas(signal),
-        listarTitulosPorDocente(id, signal).then(
+        listarTitulosActivosPorDocente(id, signal).then(
           (loaded) => ({ items: loaded, error: '' }),
           (cause: unknown) => {
             if (isAbortError(cause)) {
@@ -198,34 +217,40 @@ export function TeacherProfileWorkspace() {
         ),
       ])
 
-      setTeacher(nextTeacher)
-      setItems(nextItems)
-      setAreas(nextAreas)
-      setTitles(nextTitles.items)
-      setTitlesError(nextTitles.error)
+      return {
+        teacher: nextTeacher,
+        items: nextItems,
+        areas: nextAreas,
+        titles: nextTitles,
+      }
     },
     [],
   )
 
   useEffect(() => {
     if (!teacherId) {
-      setTeacher(null)
-      setItems([])
-      setTitles([])
-      setTitlesError('')
-      setError('No se indicó el docente.')
-      setLoading(false)
       return
     }
 
     const controller = new AbortController()
+    const requestedId = teacherId
 
-    setLoading(true)
-    setError('')
+    loadProfile(requestedId, controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) {
+          return
+        }
 
-    loadProfile(teacherId, controller.signal)
+        setTeacher(result.teacher)
+        setItems(result.items)
+        setAreas(result.areas)
+        setTitles(result.titles.items)
+        setTitlesError(result.titles.error)
+        setFetchError('')
+        setLoadedId(requestedId)
+      })
       .catch((cause) => {
-        if (isAbortError(cause)) {
+        if (isAbortError(cause) || controller.signal.aborted) {
           return
         }
 
@@ -233,22 +258,22 @@ export function TeacherProfileWorkspace() {
         setItems([])
         setTitles([])
         setTitlesError('')
-        setError(
+        setFetchError(
           cause instanceof ApiError
             ? cause.message
             : 'No se pudo cargar el perfil del docente.',
         )
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false)
-        }
+        setLoadedId(requestedId)
       })
 
     return () => controller.abort()
   }, [loadProfile, teacherId])
 
   useEffect(() => {
+    if (loadedId !== teacherId) {
+      return
+    }
+
     const ids = [
       ...new Set(items.map((item) => item.asignaturaId).filter(Boolean)),
     ]
@@ -295,7 +320,7 @@ export function TeacherProfileWorkspace() {
       })
 
     return () => controller.abort()
-  }, [items])
+  }, [items, loadedId, teacherId])
 
   const loadTitleDetail = useCallback(
     async (id: string) => {
@@ -329,7 +354,7 @@ export function TeacherProfileWorkspace() {
 
         if (cause instanceof ApiError && cause.status === 404 && teacherId) {
           try {
-            setTitles(await listarTitulosPorDocente(teacherId))
+            setTitles(await listarTitulosActivosPorDocente(teacherId))
             setTitlesError('')
           } catch (refreshCause) {
             if (!isAbortError(refreshCause)) {
@@ -412,12 +437,94 @@ export function TeacherProfileWorkspace() {
     setTitlesError('')
 
     try {
-      setTitles(await listarTitulosPorDocente(teacherId))
+      setTitles(await listarTitulosActivosPorDocente(teacherId))
     } catch (cause) {
       setTitles([])
       setTitlesError(titlesErrorMessage(cause))
     } finally {
       setTitlesLoading(false)
+    }
+  }
+
+  const loadRetiredTitles = async () => {
+    if (!teacherId) {
+      return
+    }
+
+    setRetiredLoading(true)
+    setRetiredError('')
+
+    try {
+      setRetiredTitles(await listarTitulosRetiradosPorDocente(teacherId))
+    } catch (cause) {
+      setRetiredTitles([])
+      setRetiredError(
+        cause instanceof ApiError
+          ? cause.message
+          : 'No se pudieron cargar los títulos retirados.',
+      )
+    } finally {
+      setRetiredLoading(false)
+    }
+  }
+
+  const toggleRetiredTitles = () => {
+    const next = !showRetiredTitles
+
+    setShowRetiredTitles(next)
+
+    if (next) {
+      void loadRetiredTitles()
+    }
+  }
+
+  // H-04: baja lógica; el backend responde 409 si respalda idoneidades vigentes.
+  const handleRetireTitle = async () => {
+    if (modal.name !== 'retireTitle' || !teacherId) {
+      return
+    }
+
+    setModalSubmitting(true)
+    setModalError('')
+
+    try {
+      await retirarTituloProfesional(modal.item.id)
+      setModal({ name: 'closed' })
+      setTitles(await listarTitulosActivosPorDocente(teacherId))
+      setTitlesError('')
+
+      if (showRetiredTitles) {
+        void loadRetiredTitles()
+      }
+    } catch (cause) {
+      setModalError(
+        cause instanceof ApiError
+          ? cause.message
+          : 'No se pudo retirar el título profesional.',
+      )
+    } finally {
+      setModalSubmitting(false)
+    }
+  }
+
+  const handleRestoreTitle = async (item: ProfessionalTitle) => {
+    if (!teacherId) {
+      return
+    }
+
+    setRetiredError('')
+
+    try {
+      await reactivarTituloProfesional(item.id)
+      setTitles(await listarTitulosActivosPorDocente(teacherId))
+      setTitlesError('')
+      await loadRetiredTitles()
+    } catch (cause) {
+      setRetiredError(
+        cause instanceof ApiError
+          ? cause.message
+          : 'No se pudo reactivar el título profesional.',
+      )
     }
   }
 
@@ -452,7 +559,7 @@ export function TeacherProfileWorkspace() {
       setModal({ name: 'closed' })
 
       try {
-        setTitles(await listarTitulosPorDocente(teacherId))
+        setTitles(await listarTitulosActivosPorDocente(teacherId))
         setTitlesError('')
       } catch (cause) {
         setTitles((current) => {
@@ -479,7 +586,7 @@ export function TeacherProfileWorkspace() {
         cause.status === 404
       ) {
         try {
-          setTitles(await listarTitulosPorDocente(teacherId))
+          setTitles(await listarTitulosActivosPorDocente(teacherId))
           setTitlesError('')
         } catch (refreshCause) {
           setTitlesError(titlesErrorMessage(refreshCause))
@@ -582,8 +689,8 @@ export function TeacherProfileWorkspace() {
     }
   }
 
-  const documentLabel = teacher
-    ? `${teacher.tipoDocumento} ${formatDocumentNumber(teacher.numeroDocumento)}`
+  const documentLabel = visibleTeacher
+    ? `${visibleTeacher.tipoDocumento} ${formatDocumentNumber(visibleTeacher.numeroDocumento)}`
     : ''
   const areaOptions = areas.map((area) => ({
     value: area.id,
@@ -602,7 +709,7 @@ export function TeacherProfileWorkspace() {
 
       {loading ? (
         <p className={styles.status}>Cargando perfil...</p>
-      ) : error || !teacher ? (
+      ) : error || !visibleTeacher ? (
         <p className={styles.error} role="alert">
           {error || 'El docente no existe.'}{' '}
           <TextLink to="/dashboard/docentes">Volver al listado</TextLink>
@@ -610,14 +717,14 @@ export function TeacherProfileWorkspace() {
       ) : (
         <>
           <TeacherSummaryCard
-            teacher={teacher}
+            teacher={visibleTeacher}
             documentLabel={documentLabel}
-            areaNombre={resolveAreaName(teacher.areaNombramientoId, areas)}
+            areaNombre={resolveAreaName(visibleTeacher.areaNombramientoId, areas)}
           />
           <TeacherTitlesSection
-            items={titles}
+            items={visibleTitles}
             loading={titlesLoading}
-            error={titlesError}
+            error={visibleTitlesError}
             onRetry={retryTitles}
             onAdd={() => {
               setModalError('')
@@ -628,11 +735,23 @@ export function TeacherProfileWorkspace() {
               setModal({ name: 'editTitle', id: item.id })
               void loadTitleDetail(item.id)
             }}
+            onRetire={(item) => {
+              setModalError('')
+              setModal({ name: 'retireTitle', item })
+            }}
+            retiredItems={retiredTitles}
+            retiredLoading={retiredLoading}
+            retiredError={retiredError}
+            showRetired={showRetiredTitles}
+            onToggleRetired={toggleRetiredTitles}
+            onRestore={(item) => {
+              void handleRestoreTitle(item)
+            }}
           />
           <TeacherSuitabilitySection
-            items={items}
-            titles={titles}
-            titlesUnavailable={Boolean(titlesError)}
+            items={visibleItems}
+            titles={visibleTitles}
+            titlesUnavailable={Boolean(visibleTitlesError)}
             areaNameById={(areaId) => resolveAreaName(areaId, areas)}
             subjectNameById={(asignaturaId) => subjectNames[asignaturaId] ?? ''}
             onAdd={() => {
@@ -670,13 +789,23 @@ export function TeacherProfileWorkspace() {
         }
         onSubmit={handleSaveTitulo}
       />
+      <DeleteTitleModal
+        open={modal.name === 'retireTitle'}
+        titleName={modal.name === 'retireTitle' ? modal.item.name : undefined}
+        submitting={modalSubmitting}
+        error={modalError}
+        onClose={closeModal}
+        onConfirm={() => {
+          void handleRetireTitle()
+        }}
+      />
       <SuitabilityFormModal
         open={modal.name === 'addSuitability' || modal.name === 'editSuitability'}
         mode={modal.name === 'editSuitability' ? 'edit' : 'add'}
         item={modal.name === 'editSuitability' ? editingIdoneidad ?? undefined : undefined}
         areaOptions={areaOptions}
-        titles={titles}
-        titlesError={titlesError}
+        titles={visibleTitles}
+        titlesError={visibleTitlesError}
         loading={modal.name === 'editSuitability' && idoneidadDetailLoading}
         loadError={modal.name === 'editSuitability' ? idoneidadDetailError : ''}
         submitting={modalSubmitting}

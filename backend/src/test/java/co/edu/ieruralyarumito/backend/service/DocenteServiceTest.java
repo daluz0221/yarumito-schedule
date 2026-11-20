@@ -340,7 +340,7 @@ public class DocenteServiceTest {
     }
 
     @Test
-    void cambiarEstado_debePermitirRetiradoAActivo() {
+    void cambiarEstado_debeRechazarRetiradoAActivo() {
 
         UUID docenteId = UUID.randomUUID();
 
@@ -356,17 +356,14 @@ public class DocenteServiceTest {
         when(docenteRepository.findById(docenteId))
                 .thenReturn(Optional.of(docente));
 
-        when(docenteRepository.save(any(Docente.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        DocenteResponse response =
-                docenteService.cambiarEstado(docenteId, request);
-
-        assertEquals(EstadoDocente.ACTIVO, response.getEstado());
+        // RETIRADO es terminal: la reincorporación requiere nuevo nombramiento.
+        assertThrows(
+                TransicionEstadoNoPermitidaException.class,
+                () -> docenteService.cambiarEstado(docenteId, request));
     }
 
     @Test
-    void cambiarEstado_debePermitirRetiradoALicencia() {
+    void cambiarEstado_debeRechazarRetiradoALicencia() {
 
         UUID docenteId = UUID.randomUUID();
 
@@ -382,13 +379,10 @@ public class DocenteServiceTest {
         when(docenteRepository.findById(docenteId))
                 .thenReturn(Optional.of(docente));
 
-        when(docenteRepository.save(any(Docente.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        DocenteResponse response =
-                docenteService.cambiarEstado(docenteId, request);
-
-        assertEquals(EstadoDocente.LICENCIA, response.getEstado());
+        // RETIRADO es terminal: la reincorporación requiere nuevo nombramiento.
+        assertThrows(
+                TransicionEstadoNoPermitidaException.class,
+                () -> docenteService.cambiarEstado(docenteId, request));
     }
 
     @Test

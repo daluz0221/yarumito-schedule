@@ -1,27 +1,7 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { logout as clearAuthSession, verifySession } from '../api'
 import type { AuthUser } from '../api'
-
-export type AuthStatus = 'checking' | 'authenticated' | 'anonymous'
-
-type AuthContextValue = {
-  status: AuthStatus
-  user: AuthUser | null
-  verify: (options?: { silent?: boolean }) => Promise<AuthUser | null>
-  acceptSession: (user: AuthUser) => void
-  logout: () => void
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null)
+import { AuthContext, type AuthStatus } from './auth-context'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('checking')
@@ -66,8 +46,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    void verify()
-  }, [verify])
+    const currentRequest = ++requestId.current
+
+    void verifySession().then((nextUser) => {
+      if (currentRequest !== requestId.current) {
+        return
+      }
+
+      if (nextUser) {
+        setUser(nextUser)
+        setStatus('authenticated')
+        return
+      }
+
+      setUser(null)
+      setStatus('anonymous')
+    })
+  }, [])
 
   useEffect(() => {
     const onFocus = () => {
@@ -84,14 +79,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext)
-
-  if (!context) {
-    throw new Error('useAuth debe usarse dentro de AuthProvider')
-  }
-
-  return context
 }

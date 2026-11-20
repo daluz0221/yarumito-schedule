@@ -1,40 +1,7 @@
-import type { ReactNode } from 'react'
-import type { NavIconName, NavItemData } from '../../../content/dashboard'
-import {
-  BookIcon,
-  BookOpenIcon,
-  CalendarIcon,
-  ClipboardIcon,
-  ClockIcon,
-  GridIcon,
-  HomeIcon,
-  ListIcon,
-  LogoutIcon,
-  PublishIcon,
-  SearchIcon,
-  ShieldIcon,
-  UserIcon,
-  UsersIcon,
-} from '../../atoms/icons'
+import type { NavItemData } from '../../../content/dashboard'
 import { NavItem } from '../NavItem'
+import { navIcons } from './navIcons'
 import styles from './SidebarNavGroup.module.css'
-
-const navIcons: Record<NavIconName, ReactNode> = {
-  home: <HomeIcon />,
-  users: <UsersIcon />,
-  bookOpen: <BookOpenIcon />,
-  calendar: <CalendarIcon />,
-  book: <BookIcon />,
-  list: <ListIcon />,
-  clock: <ClockIcon />,
-  clipboard: <ClipboardIcon />,
-  grid: <GridIcon />,
-  shield: <ShieldIcon />,
-  publish: <PublishIcon />,
-  search: <SearchIcon />,
-  user: <UserIcon />,
-  logout: <LogoutIcon />,
-}
 
 export type SidebarNavGroupProps = {
   items: NavItemData[]

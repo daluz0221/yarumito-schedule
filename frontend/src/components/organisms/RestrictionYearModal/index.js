@@ -1,1 +1,0 @@
-export { RestrictionYearModal } from './RestrictionYearModal';

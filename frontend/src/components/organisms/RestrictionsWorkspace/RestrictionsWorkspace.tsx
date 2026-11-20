@@ -15,11 +15,13 @@ import type { AreaResponse } from '../../../api/areas'
 import type { FranjaHorariaResponse } from '../../../api/franjasHorarias'
 import type { RestriccionDocenteVista } from '../../../api/restriccionesDocentes'
 import type { TurnoResponse } from '../../../api/turnos'
+import { idDisponible } from '../../../content/idDisponible'
 import { resolveAreaName } from '../../../content/teacherProfile'
 import { formatTeacherName, labelEstado, type Teacher } from '../../../content/teachers'
 import { Text } from '../../atoms/Text'
 import { RestrictionSelector } from '../RestrictionSelector'
 import { TeacherAvailabilitySummary } from '../TeacherAvailabilitySummary'
+import { RetiredRestrictionsSection } from '../RetiredRestrictionsSection'
 import { WeeklyAvailability, type AvailabilityBand } from '../WeeklyAvailability'
 import styles from './RestrictionsWorkspace.module.css'
 
@@ -60,28 +62,30 @@ export function RestrictionsWorkspace() {
   const [searchParams] = useSearchParams()
   const requestedTeacherId = searchParams.get('docente') ?? ''
   const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
-  const [yearId, setYearId] = useState('')
+  const [yearElegido, setYearElegido] = useState('')
   const [teacherId, setTeacherId] = useState(requestedTeacherId)
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [turnos, setTurnos] = useState<TurnoResponse[]>([])
   const [turnosError, setTurnosError] = useState('')
   const [turnoId, setTurnoId] = useState('')
-  const [franjas, setFranjas] = useState<FranjaHorariaResponse[] | null>(null)
-  const [franjasError, setFranjasError] = useState('')
-  const [restrictions, setRestrictions] = useState<RestriccionDocenteVista[]>([])
-  const [restrictionsLoading, setRestrictionsLoading] = useState(false)
-  const [restrictionsError, setRestrictionsError] = useState('')
+  const [franjasCarga, setFranjasCarga] = useState<{
+    turnoId: string
+    franjas: FranjaHorariaResponse[]
+    error: string
+  } | null>(null)
+  const [restriccionCarga, setRestriccionCarga] = useState<{
+    clave: string
+    items: RestriccionDocenteVista[]
+    error: string
+  } | null>(null)
   const [revision, setRevision] = useState(0)
 
-  useEffect(() => {
-    if (!anios?.length) {
-      return
-    }
-
-    setYearId((current) =>
-      anios.some((year) => year.id === current) ? current : (anioEscolarVisible(anios)?.id ?? ''),
-    )
-  }, [anios])
+  const yearId = idDisponible(
+    yearElegido,
+    anios,
+    Boolean(anios?.length),
+    anioEscolarVisible(anios ?? [])?.id ?? '',
+  )
 
   useEffect(() => {
     const controller = new AbortController()
@@ -151,22 +155,22 @@ export function RestrictionsWorkspace() {
 
   useEffect(() => {
     if (!turnoId) {
-      setFranjas([])
       return
     }
 
     const controller = new AbortController()
-    setFranjas(null)
-    setFranjasError('')
+    const solicitado = turnoId
 
-    listarFranjasPorTurno(turnoId, controller.signal)
+    listarFranjasPorTurno(solicitado, controller.signal)
       .then((items) => {
         if (!controller.signal.aborted) {
-          setFranjas(
-            [...(items ?? [])].sort(
+          setFranjasCarga({
+            turnoId: solicitado,
+            franjas: [...(items ?? [])].sort(
               (left, right) => left.orden - right.orden || left.numero - right.numero,
             ),
-          )
+            error: '',
+          })
         }
       })
       .catch((cause) => {
@@ -174,28 +178,30 @@ export function RestrictionsWorkspace() {
           return
         }
 
-        setFranjas([])
-        setFranjasError(mensajeError(cause, 'No se pudieron cargar las franjas del turno.'))
+        setFranjasCarga({
+          turnoId: solicitado,
+          franjas: [],
+          error: mensajeError(cause, 'No se pudieron cargar las franjas del turno.'),
+        })
       })
 
     return () => controller.abort()
   }, [turnoId])
 
+  const restriccionClave = teacherId && yearId ? `${teacherId}:${yearId}:${revision}` : ''
+
   useEffect(() => {
     if (!teacherId || !yearId) {
-      setRestrictions([])
-      setRestrictionsLoading(false)
       return
     }
 
     const controller = new AbortController()
-    setRestrictionsLoading(true)
-    setRestrictionsError('')
+    const clave = `${teacherId}:${yearId}:${revision}`
 
     listarRestriccionesPorDocenteYAnio(teacherId, yearId, controller.signal)
       .then((items) => {
         if (!controller.signal.aborted) {
-          setRestrictions(items)
+          setRestriccionCarga({ clave, items, error: '' })
         }
       })
       .catch((cause) => {
@@ -203,17 +209,26 @@ export function RestrictionsWorkspace() {
           return
         }
 
-        setRestrictions([])
-        setRestrictionsError(mensajeError(cause, 'No se pudieron cargar las restricciones.'))
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setRestrictionsLoading(false)
-        }
+        setRestriccionCarga({
+          clave,
+          items: [],
+          error: mensajeError(cause, 'No se pudieron cargar las restricciones.'),
+        })
       })
 
     return () => controller.abort()
   }, [teacherId, yearId, revision])
+
+  const franjas = !turnoId ? [] : franjasCarga?.turnoId === turnoId ? franjasCarga.franjas : null
+  const franjasError = franjasCarga?.turnoId === turnoId ? franjasCarga.error : ''
+  const restrictions = !restriccionClave
+    ? []
+    : restriccionCarga?.clave === restriccionClave
+      ? restriccionCarga.items
+      : (restriccionCarga?.items ?? [])
+  const restrictionsLoading = Boolean(restriccionClave) && restriccionCarga?.clave !== restriccionClave
+  const restrictionsError =
+    restriccionCarga?.clave === restriccionClave ? restriccionCarga.error : ''
 
   const year = anios?.find((item) => item.id === yearId) ?? null
   const teachers = catalog?.teachers ?? []
@@ -255,7 +270,7 @@ export function RestrictionsWorkspace() {
               areaName: resolveAreaName(item.areaNombramientoId, catalog.areas),
               active: item.estado === 'ACTIVO',
             }))}
-            onYearChange={setYearId}
+            onYearChange={setYearElegido}
             onTeacherChange={setTeacherId}
           />
 
@@ -295,6 +310,14 @@ export function RestrictionsWorkspace() {
                 loading={restrictionsLoading}
                 error={restrictionsError}
                 onSaved={() => setRevision((current) => current + 1)}
+              />
+              <RetiredRestrictionsSection
+                teacherId={teacher.id}
+                yearId={year.id}
+                bands={bands}
+                readOnly={readOnly}
+                revision={revision}
+                onRestored={() => setRevision((current) => current + 1)}
               />
             </>
           ) : null}

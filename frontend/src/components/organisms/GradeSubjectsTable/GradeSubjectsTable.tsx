@@ -7,6 +7,8 @@ export type GradeSubjectsTableProps = {
   emptyMessage: string
   onEdit: (entry: StudyPlanEntry) => void
   onRemove: (entry: StudyPlanEntry) => void
+  mode?: 'active' | 'retired'
+  onRestore?: (entry: StudyPlanEntry) => void
 }
 
 export function GradeSubjectsTable({
@@ -14,6 +16,8 @@ export function GradeSubjectsTable({
   emptyMessage,
   onEdit,
   onRemove,
+  mode = 'active',
+  onRestore,
 }: GradeSubjectsTableProps) {
   return (
     <div>
@@ -38,7 +42,13 @@ export function GradeSubjectsTable({
                 <td>{entry.shift}</td>
                 <td>{entry.note ?? '—'}</td>
                 <td>
-                  <EntryActions entry={entry} onEdit={onEdit} onRemove={onRemove} />
+                  <EntryActions
+            entry={entry}
+            mode={mode}
+            onEdit={onEdit}
+            onRemove={onRemove}
+            onRestore={onRestore}
+          />
                 </td>
               </tr>
             ))}
@@ -57,7 +67,13 @@ export function GradeSubjectsTable({
               {entry.area} · {entry.shift}
             </p>
             <p>{entry.note ?? '—'}</p>
-            <EntryActions entry={entry} onEdit={onEdit} onRemove={onRemove} />
+            <EntryActions
+            entry={entry}
+            mode={mode}
+            onEdit={onEdit}
+            onRemove={onRemove}
+            onRestore={onRestore}
+          />
           </li>
         ))}
       </ul>
@@ -69,13 +85,29 @@ export function GradeSubjectsTable({
 
 function EntryActions({
   entry,
+  mode,
   onEdit,
   onRemove,
+  onRestore,
 }: {
   entry: StudyPlanEntry
+  mode: 'active' | 'retired'
   onEdit: (entry: StudyPlanEntry) => void
   onRemove: (entry: StudyPlanEntry) => void
+  onRestore?: (entry: StudyPlanEntry) => void
 }) {
+  if (mode === 'retired') {
+    return onRestore ? (
+      <IconActions>
+        <IconAction
+          tone="restore"
+          label={`Reactivar ${entry.subject} en el plan`}
+          onClick={() => onRestore(entry)}
+        />
+      </IconActions>
+    ) : null
+  }
+
   return (
     <IconActions>
       <IconAction label={`Editar ${entry.subject}`} onClick={() => onEdit(entry)} />

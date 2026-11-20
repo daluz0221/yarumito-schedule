@@ -39,3 +39,19 @@
   background: #f8d6d1;
   border-color: #e4ada4;
 }
+
+.action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pressed {
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+  color: #fff;
+}
+
+.pressed:hover {
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+}

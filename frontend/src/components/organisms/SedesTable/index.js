@@ -1,1 +1,0 @@
-export { SedesTable } from './SedesTable';

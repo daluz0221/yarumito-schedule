@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Salida compilada de tsc: nunca versionar (sombrea a los .ts en Vite)
+src/**/*.js
+src/**/*.js.map

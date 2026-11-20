@@ -13,6 +13,7 @@ export type TituloProfesionalResponse = {
   institucion: string
   anioGraduacion: number | null
   archivoSoporte: string | null
+  activo?: boolean
 }
 
 function textOrEmpty(value: string | null | undefined) {
@@ -72,5 +73,42 @@ export function actualizarTituloProfesional(
       `/api/v1/titulos-profesionales/${id}`,
       payload,
     )
+    .then(toProfessionalTitle)
+}
+
+export function listarTitulosActivosPorDocente(
+  docenteId: string,
+  signal?: AbortSignal,
+) {
+  return api
+    .get<TituloProfesionalResponse[]>(
+      `/api/v1/docentes/${docenteId}/titulos-profesionales/activos`,
+      { signal },
+    )
+    .then((items) => (Array.isArray(items) ? items : []).map(toProfessionalTitle))
+}
+
+export function listarTitulosRetiradosPorDocente(
+  docenteId: string,
+  signal?: AbortSignal,
+) {
+  return api
+    .get<TituloProfesionalResponse[]>(
+      `/api/v1/docentes/${docenteId}/titulos-profesionales/retirados`,
+      { signal },
+    )
+    .then((items) => (Array.isArray(items) ? items : []).map(toProfessionalTitle))
+}
+
+// H-04: baja lógica. El backend responde 409 si respalda idoneidades vigentes.
+export function retirarTituloProfesional(id: string) {
+  return api
+    .patch<TituloProfesionalResponse>(`/api/v1/titulos-profesionales/${id}/retirar`)
+    .then(toProfessionalTitle)
+}
+
+export function reactivarTituloProfesional(id: string) {
+  return api
+    .patch<TituloProfesionalResponse>(`/api/v1/titulos-profesionales/${id}/reactivar`)
     .then(toProfessionalTitle)
 }

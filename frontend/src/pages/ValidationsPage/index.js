@@ -1,1 +1,0 @@
-export { ValidationsPage } from './ValidationsPage';
