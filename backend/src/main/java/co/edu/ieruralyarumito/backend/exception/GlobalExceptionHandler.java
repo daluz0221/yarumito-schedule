@@ -2,9 +2,12 @@ package co.edu.ieruralyarumito.backend.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.List;
 import java.util.Map;
 
 // Centraliza el manejo de excepciones generadas por la API.
@@ -74,7 +77,7 @@ public class GlobalExceptionHandler {
     }
 
     // Maneja los conflictos de programación de horario
-    // (docente ocupado, aula ocupada).
+    // (docente ocupado, aula ocupada, grupo ocupado).
     @ExceptionHandler(ConflictoHorarioException.class)
     public ResponseEntity<Map<String, String>> manejarConflictoHorario(
             ConflictoHorarioException exception) {
@@ -134,7 +137,9 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.UNAUTHORIZED)
-                .body(Map.of("mensaje", exception.getMessage()));
+                .body(Map.of(
+                        "mensaje",
+                        exception.getMessage()));
     }
 
     // Maneja el intento de acceso de una cuenta deshabilitada.
@@ -144,6 +149,54 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
-                .body(Map.of("mensaje", exception.getMessage()));
+                .body(Map.of(
+                        "mensaje",
+                        exception.getMessage()));
+    }
+
+    // H-10: entrega mensajes claros cuando un DTO
+    // incumple las restricciones de validación.
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> manejarValidacionCampos(
+            MethodArgumentNotValidException exception) {
+
+        List<String> errores = exception.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error -> {
+                    String detalle = error.getDefaultMessage() == null
+                            ? "Valor inválido"
+                            : error.getDefaultMessage();
+
+                    return error.getField() + ": " + detalle;
+                })
+                .distinct()
+                .sorted()
+                .toList();
+
+        String mensaje = errores.isEmpty()
+                ? "Los datos enviados no son válidos"
+                : String.join("; ", errores);
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(Map.of(
+                        "mensaje", mensaje,
+                        "errores", errores));
+    }
+
+    // H-10: maneja JSON mal formado o tipos incompatibles
+    // sin exponer detalles internos de Spring/Jackson.
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, String>> manejarJsonInvalido(
+            HttpMessageNotReadableException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(Map.of(
+                        "mensaje",
+                        "El cuerpo de la solicitud no es válido. "
+                                + "Verifique el formato JSON "
+                                + "y los tipos de datos enviados."));
     }
 }

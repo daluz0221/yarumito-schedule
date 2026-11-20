@@ -2,6 +2,7 @@ package co.edu.ieruralyarumito.backend.entity;
 
 import co.edu.ieruralyarumito.backend.entity.enums.DiaSemana;
 import co.edu.ieruralyarumito.backend.entity.enums.TipoRestriccionDocente;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -57,7 +58,8 @@ public class RestriccionDocente {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String motivo;
 
-    // Documento soporte almacenado directamente en PostgreSQL como bytea.
+    // Documento soporte almacenado directamente
+    // en PostgreSQL como bytea.
     @Column(name = "documento_soporte")
     private byte[] documentoSoporte;
 
@@ -66,6 +68,11 @@ public class RestriccionDocente {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "aprobada_por")
     private Usuario aprobadaPor;
+
+    // H-04: permite retirar una restricción docente
+    // sin eliminar físicamente su registro histórico.
+    @Column(name = "activo", nullable = false)
+    private boolean activo = true;
 
     public UUID getId() {
         return id;
@@ -133,5 +140,16 @@ public class RestriccionDocente {
 
     public void setAprobadaPor(Usuario aprobadaPor) {
         this.aprobadaPor = aprobadaPor;
+    }
+
+    // H-04: consulta si la restricción está activa.
+    public boolean isActivo() {
+        return activo;
+    }
+
+    // H-04: permite retirar o reactivar la restricción
+    // conservando su información histórica.
+    public void setActivo(boolean activo) {
+        this.activo = activo;
     }
 }
