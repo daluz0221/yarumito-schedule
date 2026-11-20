@@ -4,6 +4,7 @@ import type { PlanEstudiosResponse } from '../../../api/planesEstudio'
 import type { StudyPlanEntry } from '../../../content/studyPlan'
 import { Button } from '../../atoms/Button'
 import { Card } from '../../atoms/Card'
+import { IconAction, IconActions } from '../../atoms/IconAction'
 import { Text } from '../../atoms/Text'
 import { TextInput } from '../../atoms/TextInput'
 import { FormField } from '../../molecules/FormField'
@@ -34,6 +35,14 @@ export type GradeSubjectsSectionProps = {
   onQueryChange: (query: string) => void
   onSaved: (plan: PlanEstudiosResponse) => void
   onMissing?: (planId: string) => void
+  // H-04: asignaturas retiradas del plan y su reactivación.
+  showRetired?: boolean
+  onToggleRetired?: () => void
+  retiredRows?: StudyPlanEntry[]
+  retiredLoading?: boolean
+  retiredError?: string
+  onRestore?: (entry: StudyPlanEntry) => void
+  onRetired?: (plan: PlanEstudiosResponse) => void
 }
 
 function isAbortError(error: unknown) {
@@ -67,7 +76,15 @@ export function GradeSubjectsSection({
   onQueryChange,
   onSaved,
   onMissing,
+  showRetired = false,
+  onToggleRetired,
+  retiredRows = [],
+  retiredLoading = false,
+  retiredError = '',
+  onRestore,
+  onRetired,
 }: GradeSubjectsSectionProps) {
+  const viewingRetired = showRetired && Boolean(onToggleRetired)
   const [dialog, setDialog] = useState<SectionDialog | null>(null)
   const [editing, setEditing] = useState<PlanEstudiosResponse | null>(null)
   const [editLoading, setEditLoading] = useState(false)
@@ -132,15 +149,32 @@ export function GradeSubjectsSection({
   return (
     <Card className={styles.section}>
       <SectionHeader
-        title="Asignaturas del grado"
-        description={`Estructura curricular configurada para ${year} · ${gradeLabel}.`}
+        title={viewingRetired ? 'Asignaturas retiradas' : 'Asignaturas del grado'}
+        description={
+          viewingRetired
+            ? `Asignaturas retiradas del plan de ${gradeLabel} · ${year}. Puedes reactivarlas.`
+            : `Estructura curricular configurada para ${year} · ${gradeLabel}.`
+        }
         action={
-          <Button variant="primary" size="sm" onClick={() => setDialog({ name: 'create' })}>
-            + Agregar asignatura
-          </Button>
+          <IconActions>
+            {onToggleRetired ? (
+              <IconAction
+                tone="archive"
+                pressed={viewingRetired}
+                label={viewingRetired ? 'Ver asignaturas del plan' : 'Ver asignaturas retiradas'}
+                onClick={onToggleRetired}
+              />
+            ) : null}
+            {viewingRetired ? null : (
+              <Button variant="primary" size="sm" onClick={() => setDialog({ name: 'create' })}>
+                + Agregar asignatura
+              </Button>
+            )}
+          </IconActions>
         }
       />
 
+      {viewingRetired ? null : (
       <form className={styles.filters} onSubmit={(event) => event.preventDefault()}>
         <FormField id="plan-search" label="Buscar asignatura">
           <TextInput
@@ -161,18 +195,32 @@ export function GradeSubjectsSection({
           onChange={onAreaChange}
         />
       </form>
+      )}
 
       <div className={styles.tableHost}>
-        <GradeSubjectsTable
-          rows={rows}
-          emptyMessage={
-            query || area
-              ? 'No se encontraron asignaturas con esos filtros.'
-              : emptyPlanMessage
-          }
-          onEdit={(entry) => loadPlan(entry.id)}
-          onRemove={(entry) => setDialog({ name: 'remove', entry })}
-        />
+        {viewingRetired && retiredError ? (
+          <p className={styles.retiredStatus} role="alert">
+            {retiredError}
+          </p>
+        ) : null}
+        {viewingRetired && retiredLoading ? (
+          <p className={styles.retiredStatus}>Cargando asignaturas retiradas...</p>
+        ) : (
+          <GradeSubjectsTable
+            rows={viewingRetired ? retiredRows : rows}
+            emptyMessage={
+              viewingRetired
+                ? 'Este grado no tiene asignaturas retiradas en este año.'
+                : query || area
+                  ? 'No se encontraron asignaturas con esos filtros.'
+                  : emptyPlanMessage
+            }
+            mode={viewingRetired ? 'retired' : 'active'}
+            onEdit={(entry) => loadPlan(entry.id)}
+            onRemove={(entry) => setDialog({ name: 'remove', entry })}
+            onRestore={onRestore}
+          />
+        )}
       </div>
 
       <Text variant="caption">
@@ -205,7 +253,12 @@ export function GradeSubjectsSection({
           subjectName={dialog.entry.subject}
           gradeLabel={gradeLabel}
           year={year}
+          planId={dialog.entry.id}
           onClose={closeDialog}
+          onRemoved={(plan) => {
+            onMissing?.(plan.id)
+            onRetired?.(plan)
+          }}
         />
       ) : null}
     </Card>

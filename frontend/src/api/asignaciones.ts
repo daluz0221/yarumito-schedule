@@ -57,3 +57,22 @@ export function listarAsignacionesPorGrupo(grupoId: string, signal?: AbortSignal
 export function confirmarAsignacion(id: string) {
   return api.patch<AsignacionAcademicaResponse>(`/api/asignaciones/${id}/confirmar`)
 }
+
+export type ActualizarAsignacionRequest = {
+  docenteId: string
+  horasSemanales: number
+  observacion?: string | null
+}
+
+// H-04: solo asignaciones en BORRADOR.
+export function actualizarAsignacion(id: string, payload: ActualizarAsignacionRequest) {
+  return api.put<AsignacionAcademicaResponse, ActualizarAsignacionRequest>(
+    `/api/asignaciones/${id}`,
+    payload,
+  )
+}
+
+// H-04: retira una asignación en BORRADOR sin clases programadas.
+export function retirarAsignacion(id: string) {
+  return api.delete<void>(`/api/asignaciones/${id}`)
+}

@@ -79,3 +79,18 @@
     width: 100%;
   }
 }
+
+.retire {
+  display: inline-flex;
+  margin-right: auto;
+}
+
+@media (max-width: 640px) {
+  .actions .retire {
+    align-self: flex-start;
+  }
+
+  .actions .retire button {
+    width: 34px;
+  }
+}

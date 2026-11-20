@@ -2,36 +2,18 @@ import { useState } from 'react'
 import {
   aAcademicYear,
   anioEscolarVisible,
-  gruposVisibles,
   useCatalogoAniosEscolares,
-  useCatalogoGrados,
-  useCatalogoGrupos,
 } from '../../../api'
-import {
-  academicYears,
-  filterSchoolGroups,
-  matchesAcademicYear,
-  schoolGroupStats,
-  schoolGroups,
-  type AcademicYear,
-} from '../../../content/academicYear'
+import { academicYears, type AcademicYear } from '../../../content/academicYear'
 import { Button } from '../../atoms/Button'
 import { Text } from '../../atoms/Text'
 import { AcademicYearCard } from '../AcademicYearCard'
 import { AcademicYearFormModal } from '../AcademicYearFormModal'
 import { ParametrosInstitucionalesSection } from '../ParametrosInstitucionalesSection'
-import { SchoolGroupsSection } from '../SchoolGroupsSection'
 import styles from './AcademicYearWorkspace.module.css'
 
 export function AcademicYearWorkspace() {
   const { anios, error, loading, incorporar, retirar } = useCatalogoAniosEscolares()
-  const {
-    grupos,
-    error: gruposError,
-    loading: gruposLoading,
-    recargar: recargarGrupos,
-  } = useCatalogoGrupos()
-  const { grados } = useCatalogoGrados()
   const catalogo = error ? academicYears : anios
   const [yearId, setYearId] = useState('')
   const selectedYearId = catalogo?.some((year) => year.id === yearId)
@@ -39,27 +21,11 @@ export function AcademicYearWorkspace() {
     : catalogo?.length
       ? (anioEscolarVisible(catalogo)?.id ?? '')
       : ''
-  const [grade, setGrade] = useState('')
-  const [status, setStatus] = useState('')
-  const [query, setQuery] = useState('')
   const [crear, setCrear] = useState(false)
 
   const year = catalogo?.find((item) => item.id === selectedYearId) ?? null
-  const fuenteGrupos = gruposError
-    ? schoolGroups
-    : grupos === null
-      ? null
-      : gruposVisibles(grupos, grados)
-  const yearGroups = year && fuenteGrupos
-    ? fuenteGrupos.filter((item) => matchesAcademicYear(item, year))
-    : []
-  const rows = filterSchoolGroups(yearGroups, { grade, status, query })
-
   const selectYear = (nextYearId: string) => {
     setYearId(nextYearId)
-    setGrade('')
-    setStatus('')
-    setQuery('')
   }
 
   const guardarAnio = (anio: AcademicYear) => {
@@ -71,26 +37,18 @@ export function AcademicYearWorkspace() {
     <section className={styles.workspace}>
       <div className={styles.intro}>
         <Text as="h2" variant="pageTitle">
-          Año lectivo y grupos
+          Año lectivo
         </Text>
         <Text variant="body">
-          Configura el período académico y los grupos activos de la institución
-          para cada año lectivo.
+          Configura el período académico y sus parámetros institucionales.
         </Text>
       </div>
 
       {loading ? <p className={styles.notice}>Cargando años escolares…</p> : null}
-      {gruposLoading ? <p className={styles.notice}>Cargando grupos…</p> : null}
       {error ? (
         <p className={styles.alert} role="alert">
           {error} Se muestran los años de referencia locales para que puedas seguir
-          revisando los grupos.
-        </p>
-      ) : null}
-      {gruposError ? (
-        <p className={styles.alert} role="alert">
-          {gruposError} Se muestran los grupos de referencia locales para que puedas
-          seguir configurando el año lectivo.
+          revisando el año lectivo.
         </p>
       ) : null}
 
@@ -109,33 +67,11 @@ export function AcademicYearWorkspace() {
             yearId={year.id}
             yearLabel={year.year}
           />
-
-          {fuenteGrupos ? (
-            <SchoolGroupsSection
-              year={year}
-              groups={yearGroups}
-              stats={schoolGroupStats(yearGroups)}
-              grade={grade}
-              status={status}
-              query={query}
-              rows={rows}
-              emptyMessage={
-                yearGroups.length === 0
-                  ? 'Este año lectivo aún no tiene grupos registrados.'
-                  : 'No se encontraron grupos con esos filtros.'
-              }
-              onGradeChange={setGrade}
-              onStatusChange={setStatus}
-              onQueryChange={setQuery}
-              onGroupCreated={recargarGrupos}
-            />
-          ) : null}
         </>
       ) : loading ? null : (
         <div className={styles.intro}>
           <Text variant="body">
-            No hay años escolares registrados. Los grupos se configuran sobre un año
-            lectivo.
+            No hay años escolares registrados. Crea el primero para comenzar.
           </Text>
           <Button variant="primary" size="sm" onClick={() => setCrear(true)}>
             + Nuevo año lectivo

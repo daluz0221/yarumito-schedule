@@ -21,6 +21,7 @@ import { formatTeacherName, labelEstado, type Teacher } from '../../../content/t
 import { Text } from '../../atoms/Text'
 import { RestrictionSelector } from '../RestrictionSelector'
 import { TeacherAvailabilitySummary } from '../TeacherAvailabilitySummary'
+import { RetiredRestrictionsSection } from '../RetiredRestrictionsSection'
 import { WeeklyAvailability, type AvailabilityBand } from '../WeeklyAvailability'
 import styles from './RestrictionsWorkspace.module.css'
 
@@ -309,6 +310,14 @@ export function RestrictionsWorkspace() {
                 loading={restrictionsLoading}
                 error={restrictionsError}
                 onSaved={() => setRevision((current) => current + 1)}
+              />
+              <RetiredRestrictionsSection
+                teacherId={teacher.id}
+                yearId={year.id}
+                bands={bands}
+                readOnly={readOnly}
+                revision={revision}
+                onRestored={() => setRevision((current) => current + 1)}
               />
             </>
           ) : null}

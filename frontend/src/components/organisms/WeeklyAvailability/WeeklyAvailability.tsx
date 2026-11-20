@@ -6,6 +6,7 @@ import {
   diaApi,
   aRestriccionVista,
   registrarRestriccion,
+  retirarRestriccion,
   tipoApi,
 } from '../../../api'
 import type { RestriccionDocenteVista } from '../../../api/restriccionesDocentes'
@@ -20,6 +21,7 @@ import { Select } from '../../atoms/Select'
 import { Button } from '../../atoms/Button'
 import { Card } from '../../atoms/Card'
 import { Text } from '../../atoms/Text'
+import { ConfirmActionModal } from '../ConfirmActionModal'
 import { RestrictionDetailModal } from '../RestrictionDetailModal'
 import { RestrictionFormModal, type RestrictionFormValues } from '../RestrictionFormModal'
 import { RestrictionTypeModal } from '../RestrictionTypeModal'
@@ -30,6 +32,7 @@ type AvailabilityDialog =
   | { name: 'create'; day: WeekDay | ''; bandId: string; tipo: RestrictionKind }
   | { name: 'edit'; day: WeekDay; bandId: string }
   | { name: 'detail'; day: WeekDay; bandId: string }
+  | { name: 'retire'; day: WeekDay; bandId: string }
 
 export type AvailabilityBand = {
   id: string
@@ -188,6 +191,27 @@ export function WeeklyAvailability({
         ? { name: 'type', day, bandId }
         : { name: 'detail', day, bandId },
     )
+  }
+
+  // H-04: baja lógica; la restricción queda en el histórico.
+  const retireRestriction = async () => {
+    if (!restriction) {
+      setSaveError('No se pudo identificar la restricción.')
+      return
+    }
+
+    setSaving(true)
+    setSaveError('')
+
+    try {
+      await retirarRestriccion(restriction.id)
+      closeDialog()
+      onSaved()
+    } catch (cause) {
+      setSaveError(mensajeError(cause, 'No se pudo retirar la restricción.'))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const saveRestriction = async (values: RestrictionFormValues) => {
@@ -383,7 +407,32 @@ export function WeeklyAvailability({
             setSaveError('')
             setDialog({ name: 'edit', day: dialog.day, bandId: dialog.bandId })
           }}
+          onRetire={
+            readOnly
+              ? undefined
+              : () => {
+                  setSaveError('')
+                  setDialog({ name: 'retire', day: dialog.day, bandId: dialog.bandId })
+                }
+          }
           onClose={closeDialog}
+        />
+      ) : null}
+
+      {dialog?.name === 'retire' ? (
+        <ConfirmActionModal
+          open
+          title="Retirar restricción"
+          description={`¿Retirar la restricción de ${dialog.day} · ${bandLabel(dialog.bandId)}?`}
+          note="La restricción se conserva en el histórico y puede reactivarse mientras la franja siga libre."
+          confirmLabel="Retirar restricción"
+          busyLabel="Retirando..."
+          submitting={saving}
+          error={saveError}
+          onClose={closeDialog}
+          onConfirm={() => {
+            void retireRestriction()
+          }}
         />
       ) : null}
     </Card>
