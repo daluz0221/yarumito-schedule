@@ -9,10 +9,16 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 // Crea tres asignaturas de Matemáticas si todavía no existen.
 @Component
 @Order(3)
+@ConditionalOnProperty(
+        name = "app.seed.asignaturas-prueba",
+        havingValue = "true"
+)
+
 public class AsignaturaPruebaData implements ApplicationRunner {
 
     private final AreaRepository areaRepository;

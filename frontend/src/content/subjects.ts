@@ -61,6 +61,64 @@ export const subjectClassroomOptions: {
   { value: SIN_REQUISITO_AULA, label: 'Sin requisito específico' },
 ]
 
+// H-03: el backend rechaza cualquier abreviatura fuera de este catálogo.
+export const ABREVIATURAS_ASIGNATURA = [
+  'MAT',
+  'CAS',
+  'ING',
+  'CEN',
+  'SOC',
+  'ART',
+  'EFI',
+  'TEC',
+  'ETI',
+  'ERE',
+  'EMP',
+  'QUI',
+  'FIS',
+  'BIO',
+  'FILO',
+  'ESP',
+  'BIOL',
+  'QUIM',
+  'FISI',
+  'AMBI',
+  'SOCI',
+  'POLI',
+  'CIVI',
+  'CAST',
+  'INGL',
+  'LECT',
+  'MATE',
+  'GEOM',
+  'ESTAD',
+  'INFO',
+  'EMPRE',
+  'ETIC',
+  'RELI',
+  'ARTE',
+  'EDFI',
+  'AGRO',
+  'VEGE',
+  'TRAN',
+  'TECA',
+] as const
+
+export function subjectAbbreviationOptions(actual = '') {
+  const valor = actual.trim().toUpperCase()
+  const conocidas = new Set<string>(ABREVIATURAS_ASIGNATURA)
+  const extra =
+    valor && !conocidas.has(valor)
+      ? [{ value: valor, label: `${valor} (no autorizada)` }]
+      : []
+
+  return [
+    { value: '', label: 'Sin abreviatura' },
+    ...ABREVIATURAS_ASIGNATURA.map((codigo) => ({ value: codigo, label: codigo })),
+    ...extra,
+  ]
+}
+
 export const subjectFormHint =
   'Idoneidad estricta exige las condiciones configuradas posteriormente. Docente exclusivo no selecciona al docente aquí. Máximo inicial: 2 bloques consecutivos. Aula: Aula, Laboratorio, Sala de sistemas, Cancha o Sin requisito específico.'
 
