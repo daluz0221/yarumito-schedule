@@ -20,6 +20,7 @@ export type AssignmentTableProps = {
   onEdit: (row: AssignmentRow) => void
   onRemove: (row: AssignmentRow) => void
   onConfirm?: (row: AssignmentRow) => void
+  onRevertToDraft?: (row: AssignmentRow) => void
 }
 
 export function AssignmentTable({
@@ -33,6 +34,7 @@ export function AssignmentTable({
   onEdit,
   onRemove,
   onConfirm,
+  onRevertToDraft,
 }: AssignmentTableProps) {
   return (
     <div>
@@ -73,6 +75,7 @@ export function AssignmentTable({
                     onEdit={onEdit}
                     onRemove={onRemove}
                     onConfirm={onConfirm}
+                    onRevertToDraft={onRevertToDraft}
                   />
                 </td>
               </tr>
@@ -104,6 +107,7 @@ export function AssignmentTable({
               onEdit={onEdit}
               onRemove={onRemove}
               onConfirm={onConfirm}
+              onRevertToDraft={onRevertToDraft}
             />
           </li>
         ))}
@@ -151,6 +155,7 @@ function RowActions({
   onEdit,
   onRemove,
   onConfirm,
+  onRevertToDraft,
 }: {
   row: AssignmentRow
   readOnly: boolean
@@ -161,12 +166,19 @@ function RowActions({
   onEdit: (row: AssignmentRow) => void
   onRemove: (row: AssignmentRow) => void
   onConfirm?: (row: AssignmentRow) => void
+  onRevertToDraft?: (row: AssignmentRow) => void
 }) {
   const historial = <HistorialAsignacion row={row} groupId={groupId} />
   let accion: ReactNode
 
   if (readOnly) {
     accion = <span className={styles.muted}>Solo consulta</span>
+  } else if (row.estado === 'CONFIRMADA' && onRevertToDraft) {
+    accion = (
+      <Button variant="outline" size="sm" onClick={() => onRevertToDraft(row)}>
+        Volver a borrador
+      </Button>
+    )
   } else if (row.estado === 'CONFIRMADA') {
     accion = <span className={styles.muted}>Confirmada</span>
   } else if (row.estado === 'BORRADOR' && onConfirm) {

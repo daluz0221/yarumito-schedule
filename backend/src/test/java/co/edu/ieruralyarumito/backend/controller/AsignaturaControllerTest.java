@@ -1,3 +1,4 @@
+
 package co.edu.ieruralyarumito.backend.controller;
 
 import co.edu.ieruralyarumito.backend.dto.ActualizarAsignaturaRequest;
@@ -7,11 +8,13 @@ import co.edu.ieruralyarumito.backend.entity.enums.TipoAulaRequerida;
 import co.edu.ieruralyarumito.backend.exception.GlobalExceptionHandler;
 import co.edu.ieruralyarumito.backend.exception.RecursoNoEncontradoException;
 import co.edu.ieruralyarumito.backend.service.AsignaturaService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
@@ -27,6 +30,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,7 +38,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// Pruebas unitarias de los endpoints de AsignaturaController.
+// Pruebas de endpoints de asignaturas.
+// H-03: validacion de abreviaturas antes de persistir.
 @ExtendWith(MockitoExtension.class)
 public class AsignaturaControllerTest {
 
@@ -59,7 +64,8 @@ public class AsignaturaControllerTest {
     }
 
     @Test
-    void consultarAsignatura_debeRetornarOk() throws Exception {
+    void consultarAsignatura_debeRetornarOk()
+            throws Exception {
 
         UUID asignaturaId = UUID.randomUUID();
         UUID areaId = UUID.randomUUID();
@@ -96,7 +102,8 @@ public class AsignaturaControllerTest {
     }
 
     @Test
-    void listarAsignaturas_debeRetornarOk() throws Exception {
+    void listarAsignaturas_debeRetornarOk()
+            throws Exception {
 
         AsignaturaResponse asignatura =
                 new AsignaturaResponse();
@@ -201,6 +208,7 @@ public class AsignaturaControllerTest {
         response.setAreaId(areaId);
         response.setNombre("Ciencias Naturales");
         response.setCodigo("CN-01");
+        response.setAbreviatura("CEN");
         response.setTipoAulaRequerida(
                 TipoAulaRequerida.LABORATORIO
         );
@@ -212,12 +220,14 @@ public class AsignaturaControllerTest {
                 any(ActualizarAsignaturaRequest.class)))
                 .thenReturn(response);
 
+        // H-03: CEN esta permitida en V29.
+        // La abreviatura CN no pertenece a esa lista.
         String json = """
                 {
                   "areaId": "%s",
                   "nombre": "Ciencias Naturales",
                   "codigo": "CN-01",
-                  "abreviatura": "CN",
+                  "abreviatura": "CEN",
                   "colorUi": "#228833",
                   "exigeIdoneidadEstricta": true,
                   "esMediaTecnica": false,
@@ -318,5 +328,82 @@ public class AsignaturaControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.mensaje")
                         .value("La asignatura no existe"));
+    }
+
+    // H-03: una abreviatura no permitida debe
+    // producir HTTP 400 y nunca llegar al servicio.
+    @Test
+    void registrarAsignatura_abreviaturaInvalida_debeRetornar400()
+            throws Exception {
+
+        UUID areaId = UUID.randomUUID();
+
+        String json = """
+                {
+                  "areaId": "%s",
+                  "nombre": "Asignatura de prueba H-03",
+                  "codigo": "ZZ-ASG",
+                  "abreviatura": "ZZAS",
+                  "exigeIdoneidadEstricta": false,
+                  "esMediaTecnica": false,
+                  "requiereDocenteExclusivo": false,
+                  "tipoAulaRequerida": "AULA",
+                  "maxClasesConsecutivas": 2,
+                  "activa": true
+                }
+                """.formatted(areaId);
+
+        mockMvc.perform(
+                        post("/api/v1/asignaturas")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje")
+                        .value(
+                                "abreviatura: La abreviatura no pertenece "
+                                        + "al catálogo institucional autorizado"
+                        ));
+
+        verifyNoInteractions(asignaturaService);
+    }
+
+    // H-03: validar tambien PUT, sin permitir
+    // que un valor invalido alcance PostgreSQL.
+    @Test
+    void actualizarAsignatura_abreviaturaInvalida_debeRetornar400()
+            throws Exception {
+
+        UUID asignaturaId = UUID.randomUUID();
+        UUID areaId = UUID.randomUUID();
+
+        String json = """
+                {
+                  "areaId": "%s",
+                  "nombre": "Asignatura de prueba H-03",
+                  "codigo": "ZZ-ASG",
+                  "abreviatura": "ZZAS",
+                  "exigeIdoneidadEstricta": false,
+                  "esMediaTecnica": false,
+                  "requiereDocenteExclusivo": false,
+                  "tipoAulaRequerida": "AULA",
+                  "maxClasesConsecutivas": 2,
+                  "activa": true
+                }
+                """.formatted(areaId);
+
+        mockMvc.perform(
+                        put("/api/v1/asignaturas/{id}", asignaturaId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje")
+                        .value(
+                                "abreviatura: La abreviatura no pertenece "
+                                        + "al catálogo institucional autorizado"
+                        ));
+
+        verifyNoInteractions(asignaturaService);
     }
 }

@@ -18,9 +18,21 @@ public class CrearAsignaturaRequest {
     @NotBlank
     private String codigo;
 
+    // H-03: evitar abreviaturas que PostgreSQL
+    // rechazaría por la restricción de la migración V29.
+    @Pattern(
+            regexp = "^(MAT|CAS|ING|CEN|SOC|ART|EFI|TEC|ETI|ERE|EMP|QUI|FIS|BIO|FILO|ESP"
+                    + "|BIOL|QUIM|FISI|AMBI|SOCI|POLI|CIVI|CAST|INGL|LECT"
+                    + "|MATE|GEOM|ESTAD|INFO|EMPRE|ETIC|RELI|ARTE"
+                    + "|EDFI|AGRO|VEGE|TRAN|TECA)$",
+            message = "La abreviatura no pertenece al catálogo institucional autorizado"
+    )
     private String abreviatura;
 
-    @Pattern(regexp = "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", message = "El color debe ser hexadecimal: #RGB, #RRGGBB o #RRGGBBAA")
+    @Pattern(
+            regexp = "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+            message = "El color debe ser hexadecimal: #RGB, #RRGGBB o #RRGGBBAA"
+    )
     private String colorUi;
 
     @NotNull

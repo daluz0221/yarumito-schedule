@@ -23,6 +23,7 @@ export type AssignmentSectionProps = {
   onEdit: (row: AssignmentRow) => void
   onRemove: (row: AssignmentRow) => void
   onConfirm?: (row: AssignmentRow) => void
+  onRevertToDraft?: (row: AssignmentRow) => void
 }
 
 export function AssignmentSection({
@@ -42,6 +43,7 @@ export function AssignmentSection({
   onEdit,
   onRemove,
   onConfirm,
+  onRevertToDraft,
 }: AssignmentSectionProps) {
   return (
     <Card className={styles.section}>
@@ -69,6 +71,7 @@ export function AssignmentSection({
           onEdit={onEdit}
           onRemove={onRemove}
           onConfirm={onConfirm}
+          onRevertToDraft={onRevertToDraft}
         />
       </div>
 
