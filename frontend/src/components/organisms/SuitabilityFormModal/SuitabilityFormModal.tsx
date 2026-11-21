@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError, listarAsignaturas } from '../../../api'
 import type { AsignaturaResponse } from '../../../api/asignaturas'
-import { PENDING_BACKEND_LABEL } from '../../../content/teachers'
+import { SIN_DATO_LABEL } from '../../../content/teachers'
 import {
   emptyCrearIdoneidadForm,
   formatTituloSoporte,
@@ -36,7 +36,7 @@ export type SuitabilityFormModalProps = {
 }
 
 const pendingOptions: SelectOption[] = [
-  { value: '', label: PENDING_BACKEND_LABEL },
+  { value: '', label: SIN_DATO_LABEL },
 ]
 
 function isAbortError(error: unknown) {
@@ -286,7 +286,7 @@ export function SuitabilityFormModal({
               : pendingOptions
           }
           disabled={areaOptions.length === 0}
-          hint={areaOptions.length === 0 ? PENDING_BACKEND_LABEL : undefined}
+          hint={areaOptions.length === 0 ? SIN_DATO_LABEL : undefined}
           onChange={(areaId) =>
             setValues((current) => ({
               ...current,

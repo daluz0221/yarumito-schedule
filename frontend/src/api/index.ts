@@ -12,6 +12,7 @@ export {
 export type { ActualizarAulaRequest, AulaRequest, AulaResponse, TipoAula } from './aulas'
 export {
   actualizarTurno,
+  asegurarTurnosBase,
   consultarTurno,
   horaCorta,
   listarCatalogoTurnos,

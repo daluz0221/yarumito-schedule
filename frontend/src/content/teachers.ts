@@ -28,7 +28,7 @@ export type Teacher = {
   fechaVinculacion: string
 }
 
-export const PENDING_BACKEND_LABEL = 'Próximamente'
+export const SIN_DATO_LABEL = 'No disponible'
 
 export function formatTeacherName(teacher: Teacher) {
   return `${teacher.nombres} ${teacher.apellidos}`.trim()

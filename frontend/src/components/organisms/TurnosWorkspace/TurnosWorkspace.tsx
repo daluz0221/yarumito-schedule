@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { ApiError, consultarTurno, listarCatalogoTurnos } from '../../../api'
+import { ApiError, asegurarTurnosBase, consultarTurno, listarCatalogoTurnos } from '../../../api'
 import type { TurnoResponse } from '../../../api/turnos'
-import { Button } from '../../atoms/Button'
 import { Card } from '../../atoms/Card'
 import { Text } from '../../atoms/Text'
 import { TextInput } from '../../atoms/TextInput'
@@ -42,9 +41,9 @@ export function TurnosWorkspace() {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [modal, setModal] = useState<
-    { name: 'closed' } | { name: 'create' } | { name: 'edit'; id: string }
-  >({ name: 'closed' })
+  const [modal, setModal] = useState<{ name: 'closed' } | { name: 'edit'; id: string }>({
+    name: 'closed',
+  })
   const [editing, setEditing] = useState<TurnoResponse | null>(null)
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState('')
@@ -53,9 +52,13 @@ export function TurnosWorkspace() {
   useEffect(() => {
     const controller = new AbortController()
 
+    // Las dos jornadas de la institución se crean solas la primera vez.
     listarCatalogoTurnos(controller.signal)
+      .then((items) => asegurarTurnosBase(items))
       .then((items) => {
-        setTurnos(items)
+        if (!controller.signal.aborted) {
+          setTurnos(items)
+        }
       })
       .catch((cause) => {
         if (isAbortError(cause)) {
@@ -136,7 +139,7 @@ export function TurnosWorkspace() {
           Turnos
         </Text>
         <Text variant="body">
-          Define las jornadas de la institución: horario, duración de cada clase y el descanso.
+          Ajusta las jornadas de la institución: horario, duración de cada clase y el descanso.
         </Text>
       </div>
 
@@ -149,12 +152,7 @@ export function TurnosWorkspace() {
       <Card className={styles.section}>
         <SectionHeader
           title="Catálogo de turnos"
-          description="Consulta un turno para editar su nombre, horario o la estructura de la jornada."
-          action={
-            <Button variant="primary" size="sm" onClick={() => setModal({ name: 'create' })}>
-              + Nuevo turno
-            </Button>
-          }
+          description="La institución maneja dos jornadas, Mañana y Contrajornada. Edita su horario y la estructura de las clases."
         />
 
         <div className={styles.search}>
@@ -186,20 +184,12 @@ export function TurnosWorkspace() {
       </Card>
 
       <TurnoFormModal
-        open={modal.name !== 'closed'}
-        mode={modal.name === 'edit' ? 'edit' : 'create'}
-        turnos={turnos}
+        open={modal.name === 'edit'}
         turno={editing ?? undefined}
         loading={modal.name === 'edit' && editLoading}
         loadError={modal.name === 'edit' ? editError : ''}
         onRetry={modal.name === 'edit' ? () => loadTurno(modal.id) : undefined}
         onClose={closeModal}
-        onCreated={(turno) => {
-          setTurnos((current) =>
-            current.some((item) => item.id === turno.id) ? current : [...current, turno],
-          )
-          setError('')
-        }}
         onUpdated={(turno) => {
           setTurnos((current) => current.map((item) => (item.id === turno.id ? turno : item)))
           setError('')

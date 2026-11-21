@@ -1,7 +1,5 @@
 import { useState, type FormEvent } from 'react'
 import {
-  scheduleBandOptions,
-  scheduleClassroomOptions,
   scheduleDayOptions,
   type PendingPlacement,
 } from '../../../content/scheduleConstruction'
@@ -30,8 +28,8 @@ export type ScheduleClassFormModalProps = {
   bandId: string
   classroom: string
   subjectKey: string
-  bandOptions?: { value: string; label: string }[]
-  classroomOptions?: { value: string; label: string }[]
+  bandOptions: { value: string; label: string }[]
+  classroomOptions: { value: string; label: string }[]
   submitting?: boolean
   error?: string
   onClose: () => void
@@ -93,7 +91,7 @@ export function ScheduleClassFormModal({
     label: `${item.subject} · ${item.teacherName} · ${groupCode}`,
   }))
 
-  const roomOptions = classroomOptions ?? scheduleClassroomOptions()
+  const roomOptions = classroomOptions
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -230,7 +228,7 @@ export function ScheduleClassFormModal({
             name="band"
             required
             value={values.bandId}
-            options={bandOptions ?? scheduleBandOptions()}
+            options={bandOptions}
             disabled={submitting}
             onChange={(nextBand) => setValues((current) => ({ ...current, bandId: nextBand }))}
           />

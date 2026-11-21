@@ -1,8 +1,4 @@
-import {
-  availabilityDays,
-  morningBands,
-  type WeekDay,
-} from './teacherRestrictions'
+import { availabilityDays, type WeekDay } from './teacherRestrictions'
 
 export type PlacementTone = 'ok' | 'conflict' | 'warning'
 
@@ -61,39 +57,12 @@ export type ScheduleDraft = {
 }
 
 
-export const scheduleViewOptions = [{ value: 'grupo', label: 'Por grupo' }]
-
-
-
-export const scheduleClassrooms = [
-  { value: 'Aula 201', label: 'Aula 201', capacity: 30 },
-  { value: 'Aula 202', label: 'Aula 202', capacity: 32 },
-  { value: 'Laboratorio', label: 'Laboratorio', capacity: 40 },
-  { value: 'Lab. 1', label: 'Lab. 1', capacity: 24 },
-]
-
 export function scheduleDayOptions() {
   return availabilityDays.map((day) => ({ value: day, label: day }))
 }
 
-export function scheduleBandOptions() {
-  return classBands().map((band) => ({
-    value: band.id,
-    label: band.label.replace(/\b(\d):/g, '0$1:'),
-  }))
-}
-
-export function scheduleClassroomOptions() {
-  return scheduleClassrooms.map((room) => ({ value: room.value, label: room.label }))
-}
-
-
 // Referencia local de la validación. La construcción de horario carga la
 // grilla desde GET /api/horarios/grupos/{grupoId}.
-
-export function classBands() {
-  return morningBands.filter((band) => band.kind === 'class')
-}
 
 
 

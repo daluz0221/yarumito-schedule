@@ -1,4 +1,3 @@
-import { scheduleViewOptions } from '../../../content/scheduleConstruction'
 import { Badge, type BadgeTone } from '../../atoms/Badge'
 import { Card } from '../../atoms/Card'
 import { Text } from '../../atoms/Text'
@@ -13,6 +12,7 @@ export type ScheduleSelectorProps = {
   gradeLabel: string
   year: number
   groupCode: string
+  groupShiftLabel: string
   yearOptions: { value: string; label: string }[]
   yearDisabled?: boolean
   groupOptions: { value: string; label: string }[]
@@ -37,6 +37,7 @@ export function ScheduleSelector({
   gradeLabel,
   year,
   groupCode,
+  groupShiftLabel,
   yearOptions,
   yearDisabled = false,
   groupOptions,
@@ -98,17 +99,6 @@ export function ScheduleSelector({
       </form>
 
       <div className={styles.meta}>
-        <div className={styles.view}>
-          <SelectField
-            id="schedule-view"
-            label="Vista"
-            name="view"
-            value={scheduleViewOptions[0].value}
-            options={scheduleViewOptions}
-            disabled
-            onChange={() => undefined}
-          />
-        </div>
         <div className={styles.status}>
           <Text as="span" variant="caption">
             Estado del horario
@@ -118,6 +108,7 @@ export function ScheduleSelector({
         {groupCode ? (
           <Text as="p" variant="nav" className={styles.context}>
             Grupo {groupCode} · Grado {gradeLabel} · Año {year}
+            {groupShiftLabel ? ` · Turno ${groupShiftLabel}` : ''}
           </Text>
         ) : null}
       </div>

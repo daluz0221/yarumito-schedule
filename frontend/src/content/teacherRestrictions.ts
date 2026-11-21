@@ -17,16 +17,6 @@ export const availabilityDays: WeekDay[] = [
 ]
 
 
-// Jornada de la mañana según el diseño. El descanso no se edita.
-export const morningBands: TimeBand[] = [
-  { id: '0630', label: '6:30 – 7:25', kind: 'class' },
-  { id: '0725', label: '7:25 – 8:20', kind: 'class' },
-  { id: '0820', label: '8:20 – 9:15', kind: 'class' },
-  { id: 'break', label: 'Descanso · 9:15 – 9:45 · No editable', kind: 'break' },
-  { id: '0945', label: '9:45 – 10:40', kind: 'class' },
-  { id: '1040', label: '10:40 – 11:35', kind: 'class' },
-]
-
 export type RestrictionKind = Exclude<AvailabilityStatus, 'DISPONIBLE'>
 
 export type TeacherRestriction = {
@@ -80,10 +70,6 @@ export const restrictionApprovalHint =
 
 export const restrictionEditApprovalHint =
   'Aprobación: gestionada por el Rector autenticado cuando corresponda.'
-
-export function timeBandLabel(bandId: string) {
-  return morningBands.find((band) => band.id === bandId)?.label ?? ''
-}
 
 export function restrictionEffect(status: RestrictionKind) {
   if (status === 'NO_DISPONIBLE') {
