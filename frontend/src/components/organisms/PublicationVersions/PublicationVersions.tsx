@@ -16,7 +16,7 @@ export function PublicationVersions({ view }: PublicationVersionsProps) {
       </Text>
       <div className={styles.grid}>
         <article className={styles.current}>
-          <p className={styles.version}>{publicationCopy.currentVersion}</p>
+          <p className={styles.version}>{view.hasSchedule ? `v${view.version} · Actual` : 'Sin versión'}</p>
           <Badge tone={view.status === 'PUBLICADO' ? 'success' : 'warning'}>{view.status}</Badge>
           <Text variant="caption">{view.versionCaption}</Text>
         </article>

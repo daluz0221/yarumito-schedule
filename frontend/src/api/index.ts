@@ -12,6 +12,7 @@ export {
 export type { ActualizarAulaRequest, AulaRequest, AulaResponse, TipoAula } from './aulas'
 export {
   actualizarTurno,
+  asegurarTurnosBase,
   consultarTurno,
   horaCorta,
   listarCatalogoTurnos,
@@ -145,6 +146,8 @@ export {
   metricasDelTablero,
   pendientesDelTablero,
 } from './horarios'
+export { cargarDatosPublicacion } from './publicacionHorario'
+export type { DatosPublicacion } from './publicacionHorario'
 export {
   aConflictoRevisado,
   listarConflictosPendientes,

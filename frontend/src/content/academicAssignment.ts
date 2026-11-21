@@ -1,6 +1,3 @@
-import { schoolGroups, type SchoolGroup } from './academicYear'
-import { findStudyPlanGrade, studyPlanEntries, type StudyPlanEntry } from './studyPlan'
-import { formatTeacherName, type Teacher } from './teachers'
 
 export type AssignmentTab = 'curricular' | 'activity'
 
@@ -65,16 +62,7 @@ export const assignmentTabs: { id: AssignmentTab; label: string }[] = [
   { id: 'activity', label: 'Actividades y proyectos' },
 ]
 
-export const assignmentKindOptions = [
-  { value: 'PRINCIPAL', label: 'Principal' },
-  { value: 'IDONEIDAD', label: 'Idoneidad' },
-  { value: 'TRANSVERSAL', label: 'Transversal' },
-  { value: 'ACTIVIDAD', label: 'Actividad / proyecto' },
-]
 
-export const curricularKindOptions = assignmentKindOptions.filter(
-  (option) => option.value !== 'ACTIVIDAD',
-)
 
 export const assignmentKindHint =
   'Principal: área de nombramiento · Idoneidad: válida para la asignatura · Transversal: permitida por plan, idoneidad y reglas institucionales.'
@@ -150,84 +138,19 @@ export type ActivityAssignmentSource = {
   justificacion: string
 }
 
-const gradeNameToId: Record<string, string> = {
-  Sexto: '6',
-  Séptimo: '7',
-  Octavo: '8',
-  Noveno: '9',
-  Décimo: '10',
-  Undécimo: '11',
-}
-
 export const assignmentPrioritySteps =
   '1. Área principal → 2. Idoneidades válidas → 3. Transversales permitidas → 4. Actividades / proyectos institucionales'
 
 export const assignmentPriorityNote =
   'El Rector conserva la decisión final. No se realizarán asignaciones automáticas.'
 
-export const assignmentFormHint =
-  'Las horas requeridas vienen del plan de estudios. El docente se elige entre los registrados y el tipo guía la prioridad de carga, sin automatizar la decisión.'
 
-export const seedAssignments: AssignmentRecord[] = [
-  {
-    id: '2026-601-mat',
-    yearId: '2026',
-    groupId: '601',
-    subjectKey: '2026-6-mat',
-    tab: 'curricular',
-    teacherId: null,
-    teacherName: 'Carlos Pérez',
-    assignedHours: 5,
-    kind: 'PRINCIPAL',
-    note: 'Asignación curricular del grupo 601',
-  },
-  {
-    id: '2026-601-bio',
-    yearId: '2026',
-    groupId: '601',
-    subjectKey: '2026-6-bio',
-    tab: 'curricular',
-    teacherId: null,
-    teacherName: 'Diana Marcela Ruiz',
-    assignedHours: 2,
-    kind: 'PRINCIPAL',
-    note: 'Asignación curricular del grupo 601',
-  },
-]
 
-export function groupsForYear(yearId: string) {
-  return schoolGroups.filter((group) => group.yearId === yearId && group.status === 'ACTIVO')
-}
 
-export function assignmentGroupOptions(yearId: string) {
-  return groupsForYear(yearId).map((group) => ({
-    value: group.id,
-    label: group.code,
-  }))
-}
 
-export function gradeIdFromGroup(group: SchoolGroup) {
-  return gradeNameToId[group.grade] ?? '6'
-}
 
-export function gradeLabelFromGroup(group: SchoolGroup) {
-  return findStudyPlanGrade(gradeIdFromGroup(group)).label
-}
 
-export function planEntriesForGroup(yearId: string, group: SchoolGroup) {
-  const gradeId = gradeIdFromGroup(group)
-  return studyPlanEntries.filter(
-    (entry) => entry.yearId === yearId && entry.gradeId === gradeId,
-  )
-}
 
-export function labelAssignmentKind(kind: AssignmentKind | null) {
-  if (!kind) {
-    return '—'
-  }
-
-  return assignmentKindOptions.find((option) => option.value === kind)?.label ?? kind
-}
 
 export function assignmentStatus(
   requiredHours: number,
@@ -255,61 +178,7 @@ export function labelAssignmentStatus(status: AssignmentStatus) {
   return labels[status]
 }
 
-export function resolveAssignmentTeacher(
-  assignment: AssignmentRecord | undefined,
-  teachers: Teacher[],
-) {
-  if (!assignment) {
-    return { teacherId: null, teacherName: '' }
-  }
 
-  const byId = assignment.teacherId
-    ? teachers.find((teacher) => teacher.id === assignment.teacherId)
-    : undefined
-  const byName = assignment.teacherName
-    ? teachers.find(
-        (teacher) =>
-          formatTeacherName(teacher).toLowerCase() === assignment.teacherName?.toLowerCase(),
-      )
-    : undefined
-  const teacher = byId ?? byName
-
-  return {
-    teacherId: teacher?.id ?? assignment.teacherId,
-    teacherName: teacher ? formatTeacherName(teacher) : assignment.teacherName ?? '',
-  }
-}
-
-export function buildAssignmentRows(
-  subjects: Array<{ key: string; area: string; subject: string; requiredHours: number }>,
-  assignments: AssignmentRecord[],
-  teachers: Teacher[],
-): AssignmentRow[] {
-  return subjects.map((item) => {
-    const assignment = assignments.find((record) => record.subjectKey === item.key)
-    const teacher = resolveAssignmentTeacher(assignment, teachers)
-    const assignedHours = assignment?.assignedHours ?? 0
-    const assigned = Boolean(teacher.teacherName) && assignedHours > 0
-    const status = assignmentStatus(item.requiredHours, assignedHours, assigned)
-
-    return {
-      key: item.key,
-      area: item.area,
-      subject: item.subject,
-      requiredHours: item.requiredHours,
-      assignedHours,
-      teacherId: teacher.teacherId,
-      teacherName: teacher.teacherName,
-      kind: assignment?.kind ?? null,
-      kindLabel: labelAssignmentKind(assignment?.kind ?? null),
-      status,
-      assigned,
-      note: assignment?.note ?? '',
-      assignmentId: null,
-      estado: null,
-    }
-  })
-}
 
 function filaCurricular(
   item: { key: string; area: string; subject: string; requiredHours: number },
@@ -375,14 +244,6 @@ export function mergeCurricularAssignments(
   return rows
 }
 
-export function curricularSubjects(entries: StudyPlanEntry[]) {
-  return entries.map((entry) => ({
-    key: entry.id,
-    area: entry.area,
-    subject: entry.subject,
-    requiredHours: entry.weeklyHours,
-  }))
-}
 
 export function activitySubjects() {
   return institutionalActivities.map((item) => ({
@@ -524,13 +385,6 @@ export function summarizeRows(rows: AssignmentRow[]) {
   return { requiredHours, assignedHours, status }
 }
 
-export function nextAssignmentId(
-  yearId: string,
-  groupId: string,
-  subjectKey: string,
-) {
-  return `${yearId}-${groupId}-${subjectKey}`
-}
 
 export function subjectPlanHint(gradeLabel: string, row?: AssignmentRow | null) {
   if (!row) {

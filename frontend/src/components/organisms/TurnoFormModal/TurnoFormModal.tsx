@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { actualizarTurno, ApiError, horaCorta, registrarTurno } from '../../../api'
+import { actualizarTurno, ApiError, horaCorta } from '../../../api'
 import type { TurnoResponse } from '../../../api/turnos'
 import { Modal } from '../../atoms/Modal'
 import { TextLink } from '../../atoms/TextLink'
@@ -7,23 +7,17 @@ import { ModalActions } from '../../molecules/ModalActions'
 import { TextField } from '../../molecules/TextField'
 import styles from './TurnoFormModal.module.css'
 
-export type TurnoFormMode = 'create' | 'edit'
-
 export type TurnoFormModalProps = {
   open: boolean
-  mode: TurnoFormMode
-  turnos: TurnoResponse[]
   turno?: TurnoResponse
   loading?: boolean
   loadError?: string
   onRetry?: () => void
   onClose: () => void
-  onCreated?: (turno: TurnoResponse) => void
   onUpdated?: (turno: TurnoResponse) => void
 }
 
 type FormValues = {
-  nombre: string
   horaInicio: string
   horaFin: string
   duracionClaseMinutos: string
@@ -32,31 +26,11 @@ type FormValues = {
   duracionDescansoMinutos: string
 }
 
-const duplicateMessage = 'Ya existe un turno con ese nombre'
 const rangeMessage = 'La hora de inicio debe ser anterior a la hora de finalización'
 const structureMessage = 'Las clases antes del descanso no pueden superar las clases por día'
 
-const emptyValues: FormValues = {
-  nombre: '',
-  horaInicio: '',
-  horaFin: '',
-  duracionClaseMinutos: '55',
-  clasesPorDia: '6',
-  clasesAntesDeDescanso: '3',
-  duracionDescansoMinutos: '30',
-}
-
-function normalizarNombre(nombre: string) {
-  return nombre.trim().replace(/\s+/g, ' ')
-}
-
-function valuesFromTurno(turno?: TurnoResponse): FormValues {
-  if (!turno) {
-    return emptyValues
-  }
-
+function valuesFromTurno(turno: TurnoResponse): FormValues {
   return {
-    nombre: turno.nombre,
     horaInicio: horaCorta(turno.horaInicio),
     horaFin: horaCorta(turno.horaFin),
     duracionClaseMinutos: String(turno.duracionClaseMinutos),
@@ -66,50 +40,23 @@ function valuesFromTurno(turno?: TurnoResponse): FormValues {
   }
 }
 
-function nombreOcupado(turnos: TurnoResponse[], nombre: string, turnoId?: string) {
-  const normalizado = normalizarNombre(nombre).toLowerCase()
-
-  if (!normalizado) {
-    return false
-  }
-
-  return turnos.some(
-    (turno) => turno.id !== turnoId && normalizarNombre(turno.nombre).toLowerCase() === normalizado,
-  )
-}
-
 function entero(value: string) {
   return value === '' ? Number.NaN : Number(value)
 }
 
 type TurnoFormFieldsProps = {
-  mode: TurnoFormMode
-  turnos: TurnoResponse[]
-  turno?: TurnoResponse
+  turno: TurnoResponse
   onClose: () => void
-  onCreated?: (turno: TurnoResponse) => void
   onUpdated?: (turno: TurnoResponse) => void
   onSubmittingChange: (submitting: boolean) => void
 }
 
-function TurnoFormFields({
-  mode,
-  turnos,
-  turno,
-  onClose,
-  onCreated,
-  onUpdated,
-  onSubmittingChange,
-}: TurnoFormFieldsProps) {
-  const [values, setValues] = useState<FormValues>(() =>
-    mode === 'edit' ? valuesFromTurno(turno) : emptyValues,
-  )
+function TurnoFormFields({ turno, onClose, onUpdated, onSubmittingChange }: TurnoFormFieldsProps) {
+  const [values, setValues] = useState<FormValues>(() => valuesFromTurno(turno))
   const [attempted, setAttempted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
-  const formId = `turno-${mode}-form`
-  const creating = mode === 'create'
-  const nameTaken = nombreOcupado(turnos, values.nombre, turno?.id)
+  const formId = 'turno-edit-form'
   const rangeInvalid = Boolean(values.horaInicio && values.horaFin && values.horaInicio >= values.horaFin)
   const clases = entero(values.clasesPorDia)
   const antes = entero(values.clasesAntesDeDescanso)
@@ -136,10 +83,8 @@ function TurnoFormFields({
 
     if (
       submitting ||
-      !normalizarNombre(values.nombre) ||
       !values.horaInicio ||
       !values.horaFin ||
-      nameTaken ||
       rangeInvalid ||
       structureInvalid ||
       durationInvalid ||
@@ -150,13 +95,9 @@ function TurnoFormFields({
       return
     }
 
-    if (!creating && !turno?.id) {
-      setSubmitError('No se encontró el turno a actualizar.')
-      return
-    }
-
+    // El nombre no se edita: las jornadas de la institución son fijas.
     const payload = {
-      nombre: normalizarNombre(values.nombre),
+      nombre: turno.nombre,
       horaInicio: values.horaInicio,
       horaFin: values.horaFin,
       duracionClaseMinutos: entero(values.duracionClaseMinutos),
@@ -168,21 +109,10 @@ function TurnoFormFields({
     setBusy(true)
 
     try {
-      if (creating) {
-        onCreated?.(await registrarTurno(payload))
-      } else if (turno) {
-        onUpdated?.(await actualizarTurno(turno.id, payload))
-      }
-
+      onUpdated?.(await actualizarTurno(turno.id, payload))
       onClose()
     } catch (cause) {
-      setSubmitError(
-        cause instanceof ApiError
-          ? cause.message
-          : creating
-            ? 'No se pudo registrar el turno.'
-            : 'No se pudo actualizar el turno.',
-      )
+      setSubmitError(cause instanceof ApiError ? cause.message : 'No se pudo actualizar el turno.')
     } finally {
       setBusy(false)
     }
@@ -192,20 +122,11 @@ function TurnoFormFields({
     <form id={formId} className={styles.form} onSubmit={handleSubmit}>
       <TextField
         id={`${formId}-name`}
-        label="Nombre del turno"
-        required
-        maxLength={50}
-        disabled={submitting}
-        placeholder="Ejemplo: Mañana"
-        value={values.nombre}
-        error={
-          nameTaken
-            ? duplicateMessage
-            : attempted && !normalizarNombre(values.nombre)
-              ? 'El nombre del turno es obligatorio'
-              : undefined
-        }
-        onChange={(event) => setValues((current) => ({ ...current, nombre: event.target.value }))}
+        label="Turno"
+        disabled
+        value={turno.nombre}
+        hint="Las dos jornadas de la institución (Mañana y Contrajornada) vienen definidas y no se renombran."
+        onChange={() => undefined}
       />
       <div className={styles.grid}>
         <TextField
@@ -293,8 +214,9 @@ function TurnoFormFields({
         </p>
       ) : null}
       <p className={styles.hint}>
-        La hora de inicio debe ser anterior a la de finalización. Las clases antes del descanso no
-        pueden superar las clases del día.
+        La hora de inicio y de finalización marcan el rango total de la jornada; las franjas de
+        cada clase se definen después en Franjas horarias. La hora de inicio debe ser anterior a la
+        de finalización y las clases antes del descanso no pueden superar las del día.
       </p>
     </form>
   )
@@ -302,20 +224,15 @@ function TurnoFormFields({
 
 export function TurnoFormModal({
   open,
-  mode,
-  turnos,
   turno,
   loading = false,
   loadError = '',
   onRetry,
   onClose,
-  onCreated,
   onUpdated,
 }: TurnoFormModalProps) {
   const [submitting, setSubmitting] = useState(false)
-  const creating = mode === 'create'
-  const showForm = !loading && !loadError && (creating || Boolean(turno))
-  const formId = `turno-${mode}-form`
+  const showForm = !loading && !loadError && Boolean(turno)
 
   const handleClose = () => {
     if (submitting) {
@@ -328,16 +245,12 @@ export function TurnoFormModal({
   return (
     <Modal
       open={open}
-      title={creating ? 'Nuevo turno' : 'Editar turno'}
-      description={
-        creating
-          ? 'Registra una jornada de la institución.'
-          : 'Actualiza el horario y la estructura del turno.'
-      }
+      title="Editar turno"
+      description="Ajusta el horario y la estructura de la jornada."
       onClose={handleClose}
       footer={
         <ModalActions
-          formId={formId}
+          formId="turno-edit-form"
           confirmLabel={
             loadError
               ? undefined
@@ -345,9 +258,7 @@ export function TurnoFormModal({
                 ? 'Cargando...'
                 : submitting
                   ? 'Guardando...'
-                  : creating
-                    ? 'Guardar turno'
-                    : 'Guardar cambios'
+                  : 'Guardar cambios'
           }
           confirmType="submit"
           disabled={submitting || loading || Boolean(loadError)}
@@ -364,14 +275,11 @@ export function TurnoFormModal({
           </p>
           {onRetry ? <TextLink onClick={onRetry}>Reintentar</TextLink> : null}
         </div>
-      ) : showForm ? (
+      ) : showForm && turno ? (
         <TurnoFormFields
-          key={creating ? 'create' : turno?.id}
-          mode={mode}
-          turnos={turnos}
+          key={turno.id}
           turno={turno}
           onClose={onClose}
-          onCreated={onCreated}
           onUpdated={onUpdated}
           onSubmittingChange={setSubmitting}
         />

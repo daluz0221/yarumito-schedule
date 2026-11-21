@@ -63,18 +63,6 @@ export const academicYears: AcademicYear[] = [
   },
 ]
 
-export const schoolGroups: SchoolGroup[] = [
-  group('601', 'Sexto', 'BACHILLERATO', 32),
-  group('602', 'Sexto', 'BACHILLERATO', 30),
-  group('701', 'Séptimo', 'BACHILLERATO', 31),
-  group('702', 'Séptimo', 'BACHILLERATO', 29),
-  group('801', 'Octavo', 'BACHILLERATO', 28),
-  group('802', 'Octavo', 'BACHILLERATO', 33),
-  group('901', 'Noveno', 'BACHILLERATO', 27),
-  group('1001', 'Décimo', 'MEDIA', 26),
-  group('1002', 'Décimo', 'MEDIA', 24),
-  group('1101', 'Undécimo', 'MEDIA', 22),
-]
 
 export const groupStatusFilterOptions = [
   { value: '', label: 'Todos' },
@@ -145,17 +133,6 @@ export const academicYearStatusOptions = (
   label: labelYearStatus(status),
 }))
 
-export function suggestedAcademicYear(years: AcademicYear[]) {
-  const current = years.find((year) => year.current)
-  const year = (current?.year ?? years.at(-1)?.year ?? 2026) + 1
-
-  return {
-    year: String(year),
-    startDate: `18/01/${year}`,
-    endDate: `26/11/${year}`,
-    status: 'PLANEACION' as AcademicYearStatus,
-  }
-}
 
 export function labelSchoolLevel(level: SchoolLevel) {
   const labels: Record<SchoolLevel, string> = {
@@ -239,22 +216,4 @@ export function schoolGroupStats(groups: SchoolGroup[]): StatItemData[] {
     },
   ]
 }
-
-function group(
-  code: string,
-  grade: string,
-  level: SchoolLevel,
-  students: number,
-): SchoolGroup {
-  return {
-    id: code,
-    yearId: '2026',
-    code,
-    grade,
-    level,
-    weeklyHours: 30,
-    students,
-    director: null,
-    status: 'ACTIVO',
-  }
-}
+
