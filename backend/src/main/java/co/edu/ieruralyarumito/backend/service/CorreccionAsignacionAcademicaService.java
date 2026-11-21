@@ -61,8 +61,8 @@ public class CorreccionAsignacionAcademicaService {
         this.entityManager = entityManager;
     }
 
-    // H-04: permite corregir docente, horas y observación
-    // únicamente antes de confirmar y programar clases.
+    // H-04: corregir docente, horas y observación
+    // únicamente en asignaciones en BORRADOR.
     @Transactional
     public AsignacionAcademicaResponse actualizar(
             UUID asignacionId,
@@ -124,8 +124,7 @@ public class CorreccionAsignacionAcademicaService {
         return mapper.toResponse(guardada);
     }
 
-    // H-04: retiro controlado de un BORRADOR
-    // que no tenga clases programadas.
+    // H-04: retirar un BORRADOR sin clases programadas.
     @Transactional
     public void retirar(
             UUID asignacionId,
@@ -152,7 +151,50 @@ public class CorreccionAsignacionAcademicaService {
         );
     }
 
-    // Solo el rector puede corregir o retirar asignaciones.
+    // M-01: regresar una asignación CONFIRMADA a BORRADOR.
+    // No altera docente, horas, grupo ni asignatura.
+    // Solo permite corregir antes de programar clases
+    // y siempre que la sede no tenga horario publicado.
+    @Transactional
+    public AsignacionAcademicaResponse regresarABorrador(
+            UUID asignacionId,
+            String correoUsuario) {
+
+        Usuario rector = obtenerRector(correoUsuario);
+        AsignacionAcademica asignacion =
+                obtenerAsignacion(asignacionId);
+
+        if (asignacion.getEstado()
+                != EstadoAsignacionAcademica.CONFIRMADA) {
+
+            throw new TransicionEstadoNoPermitidaException(
+                    "Solo se puede regresar a BORRADOR "
+                            + "una asignación CONFIRMADA");
+        }
+
+        validarSinClasesNiHorarioPublicado(asignacion);
+
+        Map<String, Object> antes = datosAsignacion(asignacion);
+
+        asignacion.setEstado(EstadoAsignacionAcademica.BORRADOR);
+
+        AsignacionAcademica guardada =
+                asignacionRepository.save(asignacion);
+
+        auditoria.registrar(
+                rector,
+                RegistroAuditoriaService.ACCION_UPDATE,
+                "AsignacionAcademica",
+                guardada.getId(),
+                antes,
+                datosAsignacion(guardada),
+                null
+        );
+
+        return mapper.toResponse(guardada);
+    }
+
+    // Solo el rector puede ejecutar estas correcciones.
     private Usuario obtenerRector(String correo) {
 
         if (correo == null || correo.isBlank()) {
@@ -185,8 +227,9 @@ public class CorreccionAsignacionAcademicaService {
                         "La asignación académica no existe"));
     }
 
-    // Protege asignaciones confirmadas, clases registradas
-    // y horarios ya publicados.
+    // Conserva la regla H-04:
+    // únicamente las asignaciones en BORRADOR
+    // pueden corregirse o retirarse.
     private void validarModificable(
             AsignacionAcademica asignacion) {
 
@@ -197,6 +240,14 @@ public class CorreccionAsignacionAcademicaService {
                     "Solo pueden corregirse o retirarse "
                             + "asignaciones en BORRADOR");
         }
+
+        validarSinClasesNiHorarioPublicado(asignacion);
+    }
+
+    // Protecciones existentes reutilizadas por H-04 y M-01.
+    // No cambia sus criterios de validación.
+    private void validarSinClasesNiHorarioPublicado(
+            AsignacionAcademica asignacion) {
 
         Long clases = entityManager.createQuery("""
                 select count(c)
@@ -209,7 +260,7 @@ public class CorreccionAsignacionAcademicaService {
         if (clases > 0) {
             throw new TransicionEstadoNoPermitidaException(
                     "La asignación tiene clases programadas. "
-                            + "No puede modificarse ni retirarse");
+                            + "No puede modificarse ni cambiar de estado");
         }
 
         UUID anioId = asignacion.getAnioEscolar().getId();
@@ -281,8 +332,8 @@ public class CorreccionAsignacionAcademicaService {
         }
     }
 
-    // Misma regla H-05: suma las asignaciones
-    // del año escolar, excluyendo la que se está editando.
+    // Misma regla H-05: sumar las asignaciones
+    // del año escolar excluyendo la editada.
     private void validarCargaDocente(
             AsignacionAcademica actual,
             Docente docente,
