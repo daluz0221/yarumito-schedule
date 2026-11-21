@@ -11,6 +11,8 @@ import type { OpcionAsignaturaPredefinida } from '../../../api/catalogos'
 import {
   areaSelectOptions,
   SIN_REQUISITO_AULA,
+  ABREVIATURAS_ASIGNATURA,
+  subjectAbbreviationOptions,
   subjectClassroomOptions,
   subjectColorOptions,
   subjectFormHint,
@@ -114,7 +116,7 @@ function valuesFromSubject(subject: SubjectFormSource): FormValues {
     areaId: subject.areaId,
     nombre: subject.nombre,
     codigo: subject.codigo,
-    abreviatura: subject.abreviatura ?? '',
+    abreviatura: subject.abreviatura?.trim().toUpperCase() ?? '',
     color: subject.colorUi ?? '',
     idoneidad: yesNoValue(subject.exigeIdoneidadEstricta),
     media: yesNoValue(subject.esMediaTecnica),
@@ -225,7 +227,18 @@ function SubjectFormFields({
       return
     }
 
-    if (!values.nombre.trim() || !values.codigo.trim() || missingChoice || maxInvalid) {
+    const abreviatura = values.abreviatura.trim().toUpperCase()
+    const abreviaturaInvalida =
+      abreviatura.length > 0 &&
+      !(ABREVIATURAS_ASIGNATURA as readonly string[]).includes(abreviatura)
+
+    if (
+      !values.nombre.trim() ||
+      !values.codigo.trim() ||
+      missingChoice ||
+      maxInvalid ||
+      abreviaturaInvalida
+    ) {
       return
     }
 
@@ -238,7 +251,7 @@ function SubjectFormFields({
       areaId: values.areaId,
       nombre: values.nombre.trim(),
       codigo: values.codigo.trim(),
-      abreviatura: optionalText(values.abreviatura),
+      abreviatura: optionalText(abreviatura),
       colorUi: optionalText(values.color),
       exigeIdoneidadEstricta: values.idoneidad === 'si',
       esMediaTecnica: values.media === 'si',
@@ -322,7 +335,7 @@ function SubjectFormFields({
                 patch({
                   nombre: opcion.nombre,
                   codigo: opcion.codigo,
-                  abreviatura: opcion.abreviatura,
+                  abreviatura: opcion.abreviatura.trim().toUpperCase(),
                 })
               }
             }}
@@ -347,14 +360,24 @@ function SubjectFormFields({
             value={values.codigo}
             onChange={(event) => patch({ codigo: event.target.value.toUpperCase() })}
           />
-          <TextField
+          <SelectField
             id={`${formId}-abbreviation`}
             label="Abreviatura"
             name="abreviatura"
             disabled={submitting}
-            placeholder="Ingresa la abreviatura"
             value={values.abreviatura}
-            onChange={(event) => patch({ abreviatura: event.target.value.toUpperCase() })}
+            options={subjectAbbreviationOptions(values.abreviatura)}
+            hint="Solo se aceptan abreviaturas del catálogo institucional. Puede quedar vacía."
+            error={
+              attempted &&
+              values.abreviatura.trim() &&
+              !(ABREVIATURAS_ASIGNATURA as readonly string[]).includes(
+                values.abreviatura.trim().toUpperCase(),
+              )
+                ? 'La abreviatura no pertenece al catálogo institucional autorizado.'
+                : undefined
+            }
+            onChange={(abreviatura) => patch({ abreviatura })}
           />
           <SelectField
             id={`${formId}-color`}

@@ -174,6 +174,7 @@ export {
   listarAsignacionesPorGrupo,
   listarBorradores,
   registrarAsignacion,
+  regresarAsignacionABorrador,
   retirarAsignacion,
 } from './asignaciones'
 export { asignarActividadDocente, listarActividadesDocente } from './actividadesDocente'
