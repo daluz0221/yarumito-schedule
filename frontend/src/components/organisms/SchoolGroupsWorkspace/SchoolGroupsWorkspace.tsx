@@ -8,11 +8,9 @@ import {
   useCatalogoGrupos,
 } from '../../../api'
 import {
-  academicYears,
   filterSchoolGroups,
   matchesAcademicYear,
   schoolGroupStats,
-  schoolGroups,
 } from '../../../content/academicYear'
 import { Text } from '../../atoms/Text'
 import { SelectField } from '../../molecules/SelectField'
@@ -28,7 +26,7 @@ export function SchoolGroupsWorkspace() {
     recargar: recargarGrupos,
   } = useCatalogoGrupos()
   const { grados } = useCatalogoGrados()
-  const catalogo = error ? academicYears : anios
+  const catalogo = anios
   const [yearId, setYearId] = useState('')
   const selectedYearId = catalogo?.some((year) => year.id === yearId)
     ? yearId
@@ -40,11 +38,7 @@ export function SchoolGroupsWorkspace() {
   const [query, setQuery] = useState('')
 
   const year = catalogo?.find((item) => item.id === selectedYearId) ?? null
-  const fuenteGrupos = gruposError
-    ? schoolGroups
-    : grupos === null
-      ? null
-      : gruposVisibles(grupos, grados)
+  const fuenteGrupos = grupos === null ? null : gruposVisibles(grupos, grados)
   const yearGroups =
     year && fuenteGrupos ? fuenteGrupos.filter((item) => matchesAcademicYear(item, year)) : []
   const rows = filterSchoolGroups(yearGroups, { grade, status, query })
@@ -71,14 +65,12 @@ export function SchoolGroupsWorkspace() {
       {gruposLoading ? <p className={styles.notice}>Cargando grupos…</p> : null}
       {error ? (
         <p className={styles.alert} role="alert">
-          {error} Se muestran los años de referencia locales para que puedas seguir
-          revisando los grupos.
+          {error}
         </p>
       ) : null}
       {gruposError ? (
         <p className={styles.alert} role="alert">
-          {gruposError} Se muestran los grupos de referencia locales para que puedas
-          seguir configurando.
+          {gruposError}
         </p>
       ) : null}
 

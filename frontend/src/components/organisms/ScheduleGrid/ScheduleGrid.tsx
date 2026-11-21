@@ -1,6 +1,5 @@
 import {
   availabilityDays,
-  morningBands,
   type TimeBand,
   type WeekDay,
 } from '../../../content/teacherRestrictions'
@@ -16,7 +15,7 @@ export type ScheduleGridProps = {
   groupId: string
   shiftLabel: string
   readOnly: boolean
-  bands?: TimeBand[]
+  bands: TimeBand[]
   blocks: Map<string, ScheduleBlock>
   onProgram: (day: WeekDay, bandId: string) => void
   onEdit: (placementId: string) => void
@@ -27,7 +26,7 @@ export function ScheduleGrid({
   groupId,
   shiftLabel,
   readOnly,
-  bands = morningBands,
+  bands,
   blocks,
   onProgram,
   onEdit,

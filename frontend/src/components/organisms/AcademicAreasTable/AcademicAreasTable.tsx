@@ -5,7 +5,7 @@ import {
   labelClasificacion,
   labelEstadoArea,
 } from '../../../content/areas'
-import { PENDING_BACKEND_LABEL } from '../../../content/teachers'
+import { SIN_DATO_LABEL } from '../../../content/teachers'
 import { Badge, type BadgeTone } from '../../atoms/Badge'
 import { BanIcon, CheckIcon, PencilIcon } from '../../atoms/icons'
 import styles from './AcademicAreasTable.module.css'
@@ -193,7 +193,7 @@ function AreaActions({
 
 function AreaValue({ label, tone }: { label: string | null; tone: BadgeTone }) {
   if (!label) {
-    return <span className={styles.pending}>{PENDING_BACKEND_LABEL}</span>
+    return <span className={styles.pending}>{SIN_DATO_LABEL}</span>
   }
 
   return <Badge tone={tone}>{label}</Badge>

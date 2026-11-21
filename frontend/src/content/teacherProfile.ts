@@ -1,4 +1,4 @@
-import { PENDING_BACKEND_LABEL } from './teachers'
+import { SIN_DATO_LABEL } from './teachers'
 
 export type TipoIdoneidad = 'PRINCIPAL' | 'AUTORIZADA' | 'EXCEPCIONAL'
 
@@ -398,11 +398,11 @@ export function resolveAreaName(
   areaId: string,
   areas: { id: string; nombre: string }[],
 ) {
-  return areas.find((area) => area.id === areaId)?.nombre ?? PENDING_BACKEND_LABEL
+  return areas.find((area) => area.id === areaId)?.nombre ?? SIN_DATO_LABEL
 }
 
 export function formatDocumentNumber(value: string) {
   return value.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 }
 
-export { PENDING_BACKEND_LABEL }
+export { SIN_DATO_LABEL }

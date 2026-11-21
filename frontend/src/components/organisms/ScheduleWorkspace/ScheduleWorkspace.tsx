@@ -13,6 +13,8 @@ import {
   etiquetaEstadoHorario,
   etiquetaGrado,
   listarAulasPorSede,
+  listarCatalogoTurnos,
+  listarPlanesEstudio,
   metricasDelTablero,
   opcionesAniosEscolares,
   opcionesCatalogoSedes,
@@ -25,7 +27,9 @@ import {
   type ClaseVista,
   type EstadoHorario,
   type HorarioGrupoResponse,
+  type PlanEstudiosResponse,
   type ResumenHorarioResponse,
+  type TurnoResponse,
 } from '../../../api'
 import { blockKey, type PendingPlacement } from '../../../content/scheduleConstruction'
 import type { WeekDay } from '../../../content/teacherRestrictions'
@@ -119,7 +123,10 @@ export function ScheduleWorkspace() {
   const [pending, setPending] = useState<PendingPlacement[]>([])
   const [resumen, setResumen] = useState<ResumenHorarioResponse | null>(null)
   const [estadoHorario, setEstadoHorario] = useState<EstadoHorario | null>(null)
-  const [turnoId, setTurnoId] = useState('')
+  const [turnoFiltro, setTurnoFiltro] = useState('')
+  const [turnos, setTurnos] = useState<TurnoResponse[] | null>(null)
+  const [planes, setPlanes] = useState<PlanEstudiosResponse[] | null>(null)
+  const [turnosError, setTurnosError] = useState('')
   const [turnoNombre, setTurnoNombre] = useState('')
   const [franjas, setFranjas] = useState<ReturnType<typeof bandasDelTablero>>([])
   const [contexto, setContexto] = useState({ codigo: '', grado: '', anio: 0 })
@@ -141,7 +148,6 @@ export function ScheduleWorkspace() {
     setPending(pendientesDelTablero(tablero))
     setResumen(tablero.resumen ?? null)
     setEstadoHorario(tablero.estadoHorario ?? null)
-    setTurnoId(tablero.turnoId ?? '')
     setTurnoNombre(tablero.turnoNombre?.trim() || '')
     setFranjas(bandasDelTablero(tablero.franjas))
     setContexto({
@@ -168,14 +174,43 @@ export function ScheduleWorkspace() {
     [grupos, yearId],
   )
 
-  const yearGroups = useMemo(() => {
-    return gruposDelAnio
-      .filter((group) => !campusSeleccionada || group.sedeId === campusSeleccionada)
-      .sort(
-        (left, right) =>
-          left.gradoNivel - right.gradoNivel || left.codigo.localeCompare(right.codigo, 'es'),
-      )
-  }, [campusSeleccionada, gruposDelAnio])
+  // El turno de un grupo lo define el plan de estudios de su grado en el año
+  // (igual que en el backend: primer turno asignado en el plan).
+  const turnoPorGrado = useMemo(() => {
+    const map = new Map<string, string>()
+
+    ;(planes ?? []).forEach((plan) => {
+      const key = `${plan.anioEscolarId}:${plan.gradoId}`
+
+      if (plan.turnoId && plan.activo !== false && !map.has(key)) {
+        map.set(key, plan.turnoId)
+      }
+    })
+
+    return map
+  }, [planes])
+
+  const gruposDeSede = useMemo(
+    () =>
+      gruposDelAnio
+        .filter((group) => !campusSeleccionada || group.sedeId === campusSeleccionada)
+        .sort(
+          (left, right) =>
+            left.gradoNivel - right.gradoNivel || left.codigo.localeCompare(right.codigo, 'es'),
+        ),
+    [campusSeleccionada, gruposDelAnio],
+  )
+
+  const turnoDe = (group: { anioEscolarId: string; gradoId: string }) =>
+    turnoPorGrado.get(`${group.anioEscolarId}:${group.gradoId}`) ?? ''
+
+  const turnosConGrupos = (turnos ?? []).filter((turno) =>
+    gruposDeSede.some((group) => turnoDe(group) === turno.id),
+  )
+  const turnoActivo = turnosConGrupos.some((turno) => turno.id === turnoFiltro) ? turnoFiltro : ''
+  const yearGroups = turnoActivo
+    ? gruposDeSede.filter((group) => turnoDe(group) === turnoActivo)
+    : gruposDeSede
 
   const groupId = idDisponible(
     groupElegido,
@@ -196,13 +231,37 @@ export function ScheduleWorkspace() {
     setPending([])
     setResumen(null)
     setEstadoHorario(null)
-    setTurnoId('')
     setTurnoNombre('')
     setFranjas([])
     setContexto({ codigo: '', grado: '', anio: 0 })
     setHorarioError('')
     setHorarioLoading(Boolean(groupId))
   }
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    Promise.all([
+      listarCatalogoTurnos(controller.signal),
+      listarPlanesEstudio(controller.signal),
+    ])
+      .then(([listaTurnos, listaPlanes]) => {
+        setTurnos(listaTurnos)
+        setPlanes(listaPlanes)
+        setTurnosError('')
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setTurnos([])
+        setPlanes([])
+        setTurnosError(mensajeError(cause, 'No se pudieron cargar los turnos para filtrar.'))
+      })
+
+    return () => controller.abort()
+  }, [])
 
   useEffect(() => {
     if (!groupId) {
@@ -484,19 +543,26 @@ export function ScheduleWorkspace() {
       <ScheduleSelector
         yearId={year?.id ?? ''}
         campusId={campusSeleccionada}
-        shiftId={turnoId}
+        shiftId={turnoActivo}
         groupId={grupo?.id ?? ''}
         gradeLabel={gradeLabel}
         year={yearNumber}
         groupCode={groupCode}
+        groupShiftLabel={turnoNombre}
         yearOptions={yearOptions}
         yearDisabled={aniosLoading || Boolean(aniosError)}
         groupOptions={groupOptions}
         groupsDisabled={gruposLoading || Boolean(gruposError)}
         campusOptions={opcionesCatalogoSedes(sedes, sedesError)}
         campusDisabled={Boolean(sedesError) || !sedes?.length}
-        shiftOptions={[{ value: turnoId, label: shiftLabel }]}
-        shiftDisabled
+        shiftOptions={[
+          {
+            value: '',
+            label: turnos === null && !turnosError ? 'Cargando turnos…' : 'Todos los turnos',
+          },
+          ...turnosConGrupos.map((turno) => ({ value: turno.id, label: turno.nombre })),
+        ]}
+        shiftDisabled={turnos === null || turnosConGrupos.length === 0}
         statusLabel={
           horarioLoading
             ? 'Cargando'
@@ -513,7 +579,7 @@ export function ScheduleWorkspace() {
         }
         onYearChange={selectYear}
         onCampusChange={setCampusId}
-        onShiftChange={() => undefined}
+        onShiftChange={setTurnoFiltro}
         onGroupChange={setGroupElegido}
       />
 
@@ -530,6 +596,11 @@ export function ScheduleWorkspace() {
       {sedesError ? (
         <p className={styles.alert} role="alert">
           {sedesError}
+        </p>
+      ) : null}
+      {turnosError ? (
+        <p className={styles.alert} role="alert">
+          {turnosError}
         </p>
       ) : null}
       {horarioError ? (
@@ -552,7 +623,9 @@ export function ScheduleWorkspace() {
         <p className={styles.notice}>
           {gruposDelAnio.length === 0
             ? 'Este año lectivo aún no tiene grupos activos para construir el horario.'
-            : 'Esta sede no tiene grupos activos en el año lectivo seleccionado.'}
+            : gruposDeSede.length === 0
+              ? 'Esta sede no tiene grupos activos en el año lectivo seleccionado.'
+              : 'No hay grupos activos en el turno seleccionado.'}
         </p>
       ) : null}
 
