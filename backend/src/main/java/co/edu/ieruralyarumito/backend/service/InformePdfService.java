@@ -27,13 +27,13 @@ import java.util.Objects;
 /**
  * HU-04 / SCRUM-31.
  *
- * Exportacion PDF de informes institucionales.
+ * Exportacion PDF del Informe de Planta Docente.
  *
- * Planta docente y capacidad academica.
+ * Conserva la presentacion original y permite
+ * incluir horas asignadas y extras cuando existe
+ * un año escolar seleccionado.
  *
- * No consulta repositorios ni persiste archivos.
- * Los metadatos proceden de una fuente externa
- * y no se inventan dentro del exportador.
+ * No consulta repositorios ni modifica datos.
  */
 @Service
 public class InformePdfService {
@@ -64,11 +64,14 @@ public class InformePdfService {
     private static final float ALTO_LINEA = 11f;
     private static final float RELLENO = 5f;
 
-    private static final float[] ANCHOS = {
+    /**
+     * Distribucion original de cinco columnas.
+     */
+    private static final float[] ANCHOS_ORIGINALES = {
             196f, 156f, 83f, 125f, 114f
     };
 
-    private static final String[] ENCABEZADOS = {
+    private static final String[] ENCABEZADOS_ORIGINALES = {
             "Docente",
             "Area de nombramiento",
             "Estado",
@@ -77,8 +80,28 @@ public class InformePdfService {
     };
 
     /**
-     * Conserva la firma utilizada por las pruebas
-     * y por los consumidores existentes del servicio.
+     * Distribucion de siete columnas.
+     *
+     * Total: 752 puntos.
+     * Se mantiene dentro de A4 horizontal.
+     */
+    private static final float[] ANCHOS_CARGA = {
+            172f, 138f, 75f, 112f,
+            95f, 80f, 80f
+    };
+
+    private static final String[] ENCABEZADOS_CARGA = {
+            "Docente",
+            "Area de nombramiento",
+            "Estado",
+            "Vinculacion",
+            "Horas contratadas",
+            "Horas asignadas",
+            "Horas extras"
+    };
+
+    /**
+     * Mantiene la firma utilizada anteriormente.
      */
     public byte[] exportarPlantaDocente(
             InformePlantaDocenteResponse informe,
@@ -92,10 +115,11 @@ public class InformePdfService {
     }
 
     /**
-     * Exportacion con metadatos institucionales.
+     * Exporta el informe de Planta Docente.
      *
-     * No obtiene ni inventa datos del Rector,
-     * de la institucion o de la sede.
+     * Sin año escolar: cinco columnas originales.
+     * Con año escolar: siete columnas y resumen
+     * de carga academica.
      */
     public byte[] exportarPlantaDocente(
             InformePlantaDocenteResponse informe,
@@ -109,42 +133,91 @@ public class InformePdfService {
 
         String titulo = resolverTitulo(tituloPersonalizado);
 
+        boolean mostrarCarga =
+                informe.anioEscolarId() != null;
+
+        float[] anchos = mostrarCarga
+                ? ANCHOS_CARGA
+                : ANCHOS_ORIGINALES;
+
+        String[] encabezados = mostrarCarga
+                ? ENCABEZADOS_CARGA
+                : ENCABEZADOS_ORIGINALES;
+
         try (PDDocument documento = new PDDocument()) {
 
             PaginaActual actual = crearPagina(
                     documento,
                     titulo,
                     informe,
-                    true
+                    true,
+                    anchos,
+                    encabezados
             );
 
             for (InformePlantaDocenteDetalleResponse docente
                     : informe.docentes()) {
 
-                List<List<String>> celdas = List.of(
+                List<List<String>> celdas =
+                        new ArrayList<>();
+
+                celdas.add(
                         envolver(
                                 docente.nombreCompleto(),
-                                ANCHOS[0]
-                        ),
+                                anchos[0]
+                        )
+                );
+
+                celdas.add(
                         envolver(
                                 docente.areaNombramiento(),
-                                ANCHOS[1]
-                        ),
+                                anchos[1]
+                        )
+                );
+
+                celdas.add(
                         envolver(
                                 docente.estado().name(),
-                                ANCHOS[2]
-                        ),
+                                anchos[2]
+                        )
+                );
+
+                celdas.add(
                         envolver(
                                 docente.tipoVinculacion().name(),
-                                ANCHOS[3]
-                        ),
+                                anchos[3]
+                        )
+                );
+
+                celdas.add(
                         envolver(
                                 String.valueOf(
                                         docente.horasSemanalesContratadas()
                                 ),
-                                ANCHOS[4]
+                                anchos[4]
                         )
                 );
+
+                if (mostrarCarga) {
+
+                    celdas.add(
+                            envolver(
+                                    String.valueOf(
+                                            docente.horasSemanalesAsignadas()
+                                    ),
+                                    anchos[5]
+                            )
+                    );
+
+                    celdas.add(
+                            envolver(
+                                    String.valueOf(
+                                            docente.horasSemanalesExtras()
+                                    ),
+                                    anchos[6]
+                            )
+                    );
+                }
 
                 int maximoLineas = celdas.stream()
                         .mapToInt(List::size)
@@ -165,7 +238,9 @@ public class InformePdfService {
                             documento,
                             titulo,
                             informe,
-                            false
+                            false,
+                            anchos,
+                            encabezados
                     );
                 }
 
@@ -174,7 +249,8 @@ public class InformePdfService {
                         actual.y,
                         altura,
                         celdas,
-                        false
+                        false,
+                        anchos
                 );
 
                 actual.y -= altura;
@@ -194,7 +270,6 @@ public class InformePdfService {
                 actual.y -= 30f;
             }
 
-            // Metadatos al final del mismo documento.
             actual = escribirMetadatos(
                     documento,
                     actual,
@@ -224,11 +299,7 @@ public class InformePdfService {
     }
 
     /**
-     * Escribe los metadatos al final del informe,
-     * alineados a la izquierda y en letra pequena.
-     *
-     * Si no hay espacio, continua en otra pagina
-     * del mismo documento, sin agregar otra tabla.
+     * Incorpora los metadatos al final del documento.
      */
     private PaginaActual escribirMetadatos(
             PDDocument documento,
@@ -247,7 +318,6 @@ public class InformePdfService {
             return actual;
         }
 
-        // Separacion visual respecto de la tabla.
         actual.y -= 17f;
 
         for (String texto : lineas) {
@@ -288,8 +358,7 @@ public class InformePdfService {
     }
 
     /**
-     * Solo incorpora campos disponibles y verificables.
-     * Nunca muestra valores ficticios.
+     * Solo incorpora metadatos disponibles.
      */
     private List<String> lineasMetadatos(
             MetadatosInformeResponse metadatos) {
@@ -365,8 +434,7 @@ public class InformePdfService {
     }
 
     /**
-     * Pagina adicional solo para continuar la nota
-     * de metadatos cuando no cabe al final.
+     * Pagina adicional para continuar metadatos.
      */
     private PaginaActual crearPaginaMetadatos(
             PDDocument documento,
@@ -419,13 +487,15 @@ public class InformePdfService {
 
     /**
      * Crea la primera pagina y las continuaciones
-     * de la tabla de planta docente.
+     * del Informe de Planta Docente.
      */
     private PaginaActual crearPagina(
             PDDocument documento,
             String titulo,
             InformePlantaDocenteResponse informe,
-            boolean primeraPagina) throws IOException {
+            boolean primeraPagina,
+            float[] anchos,
+            String[] encabezados) throws IOException {
 
         PDPage pagina = new PDPage(TAMANO_PAGINA);
         documento.addPage(pagina);
@@ -459,6 +529,9 @@ public class InformePdfService {
 
         y -= 12f;
 
+        boolean mostrarCarga =
+                informe.anioEscolarId() != null;
+
         if (primeraPagina) {
 
             escribirTexto(
@@ -483,7 +556,48 @@ public class InformePdfService {
                     10f
             );
 
-            y -= 26f;
+            y -= 17f;
+
+            if (mostrarCarga) {
+
+                escribirTexto(
+                        contenido,
+                        "Año escolar: "
+                                + informe.anioEscolar(),
+                        MARGEN,
+                        y,
+                        FUENTE_NEGRITA,
+                        10f
+                );
+
+                y -= 17f;
+
+                escribirTexto(
+                        contenido,
+                        "Horas semanales asignadas: "
+                                + informe.totalHorasSemanalesAsignadas(),
+                        MARGEN,
+                        y,
+                        FUENTE_NEGRITA,
+                        10f
+                );
+
+                y -= 17f;
+
+                escribirTexto(
+                        contenido,
+                        "Horas semanales extras: "
+                                + informe.totalHorasSemanalesExtras(),
+                        MARGEN,
+                        y,
+                        FUENTE_NEGRITA,
+                        10f
+                );
+
+                y -= 17f;
+            }
+
+            y -= 9f;
 
         } else {
 
@@ -499,44 +613,59 @@ public class InformePdfService {
             y -= 25f;
         }
 
-        List<List<String>> encabezados =
+        List<List<String>> celdasEncabezado =
                 new ArrayList<>();
 
-        for (int i = 0; i < ENCABEZADOS.length; i++) {
+        int maximoLineas = 1;
 
-            encabezados.add(
-                    envolver(
-                            ENCABEZADOS[i],
-                            ANCHOS[i],
-                            FUENTE_NEGRITA,
-                            9f
-                    )
+        for (int i = 0; i < encabezados.length; i++) {
+
+            List<String> lineas = envolver(
+                    encabezados[i],
+                    anchos[i],
+                    FUENTE_NEGRITA,
+                    9f
+            );
+
+            celdasEncabezado.add(lineas);
+
+            maximoLineas = Math.max(
+                    maximoLineas,
+                    lineas.size()
             );
         }
+
+        float alturaEncabezado = Math.max(
+                30f,
+                maximoLineas * ALTO_LINEA
+                        + 2f * RELLENO
+        );
 
         dibujarFila(
                 contenido,
                 y,
-                30f,
-                encabezados,
-                true
+                alturaEncabezado,
+                celdasEncabezado,
+                true,
+                anchos
         );
 
-        y -= 30f;
+        y -= alturaEncabezado;
 
         return new PaginaActual(contenido, y);
     }
 
     /**
-     * Dibuja una fila de tabla
-     * con varias lineas por celda.
+     * Dibuja una fila con ancho variable,
+     * compatible con cinco o siete columnas.
      */
     private void dibujarFila(
             PDPageContentStream contenido,
             float bordeSuperior,
             float altura,
             List<List<String>> celdas,
-            boolean encabezado) throws IOException {
+            boolean encabezado,
+            float[] anchos) throws IOException {
 
         float x = MARGEN;
         float bordeInferior = bordeSuperior - altura;
@@ -550,10 +679,10 @@ public class InformePdfService {
         contenido.setLineWidth(0.5f);
 
         for (int columna = 0;
-             columna < ANCHOS.length;
+             columna < anchos.length;
              columna++) {
 
-            float ancho = ANCHOS[columna];
+            float ancho = anchos[columna];
 
             contenido.addRect(
                     x,
@@ -588,8 +717,7 @@ public class InformePdfService {
     }
 
     /**
-     * Divide el texto para respetar
-     * el ancho disponible.
+     * Ajusta el texto a cada celda.
      */
     private List<String> envolver(
             String texto,
@@ -728,8 +856,7 @@ public class InformePdfService {
     }
 
     /**
-     * Agrega la numeracion cuando ya se conoce
-     * el total definitivo de paginas.
+     * Pagina el documento una vez generado.
      */
     private void agregarPaginacion(
             PDDocument documento) throws IOException {
