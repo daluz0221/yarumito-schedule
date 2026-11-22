@@ -10,6 +10,8 @@ import {
   descargarInformePlantaDocente,
   listarCatalogoAreas,
   listarDocentes,
+  opcionesAniosEscolares,
+  useCatalogoAniosEscolares,
   type FormatoInformeInstitucional,
   type InformeAreasAsignaturas,
   type InformePerfilProfesional,
@@ -35,7 +37,7 @@ const INFORMES: { id: TipoInforme; label: string; hint: string }[] = [
   {
     id: 'planta',
     label: 'Planta docente',
-    hint: 'Relación de docentes con su área de nombramiento, vinculación y horas contratadas.',
+    hint: 'Relación de docentes con su área de nombramiento, vinculación y horas contratadas. Con un año lectivo incluye la carga asignada y las horas extras.',
   },
   {
     id: 'areas',
@@ -195,12 +197,14 @@ function nombreInforme(tipo: TipoInforme) {
 export function InformesWorkspace() {
   const { user } = useAuth()
   const esRector = user?.rol === 'RECTOR'
+  const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares(esRector)
   const [tipo, setTipo] = useState<TipoInforme>('planta')
   const [areaId, setAreaId] = useState('')
   const [estado, setEstado] = useState('')
   const [vinculacion, setVinculacion] = useState('')
   const [activa, setActiva] = useState('')
   const [docenteId, setDocenteId] = useState('')
+  const [anioId, setAnioId] = useState('')
   const [tipoIdoneidad, setTipoIdoneidad] = useState('')
   const [areas, setAreas] = useState<{ id: string; nombre: string }[] | null>(null)
   const [areasError, setAreasError] = useState('')
@@ -255,6 +259,7 @@ export function InformesWorkspace() {
   const areaActiva = areaId && areas && !areas.some((area) => area.id === areaId) ? '' : areaId
   const docenteActivo =
     docenteId && docentes.some((docente) => docente.id === docenteId) ? docenteId : ''
+  const anioActivo = anioId && anios?.some((anio) => anio.id === anioId) ? anioId : ''
   const [tipoVisto, setTipoVisto] = useState(tipo)
 
   if (tipoVisto !== tipo) {
@@ -292,6 +297,8 @@ export function InformesWorkspace() {
       areaNombramientoId: areaActiva || undefined,
       estado: estado || undefined,
       tipoVinculacion: vinculacion || undefined,
+      anioEscolarId: anioActivo || undefined,
+      docenteId: docenteActivo || undefined,
     }
   }
 
@@ -442,14 +449,14 @@ export function InformesWorkspace() {
 
       <Card>
         <form className={styles.filters} onSubmit={consultar}>
-          {tipo === 'perfiles' ? (
+          {tipo === 'planta' || tipo === 'perfiles' ? (
             <SelectField
               id="informe-teacher"
               label="Docente"
               name="teacher"
               value={docenteActivo}
               options={[
-                { value: '', label: 'Todos los docentes' },
+                { value: '', label: docentes.length ? 'Todos los docentes' : 'Cargando docentes...' },
                 ...docentes.map((docente) => ({
                   value: docente.id,
                   label: nombreDocente(docente),
@@ -457,6 +464,23 @@ export function InformesWorkspace() {
               ]}
               disabled={!esRector || Boolean(docentesError)}
               onChange={setDocenteId}
+            />
+          ) : null}
+          {tipo === 'planta' ? (
+            <SelectField
+              id="informe-year"
+              label="Año lectivo"
+              name="year"
+              value={anioActivo}
+              options={[
+                {
+                  value: '',
+                  label: aniosLoading ? 'Cargando años lectivos...' : 'Sin carga académica',
+                },
+                ...(anios && anios.length > 0 ? opcionesAniosEscolares(anios, '') : []),
+              ]}
+              disabled={!esRector || aniosLoading || Boolean(aniosError)}
+              onChange={setAnioId}
             />
           ) : null}
           <SelectField
@@ -549,9 +573,14 @@ export function InformesWorkspace() {
           {areasError} Puedes consultar sin filtrar por área.
         </p>
       ) : null}
-      {tipo === 'perfiles' && docentesError ? (
+      {(tipo === 'planta' || tipo === 'perfiles') && docentesError ? (
         <p className={styles.alert} role="alert">
           {docentesError} Puedes consultar sin filtrar por docente.
+        </p>
+      ) : null}
+      {tipo === 'planta' && aniosError ? (
+        <p className={styles.alert} role="alert">
+          {aniosError} Puedes consultar la planta sin carga académica.
         </p>
       ) : null}
       {consulta.estado === 'error' ? (
@@ -582,6 +611,10 @@ export function InformesWorkspace() {
 
 function PlantaResultado({ informe }: { informe: InformePlantaDocente }) {
   const docentes = informe.docentes ?? []
+  const conCarga = Boolean(informe.anioEscolarId)
+  const descripcion = conCarga
+    ? `Docentes del filtro actual. La carga corresponde al año ${informe.anioEscolar ?? ''}.`
+    : 'Docentes incluidos en el filtro actual. Elige un año lectivo para ver la carga asignada.'
 
   return (
     <>
@@ -592,17 +625,28 @@ function PlantaResultado({ informe }: { informe: InformePlantaDocente }) {
           label="Horas semanales contratadas"
           wash="active"
         />
+        {conCarga ? (
+          <>
+            <StatCard
+              value={String(numero(informe.totalHorasSemanalesAsignadas))}
+              label="Horas semanales asignadas"
+              wash="warning"
+            />
+            <StatCard
+              value={String(numero(informe.totalHorasSemanalesExtras))}
+              label="Horas semanales extras"
+              wash="total"
+            />
+          </>
+        ) : null}
       </div>
       <Card className={styles.panel}>
-        <SectionHeader
-          title="Planta docente"
-          description="Docentes incluidos en el filtro actual."
-        />
+        <SectionHeader title="Planta docente" description={descripcion} />
         {docentes.length === 0 ? (
           <p className={styles.notice}>No hay docentes para los filtros seleccionados.</p>
         ) : (
           <div className={styles.tableHost}>
-            <Table minWidth={760}>
+            <Table minWidth={conCarga ? 980 : 760}>
               <thead>
                 <tr>
                   <th>Docente</th>
@@ -610,6 +654,12 @@ function PlantaResultado({ informe }: { informe: InformePlantaDocente }) {
                   <th>Estado</th>
                   <th>Vinculación</th>
                   <th>Horas contratadas</th>
+                  {conCarga ? (
+                    <>
+                      <th>Horas asignadas</th>
+                      <th>Horas extras</th>
+                    </>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -624,6 +674,12 @@ function PlantaResultado({ informe }: { informe: InformePlantaDocente }) {
                     </td>
                     <td>{etiquetaVinculacion(docente.tipoVinculacion)}</td>
                     <td>{numero(docente.horasSemanalesContratadas)}</td>
+                    {conCarga ? (
+                      <>
+                        <td>{numero(docente.horasSemanalesAsignadas)}</td>
+                        <td>{numero(docente.horasSemanalesExtras)}</td>
+                      </>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>

@@ -10,6 +10,8 @@ export type FiltroPlantaDocente = {
   areaNombramientoId?: string
   estado?: string
   tipoVinculacion?: string
+  anioEscolarId?: string
+  docenteId?: string
 }
 
 export type InformePlantaDocenteDetalle = {
@@ -19,12 +21,18 @@ export type InformePlantaDocenteDetalle = {
   estado: EstadoDocenteInforme | null
   tipoVinculacion: TipoVinculacionInforme | null
   horasSemanalesContratadas: number | null
+  horasSemanalesAsignadas?: number | null
+  horasSemanalesExtras?: number | null
 }
 
 export type InformePlantaDocente = {
   cantidadDocentes: number
   totalHorasSemanalesContratadas: number
   docentes: InformePlantaDocenteDetalle[] | null
+  anioEscolarId?: string | null
+  anioEscolar?: number | null
+  totalHorasSemanalesAsignadas?: number | null
+  totalHorasSemanalesExtras?: number | null
 }
 
 export type FiltroAreasAsignaturas = {
@@ -137,6 +145,8 @@ function parametrosPlanta(filtros: FiltroPlantaDocente) {
     areaNombramientoId: filtros.areaNombramientoId,
     estado: filtros.estado,
     tipoVinculacion: filtros.tipoVinculacion,
+    anioEscolarId: filtros.anioEscolarId,
+    docenteId: filtros.docenteId,
   }
 }
 
