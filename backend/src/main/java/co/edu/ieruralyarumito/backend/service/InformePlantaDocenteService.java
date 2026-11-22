@@ -36,14 +36,14 @@ import java.util.stream.Collectors;
  *
  * Informe de Planta Docente y Carga Academica.
  *
- * Conserva los datos originales de planta docente
- * y permite consultar las horas asignadas y extras
- * para un año escolar especifico.
+ * Permite consultar:
+ * - Toda la planta docente.
+ * - Un docente especifico.
+ * - Carga academica por año escolar.
+ *
+ * Conserva los filtros originales.
  *
  * Todas las operaciones son de lectura.
- *
- * No modifica docentes, asignaciones, horarios
- * ni registros de la base de datos.
  */
 @Service
 public class InformePlantaDocenteService {
@@ -70,10 +70,9 @@ public class InformePlantaDocenteService {
     }
 
     /**
-     * Conserva la consulta original de Planta Docente.
+     * Consulta original.
      *
-     * Al no seleccionar un año escolar, no se calculan
-     * las horas correspondientes a las asignaciones.
+     * Sin año escolar ni docente especifico.
      */
     @Transactional(readOnly = true)
     public InformePlantaDocenteResponse generarInforme(
@@ -85,13 +84,15 @@ public class InformePlantaDocenteService {
                 areaNombramientoId,
                 estado,
                 tipoVinculacion,
+                null,
                 null
         );
     }
 
     /**
-     * Nueva consulta de Planta Docente con carga
-     * academica del año escolar seleccionado.
+     * Consulta con año escolar.
+     *
+     * Conserva compatibilidad con el codigo existente.
      */
     @Transactional(readOnly = true)
     public InformePlantaDocenteResponse generarInforme(
@@ -107,32 +108,70 @@ public class InformePlantaDocenteService {
             );
         }
 
-        AnioEscolar anioEscolar =
-                anioEscolarRepository
-                        .findById(anioEscolarId)
-                        .orElseThrow(() ->
-                                new RecursoNoEncontradoException(
-                                        "El año escolar no existe."
-                                )
-                        );
+        return generarInforme(
+                areaNombramientoId,
+                estado,
+                tipoVinculacion,
+                anioEscolarId,
+                null
+        );
+    }
+
+    /**
+     * Consulta ampliada.
+     *
+     * docenteId == null:
+     *     consulta todos los docentes.
+     *
+     * docenteId != null:
+     *     consulta exclusivamente ese docente.
+     *
+     * anioEscolarId == null:
+     *     conserva la presentacion original.
+     *
+     * anioEscolarId != null:
+     *     incorpora horas asignadas y extras.
+     */
+    @Transactional(readOnly = true)
+    public InformePlantaDocenteResponse generarInforme(
+            UUID areaNombramientoId,
+            EstadoDocente estado,
+            TipoVinculacion tipoVinculacion,
+            UUID anioEscolarId,
+            UUID docenteId) {
+
+        AnioEscolar anioEscolar = null;
+
+        if (anioEscolarId != null) {
+
+            anioEscolar = anioEscolarRepository
+                    .findById(anioEscolarId)
+                    .orElseThrow(() ->
+                            new RecursoNoEncontradoException(
+                                    "El año escolar no existe."
+                            )
+                    );
+        }
 
         return construirInforme(
                 areaNombramientoId,
                 estado,
                 tipoVinculacion,
-                anioEscolar
+                anioEscolar,
+                docenteId
         );
     }
 
     /**
-     * Construye el informe respetando los filtros
-     * originales y evitando duplicar docentes.
+     * Construye el informe aplicando los filtros
+     * existentes y el nuevo filtro por docente.
      */
     private InformePlantaDocenteResponse construirInforme(
             UUID areaNombramientoId,
             EstadoDocente estado,
             TipoVinculacion tipoVinculacion,
-            AnioEscolar anioEscolar) {
+            AnioEscolar anioEscolar,
+            UUID docenteId) {
 
         Specification<Docente> filtros =
                 DocenteSpecification
@@ -147,6 +186,23 @@ public class InformePlantaDocenteService {
                                                 tipoVinculacion
                                         )
                         );
+
+        /*
+         * Filtro opcional por docente.
+         *
+         * Se aplica en la consulta a la base
+         * de datos, antes de generar el informe.
+         */
+        if (docenteId != null) {
+
+            filtros = filtros.and(
+                    (root, query, criteriaBuilder) ->
+                            criteriaBuilder.equal(
+                                    root.get("id"),
+                                    docenteId
+                            )
+            );
+        }
 
         List<Docente> encontrados =
                 docenteRepository.findAll(filtros);
@@ -220,13 +276,12 @@ public class InformePlantaDocenteService {
     }
 
     /**
-     * Construye el detalle de un docente.
+     * Construye el detalle individual.
      *
-     * Las horas asignadas se calculan exclusivamente
-     * con asignaciones del año escolar seleccionado.
+     * Solo considera asignaciones del año
+     * escolar seleccionado.
      *
-     * Incluye estados BORRADOR y CONFIRMADA para
-     * reflejar la planificacion academica en curso.
+     * Incluye BORRADOR y CONFIRMADA.
      */
     private InformePlantaDocenteDetalleResponse convertirADetalle(
             Docente docente,
@@ -277,14 +332,10 @@ public class InformePlantaDocenteService {
                     .sum();
 
             /*
-             * Las horasSemanales ya representan
-             * la carga total de cada asignacion.
+             * No duplicar horas extras.
              *
-             * Las extras son el exceso sobre
-             * la carga ordinaria contratada.
-             *
-             * No se suma nuevamente horasExtras
-             * para evitar doble contabilizacion.
+             * Las horas asignadas ya representan
+             * la carga academica total.
              */
             horasExtras = Math.max(
                     0L,

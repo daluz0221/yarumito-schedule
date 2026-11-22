@@ -70,11 +70,16 @@ public class InformeController {
     /**
      * Consulta de Planta Docente.
      *
-     * Sin anioEscolarId conserva el comportamiento
-     * original del informe.
+     * docenteId:
+     * - null: todos los docentes.
+     * - informado: un docente especifico.
      *
-     * Con anioEscolarId incorpora las horas
-     * academicas asignadas y extras.
+     * anioEscolarId:
+     * - null: informe original.
+     * - informado: carga academica y horas extras.
+     *
+     * Conserva los filtros originales y el control
+     * de acceso exclusivo del rector.
      */
     @GetMapping("/planta-docente")
     @ResponseBody
@@ -83,24 +88,17 @@ public class InformeController {
             @RequestParam(required = false) EstadoDocente estado,
             @RequestParam(required = false) TipoVinculacion tipoVinculacion,
             @RequestParam(required = false) UUID anioEscolarId,
+            @RequestParam(required = false) UUID docenteId,
             Authentication authentication) {
 
         exigirRector(authentication);
-
-        if (anioEscolarId == null) {
-
-            return plantaService.generarInforme(
-                    areaNombramientoId,
-                    estado,
-                    tipoVinculacion
-            );
-        }
 
         return plantaService.generarInforme(
                 areaNombramientoId,
                 estado,
                 tipoVinculacion,
-                anioEscolarId
+                anioEscolarId,
+                docenteId
         );
     }
 
