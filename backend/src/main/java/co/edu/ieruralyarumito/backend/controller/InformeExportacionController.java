@@ -34,9 +34,11 @@ import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 /**
  * HU-04 / SCRUM-31.
  *
- * Exposición HTTP de las exportaciones PDF y Excel.
+ * Exposicion HTTP de las exportaciones PDF y Excel.
  *
- * Reutiliza los servicios existentes.
+ * La mejora de Planta Docente permite consultar
+ * la carga academica de un año escolar.
+ *
  * No modifica datos ni persiste informes.
  */
 @RestController
@@ -86,15 +88,17 @@ public class InformeExportacionController {
             @RequestParam(required = false) UUID areaNombramientoId,
             @RequestParam(required = false) EstadoDocente estado,
             @RequestParam(required = false) TipoVinculacion tipoVinculacion,
+            @RequestParam(required = false) UUID anioEscolarId,
             Authentication authentication) {
 
         exigirRector(authentication);
 
         InformePlantaDocenteResponse informe =
-                plantaService.generarInforme(
+                consultarPlantaDocente(
                         areaNombramientoId,
                         estado,
-                        tipoVinculacion
+                        tipoVinculacion,
+                        anioEscolarId
                 );
 
         byte[] archivo =
@@ -115,15 +119,17 @@ public class InformeExportacionController {
             @RequestParam(required = false) UUID areaNombramientoId,
             @RequestParam(required = false) EstadoDocente estado,
             @RequestParam(required = false) TipoVinculacion tipoVinculacion,
+            @RequestParam(required = false) UUID anioEscolarId,
             Authentication authentication) {
 
         exigirRector(authentication);
 
         InformePlantaDocenteResponse informe =
-                plantaService.generarInforme(
+                consultarPlantaDocente(
                         areaNombramientoId,
                         estado,
-                        tipoVinculacion
+                        tipoVinculacion,
+                        anioEscolarId
                 );
 
         byte[] archivo =
@@ -136,6 +142,38 @@ public class InformeExportacionController {
                 archivo,
                 EXCEL,
                 "planta-docente.xlsx"
+        );
+    }
+
+    /**
+     * Reutiliza el informe original cuando
+     * no se especifica un año escolar.
+     *
+     * Con año escolar seleccionado, consulta
+     * tambien las horas asignadas y extras.
+     *
+     * Ambas exportaciones utilizan los mismos
+     * datos para mantener resultados coherentes.
+     */
+    private InformePlantaDocenteResponse consultarPlantaDocente(
+            UUID areaNombramientoId,
+            EstadoDocente estado,
+            TipoVinculacion tipoVinculacion,
+            UUID anioEscolarId) {
+
+        if (anioEscolarId == null) {
+            return plantaService.generarInforme(
+                    areaNombramientoId,
+                    estado,
+                    tipoVinculacion
+            );
+        }
+
+        return plantaService.generarInforme(
+                areaNombramientoId,
+                estado,
+                tipoVinculacion,
+                anioEscolarId
         );
     }
 

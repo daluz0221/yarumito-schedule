@@ -5,9 +5,11 @@ import co.edu.ieruralyarumito.backend.dto.InformeHorariosFiltroRequest;
 import co.edu.ieruralyarumito.backend.dto.InformeHorariosResponse;
 import co.edu.ieruralyarumito.backend.dto.InformePerfilProfesionalResponse;
 import co.edu.ieruralyarumito.backend.dto.InformePlantaDocenteResponse;
+
 import co.edu.ieruralyarumito.backend.entity.enums.EstadoDocente;
 import co.edu.ieruralyarumito.backend.entity.enums.TipoIdoneidad;
 import co.edu.ieruralyarumito.backend.entity.enums.TipoVinculacion;
+
 import co.edu.ieruralyarumito.backend.service.InformeAreasAsignaturasService;
 import co.edu.ieruralyarumito.backend.service.InformeHorarioGestorExportacionService;
 import co.edu.ieruralyarumito.backend.service.InformeHorarioGestorIntegracionService;
@@ -61,26 +63,50 @@ public class InformeController {
         this.exportacionHorarios = exportacionHorarios;
     }
 
-    // INFORME 1: PLANTA DOCENTE
+    // =====================================================
+    // INFORME 1 - PLANTA DOCENTE
+    // =====================================================
 
+    /**
+     * Consulta de Planta Docente.
+     *
+     * Sin anioEscolarId conserva el comportamiento
+     * original del informe.
+     *
+     * Con anioEscolarId incorpora las horas
+     * academicas asignadas y extras.
+     */
     @GetMapping("/planta-docente")
     @ResponseBody
     public InformePlantaDocenteResponse plantaDocente(
             @RequestParam(required = false) UUID areaNombramientoId,
             @RequestParam(required = false) EstadoDocente estado,
             @RequestParam(required = false) TipoVinculacion tipoVinculacion,
+            @RequestParam(required = false) UUID anioEscolarId,
             Authentication authentication) {
 
         exigirRector(authentication);
 
+        if (anioEscolarId == null) {
+
+            return plantaService.generarInforme(
+                    areaNombramientoId,
+                    estado,
+                    tipoVinculacion
+            );
+        }
+
         return plantaService.generarInforme(
                 areaNombramientoId,
                 estado,
-                tipoVinculacion
+                tipoVinculacion,
+                anioEscolarId
         );
     }
 
-    // INFORME 2: AREAS Y ASIGNATURAS
+    // =====================================================
+    // INFORME 2 - AREAS Y ASIGNATURAS
+    // =====================================================
 
     @GetMapping("/areas-asignaturas")
     @ResponseBody
@@ -97,7 +123,9 @@ public class InformeController {
         );
     }
 
-    // INFORME 3: PERFILES PROFESIONALES
+    // =====================================================
+    // INFORME 3 - PERFILES PROFESIONALES
+    // =====================================================
 
     @GetMapping("/perfiles-profesionales")
     @ResponseBody
@@ -116,7 +144,9 @@ public class InformeController {
         );
     }
 
-    // INFORME 4: HORARIOS ACADEMICOS
+    // =====================================================
+    // INFORME 4 - HORARIOS ACADEMICOS
+    // =====================================================
 
     @PostMapping("/horarios/grupos/{grupoId}")
     @ResponseBody
@@ -150,7 +180,9 @@ public class InformeController {
         );
     }
 
+    // =====================================================
     // EXPORTACIONES DE HORARIOS
+    // =====================================================
 
     @PostMapping("/horarios/grupos/{grupoId}/pdf")
     public ResponseEntity<byte[]> horarioPdf(
@@ -240,6 +272,10 @@ public class InformeController {
         );
     }
 
+    // =====================================================
+    // DESCARGA DE ARCHIVOS
+    // =====================================================
+
     private ResponseEntity<byte[]> descargar(
             byte[] contenido,
             MediaType tipo,
@@ -254,10 +290,15 @@ public class InformeController {
                 .body(contenido);
     }
 
+    // =====================================================
+    // CONTROL DE ACCESO
+    // =====================================================
+
     private void exigirRector(Authentication authentication) {
 
         if (authentication == null
                 || !authentication.isAuthenticated()) {
+
             throw new ResponseStatusException(
                     UNAUTHORIZED,
                     "Se requiere autenticacion."
@@ -268,11 +309,13 @@ public class InformeController {
                 .stream()
                 .anyMatch(autoridad -> {
                     String nombre = autoridad.getAuthority();
+
                     return "RECTOR".equals(nombre)
                             || "ROLE_RECTOR".equals(nombre);
                 });
 
         if (!rector) {
+
             throw new ResponseStatusException(
                     FORBIDDEN,
                     "Acceso exclusivo del rector."

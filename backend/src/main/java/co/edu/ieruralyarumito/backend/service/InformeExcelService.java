@@ -1,4 +1,3 @@
-
 package co.edu.ieruralyarumito.backend.service;
 
 import co.edu.ieruralyarumito.backend.dto.MetadatosInformeResponse;
@@ -40,6 +39,11 @@ import java.util.Objects;
  *
  * Los datos proceden de los servicios de informes.
  * No realiza consultas ni modifica la base de datos.
+ *
+ * Mejora Planta Docente:
+ * - Conserva el informe original sin año escolar.
+ * - Incorpora carga asignada y horas extras
+ *   cuando se selecciona un año escolar.
  */
 @Service
 public class InformeExcelService {
@@ -86,6 +90,9 @@ public class InformeExcelService {
                 TITULO_PLANTA
         );
 
+        boolean mostrarCarga =
+                informe.anioEscolarId() != null;
+
         try (XSSFWorkbook libro = new XSSFWorkbook()) {
 
             Sheet hoja = libro.createSheet("Planta docente");
@@ -95,6 +102,15 @@ public class InformeExcelService {
             CellStyle estiloNumero = crearEstiloNumero(libro);
 
             escribirTitulo(hoja, titulo, estiloTitulo);
+
+            if (mostrarCarga) {
+
+                escribirTexto(
+                        hoja.createRow(1),
+                        0,
+                        "Año escolar: " + informe.anioEscolar()
+                );
+            }
 
             escribirIndicador(
                     hoja, 2,
@@ -108,17 +124,71 @@ public class InformeExcelService {
                     informe.totalHorasSemanalesContratadas()
             );
 
-            String[] columnas = {
-                    "Docente",
-                    "Area de nombramiento",
-                    "Estado",
-                    "Tipo de vinculacion",
-                    "Horas semanales contratadas"
-            };
+            if (mostrarCarga) {
+
+                Row filaResumen = hoja.createRow(4);
+
+                escribirTexto(
+                        filaResumen,
+                        0,
+                        "Horas semanales asignadas"
+                );
+
+                Cell totalAsignadas =
+                        filaResumen.createCell(1);
+
+                totalAsignadas.setCellValue(
+                        informe.totalHorasSemanalesAsignadas()
+                );
+
+                totalAsignadas.setCellStyle(estiloNumero);
+
+                escribirTexto(
+                        filaResumen,
+                        2,
+                        "Horas semanales extras"
+                );
+
+                Cell totalExtras =
+                        filaResumen.createCell(3);
+
+                totalExtras.setCellValue(
+                        informe.totalHorasSemanalesExtras()
+                );
+
+                totalExtras.setCellStyle(estiloNumero);
+            }
+
+            String[] columnas;
+
+            if (mostrarCarga) {
+
+                columnas = new String[]{
+                        "Docente",
+                        "Area de nombramiento",
+                        "Estado",
+                        "Tipo de vinculacion",
+                        "Horas semanales contratadas",
+                        "Horas semanales asignadas",
+                        "Horas semanales extras"
+                };
+
+            } else {
+
+                columnas = new String[]{
+                        "Docente",
+                        "Area de nombramiento",
+                        "Estado",
+                        "Tipo de vinculacion",
+                        "Horas semanales contratadas"
+                };
+            }
 
             crearEncabezado(
-                    hoja, FILA_ENCABEZADO,
-                    columnas, estiloEncabezado
+                    hoja,
+                    FILA_ENCABEZADO,
+                    columnas,
+                    estiloEncabezado
             );
 
             int filaActual = FILA_ENCABEZADO + 1;
@@ -132,29 +202,66 @@ public class InformeExcelService {
                         fila, 0,
                         docente.nombreCompleto()
                 );
+
                 escribirTexto(
                         fila, 1,
                         docente.areaNombramiento()
                 );
+
                 escribirTexto(
                         fila, 2,
                         docente.estado().name()
                 );
+
                 escribirTexto(
                         fila, 3,
                         docente.tipoVinculacion().name()
                 );
 
-                Cell horas = fila.createCell(4);
+                Cell horasContratadas =
+                        fila.createCell(4);
 
-                horas.setCellValue(
+                horasContratadas.setCellValue(
                         docente.horasSemanalesContratadas()
                 );
 
-                horas.setCellStyle(estiloNumero);
+                horasContratadas.setCellStyle(
+                        estiloNumero
+                );
+
+                if (mostrarCarga) {
+
+                    Cell horasAsignadas =
+                            fila.createCell(5);
+
+                    horasAsignadas.setCellValue(
+                            docente.horasSemanalesAsignadas()
+                    );
+
+                    horasAsignadas.setCellStyle(
+                            estiloNumero
+                    );
+
+                    Cell horasExtras =
+                            fila.createCell(6);
+
+                    horasExtras.setCellValue(
+                            docente.horasSemanalesExtras()
+                    );
+
+                    horasExtras.setCellStyle(
+                            estiloNumero
+                    );
+                }
             }
 
-            int[] anchos = {32, 28, 18, 22, 30};
+            int[] anchos = mostrarCarga
+                    ? new int[]{
+                    32, 28, 18, 22, 30, 28, 25
+            }
+                    : new int[]{
+                    32, 28, 18, 22, 30
+            };
 
             configurarAnchos(hoja, anchos);
 
@@ -290,22 +397,27 @@ public class InformeExcelService {
                             fila, 6,
                             asignatura.nombre()
                     );
+
                     escribirTexto(
                             fila, 7,
                             asignatura.codigo()
                     );
+
                     escribirTexto(
                             fila, 8,
                             estado(asignatura.activa())
                     );
+
                     escribirTexto(
                             fila, 9,
                             siNo(asignatura.esMediaTecnica())
                     );
+
                     escribirTexto(
                             fila, 10,
                             siNo(asignatura.exigeIdoneidadEstricta())
                     );
+
                     escribirTexto(
                             fila, 11,
                             siNo(asignatura.requiereDocenteExclusivo())
@@ -460,7 +572,6 @@ public class InformeExcelService {
                 informe.cantidadIdoneidades()
         );
 
-        // Se reserva el indice 5 como separacion.
         int encabezado = 6;
 
         String[] columnas = {
@@ -494,10 +605,12 @@ public class InformeExcelService {
                         fila, 0,
                         docente.docenteId().toString()
                 );
+
                 escribirTexto(
                         fila, 1,
                         docente.nombreCompleto()
                 );
+
                 escribirTexto(
                         fila, 2,
                         docente.areaNombramiento()
@@ -513,28 +626,34 @@ public class InformeExcelService {
                         fila, 0,
                         docente.docenteId().toString()
                 );
+
                 escribirTexto(
                         fila, 1,
                         docente.nombreCompleto()
                 );
+
                 escribirTexto(
                         fila, 2,
                         docente.areaNombramiento()
                 );
+
                 escribirTexto(
                         fila, 3,
                         tituloDocente.tituloId().toString()
                 );
+
                 escribirTexto(
                         fila, 4,
                         tituloDocente.nombreTitulo()
                 );
+
                 escribirTexto(
                         fila, 5,
                         tituloDocente.nivel() == null
                                 ? null
                                 : tituloDocente.nivel().name()
                 );
+
                 escribirTexto(
                         fila, 6,
                         tituloDocente.institucion()
@@ -657,10 +776,12 @@ public class InformeExcelService {
                         fila, 0,
                         docente.docenteId().toString()
                 );
+
                 escribirTexto(
                         fila, 1,
                         docente.nombreCompleto()
                 );
+
                 escribirTexto(
                         fila, 2,
                         docente.areaNombramiento()
@@ -676,54 +797,66 @@ public class InformeExcelService {
                         fila, 0,
                         docente.docenteId().toString()
                 );
+
                 escribirTexto(
                         fila, 1,
                         docente.nombreCompleto()
                 );
+
                 escribirTexto(
                         fila, 2,
                         docente.areaNombramiento()
                 );
+
                 escribirTexto(
                         fila, 3,
                         idoneidad.idoneidadId().toString()
                 );
+
                 escribirTexto(
                         fila, 4,
                         idoneidad.nombreArea()
                 );
+
                 escribirTexto(
                         fila, 5,
                         idoneidad.nombreAsignatura()
                 );
+
                 escribirTexto(
                         fila, 6,
                         idoneidad.tipo() == null
                                 ? null
                                 : idoneidad.tipo().name()
                 );
+
                 escribirTexto(
                         fila, 7,
                         idoneidad.tituloSoporteId() == null
                                 ? null
                                 : idoneidad.tituloSoporteId().toString()
                 );
+
                 escribirFecha(
                         fila, 8,
                         idoneidad.vigenteDesde()
                 );
+
                 escribirFecha(
                         fila, 9,
                         idoneidad.vigenteHasta()
                 );
+
                 escribirTexto(
                         fila, 10,
                         siNo(idoneidad.vigenteEnFecha())
                 );
+
                 escribirTexto(
                         fila, 11,
                         idoneidad.areaId().toString()
                 );
+
                 escribirTexto(
                         fila, 12,
                         idoneidad.asignaturaId() == null
