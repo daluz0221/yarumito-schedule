@@ -34,10 +34,16 @@ import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 /**
  * HU-04 / SCRUM-31.
  *
- * Exposición HTTP de las exportaciones PDF y Excel.
+ * Exportaciones PDF y Excel de los informes institucionales.
  *
- * Reutiliza los servicios existentes.
- * No modifica datos ni persiste informes.
+ * Planta Docente permite:
+ * - Consultar toda la planta docente.
+ * - Filtrar por un docente especifico.
+ * - Consultar carga academica por año escolar.
+ *
+ * Conserva las exportaciones de los demas informes.
+ *
+ * Todas las operaciones son de lectura.
  */
 @RestController
 @RequestMapping("/api/v1/informes")
@@ -81,20 +87,35 @@ public class InformeExportacionController {
     // INFORME 1 - PLANTA DOCENTE
     // =====================================================
 
+    /**
+     * Exporta Planta Docente en PDF.
+     *
+     * docenteId es opcional:
+     * - null: todos los docentes.
+     * - informado: docente especifico.
+     *
+     * anioEscolarId es opcional:
+     * - null: informe original.
+     * - informado: carga academica y horas extras.
+     */
     @GetMapping("/planta-docente/pdf")
     public ResponseEntity<byte[]> plantaDocentePdf(
             @RequestParam(required = false) UUID areaNombramientoId,
             @RequestParam(required = false) EstadoDocente estado,
             @RequestParam(required = false) TipoVinculacion tipoVinculacion,
+            @RequestParam(required = false) UUID anioEscolarId,
+            @RequestParam(required = false) UUID docenteId,
             Authentication authentication) {
 
         exigirRector(authentication);
 
         InformePlantaDocenteResponse informe =
-                plantaService.generarInforme(
+                consultarPlantaDocente(
                         areaNombramientoId,
                         estado,
-                        tipoVinculacion
+                        tipoVinculacion,
+                        anioEscolarId,
+                        docenteId
                 );
 
         byte[] archivo =
@@ -110,20 +131,30 @@ public class InformeExportacionController {
         );
     }
 
+    /**
+     * Exporta Planta Docente en Excel.
+     *
+     * Utiliza los mismos filtros y datos
+     * que la consulta JSON y la exportacion PDF.
+     */
     @GetMapping("/planta-docente/excel")
     public ResponseEntity<byte[]> plantaDocenteExcel(
             @RequestParam(required = false) UUID areaNombramientoId,
             @RequestParam(required = false) EstadoDocente estado,
             @RequestParam(required = false) TipoVinculacion tipoVinculacion,
+            @RequestParam(required = false) UUID anioEscolarId,
+            @RequestParam(required = false) UUID docenteId,
             Authentication authentication) {
 
         exigirRector(authentication);
 
         InformePlantaDocenteResponse informe =
-                plantaService.generarInforme(
+                consultarPlantaDocente(
                         areaNombramientoId,
                         estado,
-                        tipoVinculacion
+                        tipoVinculacion,
+                        anioEscolarId,
+                        docenteId
                 );
 
         byte[] archivo =
@@ -136,6 +167,31 @@ public class InformeExportacionController {
                 archivo,
                 EXCEL,
                 "planta-docente.xlsx"
+        );
+    }
+
+    /**
+     * Consulta centralizada de Planta Docente.
+     *
+     * Conserva los filtros originales.
+     * Agrega el filtro opcional por docente.
+     *
+     * PDF y Excel reciben exactamente
+     * los mismos datos.
+     */
+    private InformePlantaDocenteResponse consultarPlantaDocente(
+            UUID areaNombramientoId,
+            EstadoDocente estado,
+            TipoVinculacion tipoVinculacion,
+            UUID anioEscolarId,
+            UUID docenteId) {
+
+        return plantaService.generarInforme(
+                areaNombramientoId,
+                estado,
+                tipoVinculacion,
+                anioEscolarId,
+                docenteId
         );
     }
 
@@ -303,6 +359,7 @@ public class InformeExportacionController {
                 });
 
         if (!rector) {
+
             throw new ResponseStatusException(
                     FORBIDDEN,
                     "Acceso exclusivo del rector."
