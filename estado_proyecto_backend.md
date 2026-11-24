@@ -262,3 +262,111 @@ Además, entidad vs SQL (no bloquean el arranque porque `validate` no compara nu
 - **HU-06 está a medio construir**: entidad, tabla, repositorio parcial y un método de resumen; faltan controller, CRUD, accessors, DTO funcional y hay un bloqueo por `fecha_asignacion`.
 - **M-11 está prácticamente sin construir en Java**: sólo existen entidades y tablas; faltan repositorios, servicios, controladores, DTOs y validaciones de conflictos.
 - Hay **dos bugs de esquema críticos** (`fecha_asignacion` y FK de `grupo.sede_id`) que deben resolverse con migraciones nuevas.
+
+---
+
+# ACTUALIZACIÓN 2026-11-23 — Contexto de Producción (módulo Control y Salida → Publicación)
+
+> Sección agregada por la tarea de diagnóstico solicitada. El contenido original de arriba se conserva sin cambios; esta sección refleja el estado real de `master` tras la sincronización.
+
+## A. Sincronización Git ejecutada
+
+- `git status` inicial: árbol limpio en `backend-camilo`.
+- `git fetch --all --prune`: `origin/master` avanzó de `e51b6d9` a `b60f6d7`.
+- `master` local actualizado con `git pull origin master` (HEAD actual: `b60f6d7 Merge pull request #39 from daluz0221/develop`).
+- `git merge master` sobre `backend-camilo`: **fast-forward sin conflictos**. La rama quedó alineada exactamente con `master` (no se creó ninguna rama).
+- No se modificó ningún archivo de código fuente ni de frontend en esta fase.
+
+## B. Diagnóstico del botón "Publicar horario" (solo lectura)
+
+Módulo de navegación: **Control y salida → Publicación** (`frontend/src/content/dashboard.ts`).
+Ruta visual: `/dashboard/publicacion` (`frontend/src/App.tsx`).
+
+### B.1 Condición real de habilitación/deshabilitación
+Archivo: `frontend/src/components/organisms/PublicationLog/PublicationLog.tsx` (líneas 24-26).
+
+```tsx
+<Button variant="primary" size="sm" disabled>
+  {published ? publicationCopy.published : publicationCopy.publish}
+</Button>
+```
+
+- El botón **no evalúa ninguna condición de negocio**: está **deshabilitado de forma literal (`disabled` hardcodeado)** y **no tiene `onClick`**.
+- El texto `logNote` lo confirma: *"La publicación desde esta pantalla se habilitará cuando el servidor la soporte."* (`frontend/src/content/publication.ts`, línea 57).
+- Por tanto, el reporte de los compañeros es correcto: el botón siempre está deshabilitado, incluso con un horario válido y sin errores.
+- Condición *implícita* que debería usarse al implementar (según el copy y la vista ya construida):
+  - `view.hasSchedule === true` (existe al menos un `horarioId`).
+  - `view.readiness !== 'blocked'` (sin conflictos `ERROR` pendientes). Las advertencias **no bloquean** (`warningsDisclaimer`).
+  - `view.status !== 'PUBLICADO'` (evitar re-publicar).
+  - El cálculo de `status` ya existe en `buildPublicationView`: es `PUBLICADO` sólo si **todos** los tableros con `horarioId` están `PUBLICADO`.
+
+### B.2 Contrato que el frontend espera consumir actualmente
+- **No existe llamada HTTP de publicación.** No hay función en `frontend/src/api/publicacionHorario.ts` ni en `frontend/src/api/horarios.ts` que haga `POST/PATCH/PUT` para publicar.
+- El único consumo actual de la pestaña es de solo lectura:
+  - `GET /api/horarios/grupos/{grupoId}` → `HorarioGrupoResponse` (incluye `horarioId`, `versionHorario`, `estadoHorario`).
+  - `GET /api/v1/conflictos/horario/{horarioId}/pendientes` → conflictos pendientes.
+- **Ruta/método/Request/Response esperados: no están definidos en el frontend actual.** Cualquier endpoint nuevo requiere también agregar la función de API y el `onClick` en el frontend (fase posterior; no se tocó ahora).
+- Propuesta de contrato a implementar en la siguiente fase, coherente con el prefijo real de M-11 (`/api/horarios`, no `/api/v1/horarios`):
+  - `POST /api/horarios/{horarioId}/publicar` sin body.
+  - Respuesta sugerida `200 OK`:
+    ```json
+    {
+      "horarioId": "uuid",
+      "estado": "PUBLICADO",
+      "fechaPublicacion": "2026-11-23T20:00:00",
+      "version": 1
+    }
+    ```
+  - Alternativa equivalente: `PATCH /api/horarios/{horarioId}/estado` con `{ "estado": "PUBLICADO" }`.
+  - El endpoint debe validar en servidor que no haya conflictos `ERROR` pendientes y que el horario esté en `BORRADOR`.
+
+## C. Estado del enum y del esquema PostgreSQL
+
+- **`PUBLICADO` YA EXISTE** en Java: `backend/src/main/java/co/edu/ieruralyarumito/backend/entity/enums/EstadoHorario.java` (`BORRADOR`, `PUBLICADO`, `ARCHIVADO`).
+- **`PUBLICADO` YA EXISTE** en PostgreSQL: `V17__create_horario_table.sql` líneas 7-8:
+  ```sql
+  estado varchar(20) not null check (estado in ('BORRADOR','PUBLICADO','ARCHIVADO'))
+  ```
+- No hay ninguna migración posterior (V34–V37) que altere ese `CHECK`.
+- **Conclusión: NO se requiere migración nueva para el estado `PUBLICADO`.**
+- La entidad `Horario` ya tiene `setEstado(...)` y `setFechaPublicacion(...)`; al crear un horario se fuerza `BORRADOR` y `fechaPublicacion = null` (`HorarioService.crearHorario`, líneas 1085-1086).
+
+## D. Brecha de backend confirmada
+
+- `HorarioController` sólo expone `GET /api/horarios/grupos/{grupoId}`.
+- No existe controlador, servicio ni DTO de publicación. Prueba local con token:
+  - `POST /api/horarios/{id}/publicar` → **404**.
+  - `PATCH /api/v1/horarios/{id}/publicar` → **404**.
+- Ya existe lógica parcial reutilizable:
+  - `EstadoHorario.PUBLICADO` y la regla `validarHorarioEditable` que protege horarios publicados/archivados (`HorarioService`, líneas 794-805).
+  - Repositorio `HorarioRepository` y consulta de conflictos `ConflictoService.listarPendientes(...)`.
+- Falta: endpoint, transición `BORRADOR → PUBLICADO`, `fechaPublicacion = now()`, validación de conflictos `ERROR` pendientes, auditoría (`PUBLICAR`) y respuesta DTO.
+
+## E. Despliegue local de validación (2026-11-23)
+
+- Comando usado: `docker compose --profile app up -d --build`.
+- Servicios activos:
+  | Servicio | Contenedor | URL local |
+  |---|---|---|
+  | Frontend (Vite) | `proyecto_frontend` | http://localhost:5173 |
+  | Backend (Spring Boot) | `proyecto_backend` | http://localhost:8080 |
+  | PostgreSQL 16 | `proyecto_postgres` | `localhost:5432`, DB `yarumito` |
+- Credenciales de login local (definidas en `.env`, **no** en `application.yaml`):
+  - Usuario: `ejemplo@yarumito.edu.co`
+  - Contraseña: `contrasenia-prueba`
+  - Endpoint: `POST /api/v1/auth/login` con `{"username":"...","password":"..."}`.
+- Verificaciones: frontend `200`, backend `healthy`, login `200`, `GET /api/v1/anios-escolares` y `/api/v1/grupos` responden `200`.
+- **Incidente local resuelto:** el volumen Postgres previo (creado 2026-10-28) tenía *checksum mismatch* de Flyway en **V32 y V33** (producción editó esas migraciones). Se respaldó el volumen en
+  `/tmp/opencode/yarumito-postgres_data-backup-20261123.tar.gz` y se recreó con `docker compose --profile app down -v`.
+- Se ejecutó `docker compose --profile seed run --rm seed`: creó 6 áreas y 15 docentes.
+- **Limitación de datos demo:** el seed **no crea años escolares, grupos, asignaciones ni horarios**. Para validar visualmente el botón hay que crear primero un año escolar y al menos un grupo desde la UI (o cargar datos). Sin ellos, Publicación muestra *"No hay años escolares registrados"*.
+- Nota: en la rama remota existe `origin/fix/flyway-checksum-v32-v33`, aún no integrada; es relevante para entornos que conserven el volumen antiguo.
+
+## F. Resumen ejecutivo de esta actualización
+
+1. Git sincronizado con producción, sin conflictos y sin ramas nuevas.
+2. El botón "Publicar horario" está **deshabilitado por código**, no por reglas de negocio.
+3. El frontend **no tiene contrato de publicación definido**; sólo lecturas.
+4. `PUBLICADO` **ya existe** en enum Java y `CHECK` de PostgreSQL: **no requiere migración**.
+5. Falta todo el backend de publicación (endpoint + transición + validaciones + auditoría).
+6. Servicios locales levantados y navegables; falta sembrar año/grupos para ver la pantalla con datos.
