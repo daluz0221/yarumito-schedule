@@ -13,6 +13,9 @@ import java.util.UUID;
 public interface ClaseProgramadaRepository
         extends JpaRepository<ClaseProgramada, UUID> {
 
+    // Verifica si un horario tiene al menos una clase programada.
+    boolean existsByHorarioId_Id(UUID horarioId);
+
     // Lista las clases de un grupo dentro de un horario.
     @Query("""
             select clase

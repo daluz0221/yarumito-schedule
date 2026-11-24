@@ -66,12 +66,55 @@
   margin-inline: -24px;
 }
 
-.id {
-  margin: 0 0 6px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+.cambios {
+  min-width: 260px;
+}
+
+.cambiosLista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.cambioFila {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cambioFila dt {
+  color: var(--color-text-muted);
   font-size: 12px;
+  font-weight: 600;
+}
+
+.cambioFila dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
   line-height: 1.4;
-  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.valorAntes {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.valorDespues {
+  font-weight: 600;
+}
+
+.flecha {
+  color: var(--color-text-muted);
 }
 
 .details {
@@ -90,21 +133,6 @@
   color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 600;
-}
-
-.pre {
-  margin: 6px 0 0;
-  padding: 10px 12px;
-  max-height: 220px;
-  overflow: auto;
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
 .status,

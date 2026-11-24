@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../auth'
 import {
@@ -16,23 +16,28 @@ import {
 } from '../../../api'
 import type { AsignacionAcademicaResponse } from '../../../api/asignaciones'
 import type { ClaseProgramadaResponse } from '../../../api/horarios'
-import type { RegistroAuditoriaResponse } from '../../../api/registrosAuditoria'
 import type { UsuarioListado } from '../../../api/usuarios'
-import type { EntidadAuditable } from '../../../content/auditoria'
-import { Badge, type BadgeTone } from '../../atoms/Badge'
+import {
+  consultaInicial,
+  ENTIDADES_GRUPO,
+  esEntidad,
+  esEntidadGrupo,
+  esEntidadOtra,
+  etiquetaEntidad,
+  ordenarRegistros,
+  UUID,
+  type ConsultaAuditoria,
+  type EntidadGrupo,
+} from '../../../content/auditoria'
 import { Button } from '../../atoms/Button'
 import { Card } from '../../atoms/Card'
-import { Table } from '../../atoms/Table'
 import { Text } from '../../atoms/Text'
-import { TextLink } from '../../atoms/TextLink'
 import { SectionHeader } from '../../molecules/SectionHeader'
 import { SelectField } from '../../molecules/SelectField'
+import { AuditoriaOtrosRegistros, type SolicitudOtroRegistro } from '../AuditoriaOtrosRegistros'
+import { HistorialTabla, ResultadoConsulta } from './AuditoriaTabla'
+import { useResolvedorAuditoria } from './useResolvedorAuditoria'
 import styles from './AuditoriaWorkspace.module.css'
-
-const ENTIDADES = [
-  { value: 'AsignacionAcademica', label: 'Asignación académica' },
-  { value: 'ClaseProgramada', label: 'Clase programada' },
-] as const
 
 const DIAS: Record<ClaseProgramadaResponse['dia'], string> = {
   LUNES: 'Lunes',
@@ -50,34 +55,14 @@ const ORDEN_DIA: ClaseProgramadaResponse['dia'][] = [
   'VIERNES',
 ]
 
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
 const VACIO_REGISTRO = 'No hay registros de auditoría para este registro.'
 const VACIO_GRUPO = 'No hay registros de auditoría para las asignaciones y clases de este grupo.'
 const VACIO_GRUPO_SIN_DATOS = 'Este grupo no tiene asignaciones ni clases programadas.'
 
-type ConsultaEstado = 'inicial' | 'cargando' | 'listo' | 'error'
 type Alcance = 'registro' | 'grupo'
-
-type Consulta = {
-  estado: ConsultaEstado
-  registros: RegistroAuditoriaResponse[]
-  error: string
-}
-
-const consultaInicial: Consulta = {
-  estado: 'inicial',
-  registros: [],
-  error: '',
-}
 
 function esAbort(error: unknown) {
   return error instanceof DOMException && error.name === 'AbortError'
-}
-
-function esEntidad(valor: string): valor is EntidadAuditable {
-  return valor === 'AsignacionAcademica' || valor === 'ClaseProgramada'
 }
 
 function opcionesDeUsuarios(
@@ -111,10 +96,6 @@ function opcionesDeUsuarios(
   }
 
   return opciones
-}
-
-function etiquetaEntidad(entidad: string) {
-  return ENTIDADES.find((item) => item.value === entidad)?.label ?? entidad
 }
 
 function etiquetaEstadoAsignacion(estado: string) {
@@ -151,315 +132,43 @@ function etiquetaClase(clase: ClaseProgramadaResponse) {
     .join(' · ')
 }
 
-function etiquetaAccion(accion: string) {
-  if (accion === 'CREATE') {
-    return 'Creación'
-  }
-
-  if (accion === 'UPDATE') {
-    return 'Actualización'
-  }
-
-  if (accion === 'DELETE') {
-    return 'Eliminación'
-  }
-
-  if (accion === 'PUBLICAR') {
-    return 'Publicación'
-  }
-
-  return accion
-}
-
-function tonoAccion(accion: string): BadgeTone {
-  if (accion === 'CREATE') {
-    return 'success'
-  }
-
-  if (accion === 'UPDATE') {
-    return 'info'
-  }
-
-  if (accion === 'DELETE') {
-    return 'danger'
-  }
-
-  if (accion === 'PUBLICAR') {
-    return 'warning'
-  }
-
-  return 'neutral'
-}
-
-function marcaTiempo(value: RegistroAuditoriaResponse['fecha']) {
-  if (Array.isArray(value) && value.length >= 3) {
-    const [year, month, day, hour = 0, minute = 0, second = 0] = value.map((part) => Number(part))
-
-    if ([year, month, day, hour, minute].every((part) => Number.isFinite(part))) {
-      return new Date(year, month - 1, day, hour, minute, second || 0).getTime()
-    }
-  }
-
-  if (typeof value === 'string' && value.trim()) {
-    const date = new Date(value)
-    return Number.isNaN(date.getTime()) ? 0 : date.getTime()
-  }
-
-  return 0
-}
-
-function formatoFecha(value: RegistroAuditoriaResponse['fecha']) {
-  const marca = marcaTiempo(value)
-
-  if (!marca) {
-    return typeof value === 'string' && value.trim() ? value : '—'
-  }
-
-  return new Intl.DateTimeFormat('es-CO', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(marca))
-}
-
-function textoJson(value: unknown) {
-  if (value == null) {
-    return ''
-  }
-
-  if (typeof value === 'object') {
-    return JSON.stringify(value, null, 2)
-  }
-
-  if (typeof value !== 'string' || !value.trim() || value.trim() === 'null') {
-    return ''
-  }
-
-  try {
-    return JSON.stringify(JSON.parse(value), null, 2)
-  } catch {
-    return value
-  }
-}
-
 function mensajeError(cause: unknown, respaldo: string) {
   return cause instanceof ApiError ? cause.message : respaldo
 }
 
-function ordenarRegistros(registros: RegistroAuditoriaResponse[]) {
-  const unicos = new Map<string, RegistroAuditoriaResponse>()
-
-  registros.forEach((registro) => {
-    if (registro?.id) {
-      unicos.set(registro.id, registro)
-    }
-  })
-
-  return [...unicos.values()].sort((left, right) => marcaTiempo(right.fecha) - marcaTiempo(left.fecha))
-}
-
-function etiquetaCuenta(
-  usuarioId: string,
-  usuarios: UsuarioListado[],
-  sesion: { id: string; correo: string; rol: UsuarioListado['rol'] } | null,
-) {
-  const cuenta = usuarios.find((item) => item.id === usuarioId)
-
-  if (cuenta) {
-    return etiquetaUsuario(cuenta)
-  }
-
-  if (sesion?.id === usuarioId) {
-    return etiquetaUsuario({
-      correo: sesion.correo,
-      rol: sesion.rol,
-      activo: true,
-    })
-  }
-
-  return 'Cuenta no listada'
-}
-
-function DetalleCambio({
-  antes,
-  despues,
-  idEntidad,
-  usuarioId,
-}: {
-  antes: unknown
-  despues: unknown
-  idEntidad: string
-  usuarioId: string
-}) {
-  const textoAntes = textoJson(antes)
-  const textoDespues = textoJson(despues)
-
-  return (
-    <details className={styles.details}>
-      <summary>Ver cambios</summary>
-      {textoAntes ? (
-        <div>
-          <p className={styles.detailLabel}>Antes</p>
-          <pre className={styles.pre}>{textoAntes}</pre>
-        </div>
-      ) : null}
-      {textoDespues ? (
-        <div>
-          <p className={styles.detailLabel}>Después</p>
-          <pre className={styles.pre}>{textoDespues}</pre>
-        </div>
-      ) : null}
-      {!textoAntes && !textoDespues ? <p className={styles.muted}>Sin detalle del cambio.</p> : null}
-      <p className={styles.detailLabel}>Identificador del registro</p>
-      <p className={styles.id}>{idEntidad}</p>
-      <p className={styles.detailLabel}>Identificador de la cuenta</p>
-      <p className={styles.id}>{usuarioId}</p>
-    </details>
-  )
-}
-
-function HistorialTabla({
-  registros,
-  etiquetas,
-  usuarios,
-  sesion,
-  onEntidad,
-  onUsuario,
-  origen,
-}: {
-  registros: RegistroAuditoriaResponse[]
-  etiquetas: Map<string, string>
-  usuarios: UsuarioListado[]
-  sesion: { id: string; correo: string; rol: UsuarioListado['rol'] } | null
-  onEntidad: (entidad: string, idEntidad: string) => void
-  onUsuario: (usuarioId: string) => void
-  origen: 'registro' | 'grupo' | 'usuario'
-}) {
-  return (
-    <div className={styles.tableHost}>
-      <Table minWidth={980}>
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Acción</th>
-            <th>Registro</th>
-            <th>Cuenta</th>
-            <th>IP</th>
-            <th>Cambios</th>
-          </tr>
-        </thead>
-        <tbody>
-          {registros.map((registro) => (
-            <tr key={registro.id}>
-              <td>{formatoFecha(registro.fecha)}</td>
-              <td>
-                <Badge tone={tonoAccion(registro.accion)}>
-                  {etiquetaAccion(registro.accion)}
-                </Badge>
-              </td>
-              <td>
-                <p className={styles.registro}>
-                  {etiquetas.get(registro.idEntidad) ?? etiquetaEntidad(registro.entidad)}
-                </p>
-                {origen === 'usuario' || origen === 'grupo' ? (
-                  <TextLink onClick={() => onEntidad(registro.entidad, registro.idEntidad)}>
-                    Ver historial de la entidad
-                  </TextLink>
-                ) : null}
-              </td>
-              <td>
-                <p className={styles.registro}>
-                  {etiquetaCuenta(registro.usuarioId, usuarios, sesion)}
-                </p>
-                {origen === 'registro' || origen === 'grupo' ? (
-                  <TextLink onClick={() => onUsuario(registro.usuarioId)}>
-                    Ver actividad de la cuenta
-                  </TextLink>
-                ) : null}
-              </td>
-              <td>{registro.ip?.trim() || 'No registrada'}</td>
-              <td>
-                <DetalleCambio
-                  antes={registro.datosAntes}
-                  despues={registro.datosDespues}
-                  idEntidad={registro.idEntidad}
-                  usuarioId={registro.usuarioId}
-                />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-    </div>
-  )
-}
-
-function ResultadoConsulta({
-  consulta,
-  vacio,
-  titulo,
-  inicial,
-  children,
-}: {
-  consulta: Consulta
-  vacio: string
-  titulo: string
-  inicial: string
-  children: ReactNode
-}) {
-  if (consulta.estado === 'cargando') {
-    return <p className={styles.status}>Consultando el historial…</p>
-  }
-
-  if (consulta.estado === 'error') {
-    return (
-      <p className={styles.error} role="alert">
-        {consulta.error}
-      </p>
-    )
-  }
-
-  if (consulta.estado === 'inicial') {
-    return <p className={styles.status}>{inicial}</p>
-  }
-
-  return (
-    <div className={styles.resultado}>
-      {titulo ? (
-        <Text as="h3" variant="sectionTitle">
-          {titulo}
-        </Text>
-      ) : null}
-      {consulta.registros.length === 0 ? <p className={styles.status}>{vacio}</p> : children}
-    </div>
-  )
-}
-
 export function AuditoriaWorkspace() {
   const { user } = useAuth()
+  const { resolvedor, docentes, docentesError } = useResolvedorAuditoria(user?.rol === 'RECTOR')
   const [searchParams] = useSearchParams()
   const entidadInicial = searchParams.get('entidad') ?? ''
   const idInicial = searchParams.get('id') ?? ''
   const grupoInicial = searchParams.get('grupo') ?? ''
   const entidadSeccion = useRef<HTMLDivElement>(null)
   const usuarioSeccion = useRef<HTMLDivElement>(null)
+  const otrosSeccion = useRef<HTMLDivElement>(null)
   const entidadAbort = useRef<AbortController | null>(null)
   const usuarioAbort = useRef<AbortController | null>(null)
   const grupoElegido = useRef(false)
   const grupoAnterior = useRef<string | null>(null)
   const [yearId, setYearId] = useState('')
   const [groupId, setGroupId] = useState('')
-  const [tipo, setTipo] = useState<EntidadAuditable>(
-    esEntidad(entidadInicial) ? entidadInicial : 'AsignacionAcademica',
+  const [tipo, setTipo] = useState<EntidadGrupo>(
+    esEntidadGrupo(entidadInicial) ? entidadInicial : 'AsignacionAcademica',
+  )
+  const [solicitudOtra, setSolicitudOtra] = useState<SolicitudOtroRegistro | null>(
+    esEntidadOtra(entidadInicial) && UUID.test(idInicial)
+      ? { entidad: entidadInicial, id: idInicial, n: 1 }
+      : null,
   )
   const [registroId, setRegistroId] = useState('')
-  const [consultaEntidad, setConsultaEntidad] = useState<Consulta>(consultaInicial)
+  const [consultaEntidad, setConsultaEntidad] = useState<ConsultaAuditoria>(consultaInicial)
   const [vacioEntidad, setVacioEntidad] = useState(VACIO_REGISTRO)
   const [tituloEntidad, setTituloEntidad] = useState('')
   const [alcance, setAlcance] = useState<Alcance>('registro')
   const [idConsultado, setIdConsultado] = useState('')
   const [usuarioId, setUsuarioId] = useState(user?.id ?? '')
   const [usuarioIdError, setUsuarioIdError] = useState('')
-  const [consultaUsuario, setConsultaUsuario] = useState<Consulta>(consultaInicial)
+  const [consultaUsuario, setConsultaUsuario] = useState<ConsultaAuditoria>(consultaInicial)
   const [usuarios, setUsuarios] = useState<UsuarioListado[]>([])
   const [usuariosError, setUsuariosError] = useState('')
   const [usuariosCargando, setUsuariosCargando] = useState(true)
@@ -550,8 +259,19 @@ export function AuditoriaWorkspace() {
     return [{ value: '', label: catalogoCargando ? 'Cargando registros…' : 'Elige un registro' }, ...opciones]
   }, [catalogoCargando, etiquetas, opcionesRegistroBase, registroId])
 
+  function abrirOtro(entidad: string, id: string) {
+    if (esEntidadOtra(entidad)) {
+      setSolicitudOtra((actual) => ({ entidad, id, n: (actual?.n ?? 0) + 1 }))
+    }
+  }
+
   async function cargarEntidad(entidadValor: string, idValor: string) {
     if (!esEntidad(entidadValor) || !UUID.test(idValor)) {
+      return
+    }
+
+    if (!esEntidadGrupo(entidadValor)) {
+      abrirOtro(entidadValor, idValor)
       return
     }
 
@@ -614,7 +334,7 @@ export function AuditoriaWorkspace() {
   if (
     !enlacePreparado &&
     user?.rol === 'RECTOR' &&
-    esEntidad(entidadInicial) &&
+    esEntidadGrupo(entidadInicial) &&
     UUID.test(idInicial)
   ) {
     setEnlacePreparado(true)
@@ -628,7 +348,7 @@ export function AuditoriaWorkspace() {
   }
 
   useEffect(() => {
-    if (!enlacePreparado || !esEntidad(entidadInicial) || !UUID.test(idInicial)) {
+    if (!enlacePreparado || !esEntidadGrupo(entidadInicial) || !UUID.test(idInicial)) {
       return
     }
 
@@ -895,7 +615,8 @@ export function AuditoriaWorkspace() {
   }
 
   function verEntidad(entidadValor: string, idValor: string) {
-    entidadSeccion.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const destino = esEntidadGrupo(entidadValor) ? entidadSeccion : otrosSeccion
+    destino.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     void cargarEntidad(entidadValor, idValor)
   }
 
@@ -912,7 +633,7 @@ export function AuditoriaWorkspace() {
             Auditoría
           </Text>
           <Text variant="body">
-            El historial de cambios de asignaciones y clases está reservado al rector.
+            El historial de cambios del sistema está reservado al rector.
           </Text>
         </div>
         <Card padding="lg">
@@ -931,8 +652,9 @@ export function AuditoriaWorkspace() {
           Auditoría
         </Text>
         <Text variant="body">
-          Revisa quién creó, confirmó, movió o eliminó una asignación académica o una clase del
-          horario. Crear un docente, un aula o una sede no queda en este historial.
+          Revisa quién creó, cambió, movió o retiró una asignación académica, una clase del
+          horario, un aula, un docente, un plan de estudios, una restricción o un título
+          profesional.
         </Text>
       </div>
 
@@ -988,9 +710,9 @@ export function AuditoriaWorkspace() {
               label="Tipo"
               name="tipo"
               value={tipo}
-              options={[...ENTIDADES]}
+              options={[...ENTIDADES_GRUPO]}
               onChange={(value) => {
-                if (esEntidad(value)) {
+                if (esEntidadGrupo(value)) {
                   setTipo(value)
                   setRegistroId('')
                 }
@@ -1049,6 +771,7 @@ export function AuditoriaWorkspace() {
               usuarios={usuarios}
               sesion={user}
               origen={alcance}
+              resolvedor={resolvedor}
               onEntidad={verEntidad}
               onUsuario={verUsuario}
             />
@@ -1056,11 +779,24 @@ export function AuditoriaWorkspace() {
         </Card>
       </div>
 
+      <div ref={otrosSeccion}>
+        <AuditoriaOtrosRegistros
+          usuarios={usuarios}
+          sesion={user}
+          resolvedor={resolvedor}
+          docentes={docentes}
+          docentesError={docentesError}
+          solicitud={solicitudOtra}
+          onUsuario={verUsuario}
+          onEntidad={verEntidad}
+        />
+      </div>
+
       <div ref={usuarioSeccion}>
         <Card className={styles.section} padding="lg">
           <SectionHeader
             title="Acciones de una cuenta"
-            description="Muestra asignaciones y clases guardadas por esa cuenta. Crear un docente, un aula o una sede no aparece aquí."
+            description="Muestra los cambios que esa cuenta guardó sobre asignaciones, clases, aulas, docentes, planes de estudio, restricciones y títulos."
           />
           {usuariosError && opcionesUsuario.length ? (
             <p className={styles.error} role="alert">
@@ -1100,7 +836,7 @@ export function AuditoriaWorkspace() {
           </form>
           <ResultadoConsulta
             consulta={consultaUsuario}
-            vacio="Esta cuenta no ha creado, confirmado, movido ni eliminado asignaciones o clases."
+            vacio="Esta cuenta no tiene cambios registrados en el historial."
             titulo=""
             inicial="Elige una cuenta para ver las acciones que registró."
           >
@@ -1110,6 +846,7 @@ export function AuditoriaWorkspace() {
               usuarios={usuarios}
               sesion={user}
               origen="usuario"
+              resolvedor={resolvedor}
               onEntidad={verEntidad}
               onUsuario={verUsuario}
             />

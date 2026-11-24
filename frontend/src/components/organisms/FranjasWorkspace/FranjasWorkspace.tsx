@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ApiError,
+  asegurarTurnosBase,
   consultarFranjaHoraria,
   listarCatalogoTurnos,
   listarFranjasPorTurno,
@@ -70,6 +71,7 @@ export function FranjasWorkspace() {
     const controller = new AbortController()
 
     listarCatalogoTurnos(controller.signal)
+      .then((items) => asegurarTurnosBase(items))
       .then((items) => {
         if (!controller.signal.aborted) {
           setTurnos(items)

@@ -1,3 +1,4 @@
+import { NOMBRES_TURNO, TURNOS_BASE } from '../content/turnos'
 import { api } from './client'
 
 export type TurnoRequest = {
@@ -65,4 +66,34 @@ export async function listarCatalogoTurnos(signal?: AbortSignal) {
   }
 
   return turnos.sort((left, right) => left.nombre.localeCompare(right.nombre, 'es'))
+}
+
+let siembraEnCurso: Promise<TurnoResponse[]> | null = null
+
+function ordenarTurnos(turnos: TurnoResponse[]) {
+  return [...turnos].sort((left, right) => left.nombre.localeCompare(right.nombre, 'es'))
+}
+
+// Crea Mañana y Contrajornada si todavía no existen. Si ya están, no hace
+// nada. Las llamadas simultáneas comparten una sola siembra para no crear
+// duplicados (la tabla no tiene restricción de unicidad en el nombre).
+export function asegurarTurnosBase(turnos: TurnoResponse[]): Promise<TurnoResponse[]> {
+  const existentes = new Set(turnos.map((turno) => turno.nombre.trim().toLowerCase()))
+  const faltan = NOMBRES_TURNO.filter((nombre) => !existentes.has(nombre.toLowerCase()))
+
+  if (faltan.length === 0) {
+    return Promise.resolve(turnos)
+  }
+
+  if (!siembraEnCurso) {
+    siembraEnCurso = Promise.all(
+      faltan.map((nombre) => registrarTurno({ nombre, ...TURNOS_BASE[nombre] })),
+    )
+      .then((creados) => ordenarTurnos([...turnos, ...creados]))
+      .finally(() => {
+        siembraEnCurso = null
+      })
+  }
+
+  return siembraEnCurso
 }

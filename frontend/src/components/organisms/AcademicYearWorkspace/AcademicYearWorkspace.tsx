@@ -4,7 +4,7 @@ import {
   anioEscolarVisible,
   useCatalogoAniosEscolares,
 } from '../../../api'
-import { academicYears, type AcademicYear } from '../../../content/academicYear'
+import type { AcademicYear } from '../../../content/academicYear'
 import { Button } from '../../atoms/Button'
 import { Text } from '../../atoms/Text'
 import { AcademicYearCard } from '../AcademicYearCard'
@@ -14,7 +14,7 @@ import styles from './AcademicYearWorkspace.module.css'
 
 export function AcademicYearWorkspace() {
   const { anios, error, loading, incorporar, retirar } = useCatalogoAniosEscolares()
-  const catalogo = error ? academicYears : anios
+  const catalogo = anios
   const [yearId, setYearId] = useState('')
   const selectedYearId = catalogo?.some((year) => year.id === yearId)
     ? yearId
@@ -47,8 +47,7 @@ export function AcademicYearWorkspace() {
       {loading ? <p className={styles.notice}>Cargando años escolares…</p> : null}
       {error ? (
         <p className={styles.alert} role="alert">
-          {error} Se muestran los años de referencia locales para que puedas seguir
-          revisando el año lectivo.
+          {error}
         </p>
       ) : null}
 

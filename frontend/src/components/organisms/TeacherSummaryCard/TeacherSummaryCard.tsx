@@ -1,5 +1,5 @@
 import {
-  PENDING_BACKEND_LABEL,
+  SIN_DATO_LABEL,
   formatTeacherName,
   labelEstado,
   toneEstado,
@@ -40,7 +40,7 @@ export function TeacherSummaryCard({
         <MetaField label="Documento" value={documentLabel} />
         <MetaField
           label="Área de nombramiento"
-          value={areaNombre || PENDING_BACKEND_LABEL}
+          value={areaNombre || SIN_DATO_LABEL}
         />
         <MetaField label="Estado" value={labelEstado(teacher.estado)} />
       </div>

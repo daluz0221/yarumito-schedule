@@ -17,6 +17,7 @@ import {
   opcionesAniosEscolares,
   actualizarAsignacion,
   registrarAsignacion,
+  regresarAsignacionABorrador,
   retirarAsignacion,
   useCatalogoAniosEscolares,
   useCatalogoGrupos,
@@ -64,6 +65,7 @@ type Dialog =
   | { name: 'create-activity'; row?: AssignmentRow }
   | { name: 'edit'; row: AssignmentRow }
   | { name: 'remove'; row: AssignmentRow }
+  | { name: 'revert'; row: AssignmentRow }
 
 type Catalog = {
   teachers: Teacher[]
@@ -531,6 +533,26 @@ export function AssignmentWorkspace() {
     }
   }
 
+  const revertAssignment = async () => {
+    if (dialog?.name !== 'revert' || !dialog.row.assignmentId) {
+      return
+    }
+
+    setSaving(true)
+    setSaveError('')
+
+    try {
+      await regresarAsignacionABorrador(dialog.row.assignmentId)
+      setRevision((current) => current + 1)
+      setDialog(null)
+      setActionError('')
+    } catch (cause) {
+      setSaveError(mensajeError(cause, 'No se pudo devolver la asignación a borrador.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const confirmAssignment = async (row: AssignmentRow) => {
     if (!row.assignmentId || confirmingId) {
       return
@@ -711,7 +733,7 @@ export function AssignmentWorkspace() {
           }
           caption={
             tab === 'curricular'
-              ? 'La asignación queda en borrador hasta que se confirma. El grado se deriva del grupo seleccionado.'
+              ? 'La asignación queda en borrador hasta que se confirma. Una confirmada puede volver a borrador si aún no tiene clases ni horario publicado.'
               : 'La asignación queda guardada en el docente. No depende del grupo seleccionado ni reemplaza el plan de estudios.'
           }
           rows={visibleRows}
@@ -747,6 +769,14 @@ export function AssignmentWorkspace() {
           onConfirm={(row) => {
             void confirmAssignment(row)
           }}
+          onRevertToDraft={
+            tab === 'curricular' && !readOnly
+              ? (row) => {
+                  setSaveError('')
+                  setDialog({ name: 'revert', row })
+                }
+              : undefined
+          }
         />
       ) : null}
 
@@ -802,6 +832,23 @@ export function AssignmentWorkspace() {
           onClose={closeDialog}
           onSubmit={(values) => {
             void updateAssignment(values)
+          }}
+        />
+      ) : null}
+
+      {dialog?.name === 'revert' ? (
+        <ConfirmActionModal
+          open
+          title="Volver a borrador"
+          description={`¿Devolver a borrador la asignación de ${dialog.row.subject}${dialog.row.teacherName ? ` a ${dialog.row.teacherName}` : ''}?`}
+          note="Solo se puede si la asignación está confirmada, no tiene clases programadas y la sede no tiene el horario publicado. Después se puede corregir y volver a confirmar."
+          confirmLabel="Volver a borrador"
+          busyLabel="Devolviendo..."
+          submitting={saving}
+          error={saveError}
+          onClose={closeDialog}
+          onConfirm={() => {
+            void revertAssignment()
           }}
         />
       ) : null}

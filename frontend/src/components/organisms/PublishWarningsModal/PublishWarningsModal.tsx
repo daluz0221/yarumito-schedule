@@ -12,7 +12,6 @@ export type PublishWarningsModalProps = {
   warnings: PublicationWarningItem[]
   onClose: () => void
   onReview: () => void
-  onContinue: () => void
 }
 
 export function PublishWarningsModal({
@@ -20,7 +19,6 @@ export function PublishWarningsModal({
   warnings,
   onClose,
   onReview,
-  onContinue,
 }: PublishWarningsModalProps) {
   const count = warnings.length
 
@@ -31,11 +29,8 @@ export function PublishWarningsModal({
       onClose={onClose}
       footer={
         <div className={styles.actions}>
-          <Button variant="muted" size="sm" onClick={onReview}>
+          <Button variant="primary" size="sm" onClick={onReview}>
             {publicationCopy.warningsReview}
-          </Button>
-          <Button variant="primary" size="sm" onClick={onContinue}>
-            {publicationCopy.warningsPublish}
           </Button>
         </div>
       }

@@ -58,6 +58,11 @@ export function confirmarAsignacion(id: string) {
   return api.patch<AsignacionAcademicaResponse>(`/api/asignaciones/${id}/confirmar`)
 }
 
+// M-01: devuelve una asignación CONFIRMADA a BORRADOR.
+export function regresarAsignacionABorrador(id: string) {
+  return api.patch<AsignacionAcademicaResponse>(`/api/asignaciones/${id}/regresar-a-borrador`)
+}
+
 export type ActualizarAsignacionRequest = {
   docenteId: string
   horasSemanales: number
