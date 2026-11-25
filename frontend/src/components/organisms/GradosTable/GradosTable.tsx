@@ -23,7 +23,6 @@ export function GradosTable({ rows, emptyMessage, onEdit }: GradosTableProps) {
               <th>Nivel</th>
               <th>Grado</th>
               <th>Tipo</th>
-              <th>Prioridad</th>
               <th>Horas</th>
               <th>Acciones</th>
             </tr>
@@ -36,7 +35,6 @@ export function GradosTable({ rows, emptyMessage, onEdit }: GradosTableProps) {
                 <td>
                   {grado.esMedia ? <Badge tone="success">Media</Badge> : 'Básica'}
                 </td>
-                <td>{grado.prioridadAsignacion}</td>
                 <td>{grado.horasSemanalesEsperadas}</td>
                 <td>
                   <IconAction
@@ -57,8 +55,7 @@ export function GradosTable({ rows, emptyMessage, onEdit }: GradosTableProps) {
               {grado.nivel}° {etiquetaGrado(grado.nombre)}
             </strong>
             <p>
-              {grado.esMedia ? 'Media' : 'Básica'} · Prioridad {grado.prioridadAsignacion} ·{' '}
-              {grado.horasSemanalesEsperadas} h
+              {grado.esMedia ? 'Media' : 'Básica'} · {grado.horasSemanalesEsperadas} h
             </p>
             <IconAction
               label={`Editar ${etiquetaGrado(grado.nombre)}`}
