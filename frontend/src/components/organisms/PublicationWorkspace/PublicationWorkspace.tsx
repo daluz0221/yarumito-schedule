@@ -4,7 +4,9 @@ import {
   anioEscolarVisible,
   ApiError,
   cargarDatosPublicacion,
+  horariosPublicables,
   opcionesAniosEscolares,
+  publicarHorariosEnBorrador,
   useCatalogoAniosEscolares,
   useCatalogoGrupos,
   type DatosPublicacion,
@@ -39,6 +41,11 @@ export function PublicationWorkspace() {
   const [yearIdState, setYearIdState] = useState('')
   const [datos, setDatos] = useState<DatosPublicacion | null>(null)
   const [datosError, setDatosError] = useState('')
+  const [publicacionError, setPublicacionError] = useState('')
+  const [aviso, setAviso] = useState('')
+  const [publicando, setPublicando] = useState(false)
+  const [confirmarPublicacion, setConfirmarPublicacion] = useState(false)
+  const [recarga, setRecarga] = useState(0)
   const [modal, setModal] = useState<PublicationModal>('none')
 
   const yearId = anios?.some((item) => item.id === yearIdState)
@@ -68,7 +75,10 @@ export function PublicationWorkspace() {
     setConsultaVista(consultaClave)
     setDatos(null)
     setDatosError('')
+    setPublicacionError('')
+    setAviso('')
     setModal('none')
+    setConfirmarPublicacion(false)
   }
 
   useEffect(() => {
@@ -101,7 +111,7 @@ export function PublicationWorkspace() {
       })
 
     return () => controller.abort()
-  }, [year, gruposListos, grupoIds])
+  }, [year, gruposListos, grupoIds, recarga])
 
   const warnings = useMemo(
     () => pendingPublicationWarnings(datos?.conflictos ?? []),
@@ -120,15 +130,68 @@ export function PublicationWorkspace() {
     [year, datos, sedes],
   )
 
-  const closeModal = () => setModal('none')
+  const closeModal = () => {
+    setModal('none')
+    setConfirmarPublicacion(false)
+  }
+
+  const publicar = async () => {
+    if (!datos || publicando) {
+      return
+    }
+
+    setPublicando(true)
+    setPublicacionError('')
+    setAviso('')
+
+    try {
+      const publicados = await publicarHorariosEnBorrador(datos.tableros)
+      setAviso(
+        publicados === 1 ? 'Se publicó 1 horario.' : `Se publicaron ${publicados} horarios.`,
+      )
+      setModal('none')
+      setConfirmarPublicacion(false)
+      setRecarga((valor) => valor + 1)
+    } catch (cause) {
+      setPublicacionError(
+        cause instanceof ApiError && cause.message
+          ? cause.message
+          : 'No se pudo publicar el horario.',
+      )
+      setRecarga((valor) => valor + 1)
+    } finally {
+      setPublicando(false)
+    }
+  }
+
+  const catalogoError = aniosError || gruposError
+  const cargando = Boolean(year) && datos === null && !datosError && !catalogoError
+  const puedePublicar = horariosPublicables(datos?.tableros ?? []).length > 0 && !cargando
+
+  const pedirPublicacion = () => {
+    if (!view || publicando || !puedePublicar) {
+      return
+    }
+
+    if (view.errors > 0) {
+      setConfirmarPublicacion(false)
+      setModal('blocked')
+      return
+    }
+
+    if (warnings.length > 0) {
+      setConfirmarPublicacion(true)
+      setModal('warnings')
+      return
+    }
+
+    void publicar()
+  }
 
   const openValidations = () => {
     closeModal()
     navigate('/dashboard/validaciones')
   }
-
-  const catalogoError = aniosError || gruposError
-  const cargando = Boolean(year) && datos === null && !datosError && !catalogoError
 
   return (
     <section className={styles.workspace}>
@@ -149,6 +212,12 @@ export function PublicationWorkspace() {
           {datosError}
         </p>
       ) : null}
+      {publicacionError ? (
+        <p className={styles.alert} role="alert">
+          {publicacionError}
+        </p>
+      ) : null}
+      {aviso ? <p className={styles.success}>{aviso}</p> : null}
 
       {view && year ? (
         <>
@@ -162,12 +231,20 @@ export function PublicationWorkspace() {
           <PublicationMetrics view={view} />
           <PublicationReadiness
             view={view}
-            onSeeWarnings={() => setModal('warnings')}
+            onSeeWarnings={() => {
+              setConfirmarPublicacion(false)
+              setModal('warnings')
+            }}
             onSeeBlocked={() => setModal('blocked')}
           />
           <PublicationChecks checks={view.checks} />
           <PublicationVersions view={view} />
-          <PublicationLog published={view.status === 'PUBLICADO'} />
+          <PublicationLog
+            published={view.status === 'PUBLICADO'}
+            busy={publicando}
+            disabled={!puedePublicar}
+            onPublish={pedirPublicacion}
+          />
         </>
       ) : !catalogoError ? (
         <p className={styles.notice}>
@@ -180,6 +257,8 @@ export function PublicationWorkspace() {
         warnings={warnings}
         onClose={closeModal}
         onReview={openValidations}
+        onConfirm={confirmarPublicacion ? () => void publicar() : undefined}
+        confirming={publicando}
       />
       <PublishBlockedModal
         open={modal === 'blocked'}

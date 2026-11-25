@@ -6,9 +6,12 @@ import styles from './PublicationLog.module.css'
 
 export type PublicationLogProps = {
   published: boolean
+  busy?: boolean
+  disabled?: boolean
+  onPublish?: () => void
 }
 
-export function PublicationLog({ published }: PublicationLogProps) {
+export function PublicationLog({ published, busy = false, disabled = false, onPublish }: PublicationLogProps) {
   return (
     <Card as="section" padding="lg" className={styles.card}>
       <Text as="h3" variant="sectionTitle">
@@ -20,9 +23,16 @@ export function PublicationLog({ published }: PublicationLogProps) {
       </p>
 
       <div className={styles.footer}>
-        <p className={styles.note}>{publicationCopy.logNote}</p>
-        <Button variant="primary" size="sm" disabled>
-          {published ? publicationCopy.published : publicationCopy.publish}
+        <p className={styles.note}>
+          {published ? publicationCopy.logPublishedNote : publicationCopy.logNote}
+        </p>
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={published || disabled || busy}
+          onClick={onPublish}
+        >
+          {busy ? publicationCopy.publishing : published ? publicationCopy.published : publicationCopy.publish}
         </Button>
       </div>
     </Card>

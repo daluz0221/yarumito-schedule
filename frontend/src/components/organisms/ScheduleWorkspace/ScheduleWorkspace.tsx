@@ -35,7 +35,6 @@ import { blockKey, type PendingPlacement } from '../../../content/scheduleConstr
 import type { WeekDay } from '../../../content/teacherRestrictions'
 import { Text } from '../../atoms/Text'
 import type { BadgeTone } from '../../atoms/Badge'
-import { PendingAssignments } from '../PendingAssignments'
 import { RemoveScheduleClassModal } from '../RemoveScheduleClassModal'
 import {
   ScheduleClassFormModal,
@@ -175,7 +174,9 @@ export function ScheduleWorkspace() {
   )
 
   // El turno de un grupo lo define el plan de estudios de su grado en el año
-  // (igual que en el backend: primer turno asignado en el plan).
+  // (igual que en el backend: primer turno asignado en el plan). El selector
+  // muestra el catálogo completo; al elegir un turno solo quedan los grupos
+  // cuyo plan usa ese turno.
   const turnoPorGrado = useMemo(() => {
     const map = new Map<string, string>()
 
@@ -204,10 +205,10 @@ export function ScheduleWorkspace() {
   const turnoDe = (group: { anioEscolarId: string; gradoId: string }) =>
     turnoPorGrado.get(`${group.anioEscolarId}:${group.gradoId}`) ?? ''
 
-  const turnosConGrupos = (turnos ?? []).filter((turno) =>
-    gruposDeSede.some((group) => turnoDe(group) === turno.id),
-  )
-  const turnoActivo = turnosConGrupos.some((turno) => turno.id === turnoFiltro) ? turnoFiltro : ''
+  const turnosDelCatalogo = turnos ?? []
+  const turnoActivo = turnosDelCatalogo.some((turno) => turno.id === turnoFiltro)
+    ? turnoFiltro
+    : ''
   const yearGroups = turnoActivo
     ? gruposDeSede.filter((group) => turnoDe(group) === turnoActivo)
     : gruposDeSede
@@ -560,9 +561,9 @@ export function ScheduleWorkspace() {
             value: '',
             label: turnos === null && !turnosError ? 'Cargando turnos…' : 'Todos los turnos',
           },
-          ...turnosConGrupos.map((turno) => ({ value: turno.id, label: turno.nombre })),
+          ...turnosDelCatalogo.map((turno) => ({ value: turno.id, label: turno.nombre })),
         ]}
-        shiftDisabled={turnos === null || turnosConGrupos.length === 0}
+        shiftDisabled={turnos === null || turnosDelCatalogo.length === 0}
         statusLabel={
           horarioLoading
             ? 'Cargando'
@@ -662,11 +663,6 @@ export function ScheduleWorkspace() {
                 }}
               />
             )}
-            <PendingAssignments
-              items={pending}
-              readOnly={readOnly || bandOptions.length === 0 || !hayAulasActivas}
-              onProgram={(subjectKey) => openCreate('Lunes', primeraFranja, subjectKey)}
-            />
           </div>
         </>
       ) : null}

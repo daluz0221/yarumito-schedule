@@ -3,11 +3,13 @@ import { useAuth } from '../../../auth'
 import {
   anioEscolarVisible,
   ApiError,
+  consultarHorarioGrupo,
   consultarInformeHorario,
   descargarInformeHorario,
   etiquetaGrado,
   horaCorta,
   listarDocentes,
+  minutosDelDia,
   opcionesAniosEscolares,
   opcionesCatalogoSedes,
   sedeVisible,
@@ -15,10 +17,14 @@ import {
   useCatalogoGrupos,
   useCatalogoSedes,
   type FormatoInformeHorario,
+  type FranjaHorariaResponse,
+  type InformeHorarioClaseDetalle,
   type InformeHorariosFiltroRequest,
   type InformeHorariosResponse,
   type VersionInformeHorario,
 } from '../../../api'
+import { blockKey, type ScheduleBlock } from '../../../content/scheduleConstruction'
+import type { TimeBand, WeekDay } from '../../../content/teacherRestrictions'
 import { idDisponible } from '../../../content/idDisponible'
 import type { Teacher } from '../../../content/teachers'
 import { Badge, type BadgeTone } from '../../atoms/Badge'
@@ -29,6 +35,7 @@ import { Text } from '../../atoms/Text'
 import { SectionHeader } from '../../molecules/SectionHeader'
 import { SelectField } from '../../molecules/SelectField'
 import { StatCard } from '../../molecules/StatCard'
+import { ScheduleGrid } from '../ScheduleGrid'
 import styles from './ConsultasWorkspace.module.css'
 
 const DIAS = [
@@ -75,6 +82,9 @@ type Consulta =
       informe: InformeHorariosResponse
       version: VersionInformeHorario
       grupoId: string
+      grupoCodigo: string
+      turnoNombre: string
+      franjas: FranjaHorariaResponse[]
     }
   | { estado: 'error'; mensaje: string }
 
@@ -157,6 +167,109 @@ function tonoEstado(estado: string | null): BadgeTone {
 
 function hora(value: string | null) {
   return value ? horaCorta(value) : '—'
+}
+
+function horaVisible(value: string | null) {
+  return hora(value).replace(/^0(?=\d:)/, '')
+}
+
+const DIA_SEMANA: Record<string, WeekDay> = {
+  LUNES: 'Lunes',
+  MARTES: 'Martes',
+  MIERCOLES: 'Miércoles',
+  MIÉRCOLES: 'Miércoles',
+  JUEVES: 'Jueves',
+  VIERNES: 'Viernes',
+}
+
+function rangoHorario(inicio: string | null, fin: string | null) {
+  const desde = minutosDelDia(inicio ?? '')
+  const hasta = minutosDelDia(fin ?? '')
+
+  if (desde === null || hasta === null) {
+    return null
+  }
+
+  return { desde, hasta, clave: `${desde}-${hasta}` }
+}
+
+function parrillaDeConsulta(
+  clases: InformeHorarioClaseDetalle[],
+  franjas: FranjaHorariaResponse[],
+  groupId: string,
+) {
+  const oficiales = [...franjas].sort(
+    (left, right) => left.orden - right.orden || left.numero - right.numero,
+  )
+  const bandaPorRango = new Map<string, string>()
+  const bandas: Array<{ banda: TimeBand; desde: number }> = oficiales.map((franja) => {
+    const rango = rangoHorario(franja.horaInicio, franja.horaFin)
+    const horario = `${horaVisible(franja.horaInicio)} – ${horaVisible(franja.horaFin)}`
+
+    if (rango && !franja.esDescanso) {
+      bandaPorRango.set(rango.clave, franja.id)
+    }
+
+    return {
+      desde: rango?.desde ?? Number.MAX_SAFE_INTEGER,
+      banda: {
+        id: franja.id,
+        kind: franja.esDescanso ? 'break' : 'class',
+        label: franja.esDescanso ? `DESCANSO · ${horario} · No programable` : horario,
+      },
+    }
+  })
+  const blocks = new Map<string, ScheduleBlock[]>()
+
+  clases.forEach((clase, index) => {
+    const day = DIA_SEMANA[(clase.diaSemana ?? '').trim().toUpperCase()]
+    const rango = rangoHorario(clase.horaInicio, clase.horaFin)
+
+    if (!day || !rango) {
+      return
+    }
+
+    let bandId = bandaPorRango.get(rango.clave)
+
+    if (!bandId) {
+      bandId = `consulta-${rango.clave}`
+
+      if (!bandas.some((item) => item.banda.id === bandId)) {
+        bandas.push({
+          desde: rango.desde,
+          banda: {
+            id: bandId,
+            kind: 'class',
+            label: `${horaVisible(clase.horaInicio)} – ${horaVisible(clase.horaFin)}`,
+          },
+        })
+      }
+    }
+
+    const key = blockKey(day, bandId)
+    const actuales = blocks.get(key) ?? []
+    actuales.push({
+      id: `${clase.horarioId ?? 'clase'}-${clase.asignaturaId ?? index}-${rango.clave}-${index}`,
+      yearId: '',
+      groupId: clase.grupoId ?? groupId,
+      day,
+      bandId,
+      subjectKey: clase.asignaturaId ?? '',
+      subject: clase.nombreAsignatura?.trim() || 'Asignatura',
+      teacherName: clase.nombreDocente?.trim() || 'Docente',
+      classroom: clase.nombreAula?.trim() || 'Sin aula',
+      tone: 'ok',
+      reason: clase.esHoraExtra ? 'Hora extra' : '',
+    })
+    blocks.set(key, actuales)
+  })
+
+  bandas.sort((left, right) => left.desde - right.desde)
+
+  return {
+    bands: bandas.map((item) => item.banda),
+    blocks,
+  }
 }
 
 function filtrosDe(valores: {
@@ -349,13 +462,24 @@ export function ConsultasWorkspace() {
     setConsulta({ estado: 'cargando' })
     setDescargaError('')
 
-    consultarInformeHorario(
-      grupoSolicitado,
-      versionSolicitada,
-      filtrosDe(valoresFiltro),
-      controller.signal,
-    )
-      .then((informe) => {
+    const codigoSolicitado = grupo?.codigo ?? ''
+
+    Promise.all([
+      consultarInformeHorario(
+        grupoSolicitado,
+        versionSolicitada,
+        filtrosDe(valoresFiltro),
+        controller.signal,
+      ),
+      consultarHorarioGrupo(grupoSolicitado, controller.signal).catch((cause) => {
+        if (esAbort(cause) || controller.signal.aborted) {
+          throw cause
+        }
+
+        return null
+      }),
+    ])
+      .then(([informe, tablero]) => {
         if (controller.signal.aborted) {
           return
         }
@@ -365,6 +489,9 @@ export function ConsultasWorkspace() {
           informe,
           version: versionSolicitada,
           grupoId: grupoSolicitado,
+          grupoCodigo: tablero?.grupoCodigo?.trim() || codigoSolicitado,
+          turnoNombre: tablero?.turnoNombre?.trim() || tablero?.franjas?.[0]?.turnoNombre?.trim() || '',
+          franjas: tablero?.franjas ?? [],
         })
       })
       .catch((cause) => {
@@ -417,6 +544,11 @@ export function ConsultasWorkspace() {
     consulta.estado === 'listo' && consulta.version === 'publicado'
       ? 'Horario publicado'
       : 'Horario institucional'
+  const parrilla =
+    consulta.estado === 'listo'
+      ? parrillaDeConsulta(clases, consulta.franjas, consulta.grupoId)
+      : null
+  const hayFiltroDeClase = Boolean(dia || jornada || docenteActivo || estado)
 
   return (
     <section className={styles.workspace}>
@@ -425,7 +557,8 @@ export function ConsultasWorkspace() {
           Consultas de horario
         </Text>
         <Text variant="body">
-          Consulta el horario institucional o el publicado de un grupo, y descárgalo en PDF o Excel.
+          Consulta el horario institucional o el publicado de un grupo en la rejilla semanal, y
+          descárgalo en PDF o Excel.
         </Text>
       </div>
 
@@ -589,7 +722,7 @@ export function ConsultasWorkspace() {
       ) : null}
       {consulta.estado === 'inicial' ? (
         <p className={styles.notice}>
-          Elige el grupo y pulsa Consultar informe para ver las clases y la carga horaria.
+          Elige el grupo y pulsa Consultar informe para ver el horario en la rejilla.
         </p>
       ) : null}
       {consulta.estado === 'cargando' ? (
@@ -622,6 +755,26 @@ export function ConsultasWorkspace() {
               wash="retired"
             />
           </div>
+
+          {parrilla && consulta.estado === 'listo' && parrilla.bands.length > 0 ? (
+            <>
+              <ScheduleGrid
+                groupCode={consulta.grupoCodigo || grupo?.codigo || '—'}
+                groupId={consulta.grupoId}
+                shiftLabel={consulta.turnoNombre || 'Sin turno'}
+                readOnly
+                lectura
+                bands={parrilla.bands}
+                blocks={parrilla.blocks}
+              />
+              {hayFiltroDeClase ? (
+                <p className={styles.hint}>
+                  La rejilla muestra solo las clases que cumplen los filtros de día, jornada, docente
+                  o estado.
+                </p>
+              ) : null}
+            </>
+          ) : null}
 
           <Card className={styles.panel}>
             <SectionHeader
