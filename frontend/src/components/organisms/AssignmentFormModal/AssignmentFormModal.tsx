@@ -15,7 +15,11 @@ import {
   type AssignmentRow,
   type CurricularKind,
 } from '../../../content/academicAssignment'
-import { isIdoneidadVigente, resolveAreaName } from '../../../content/teacherProfile'
+import {
+  isIdoneidadVigente,
+  resolveAreaName,
+  type Idoneidad,
+} from '../../../content/teacherProfile'
 import { formatTeacherName, labelEstado, type Teacher } from '../../../content/teachers'
 import { Button } from '../../atoms/Button'
 import { Modal } from '../../atoms/Modal'
@@ -85,6 +89,43 @@ function initialTeacherValue(row: AssignmentRow | undefined, teachers: Teacher[]
   return ''
 }
 
+// Horas que aún faltan por asignar a la asignatura (mínimo 1 para que el
+// formulario arranque con un valor válido).
+function pendingHours(subject: AssignmentRow | undefined) {
+  if (!subject) {
+    return ''
+  }
+
+  return String(Math.max(subject.requiredHours - subject.assignedHours, 1))
+}
+
+type IdoneidadesDocentes =
+  | { estado: 'cargando' }
+  | { estado: 'error' }
+  | { estado: 'listo'; porDocente: Record<string, Idoneidad[]> }
+
+// Un docente es elegible si tiene una idoneidad vigente en el área de la
+// asignatura, sea para toda el área o específica para esa asignatura.
+function tieneIdoneidadPara(
+  idoneidades: Idoneidad[],
+  subject: AssignmentRow,
+  areas: AreaResponse[],
+) {
+  const area = subject.area.trim().toLowerCase()
+
+  return idoneidades.some((item) => {
+    if (!isIdoneidadVigente(item)) {
+      return false
+    }
+
+    if (resolveAreaName(item.areaId, areas).trim().toLowerCase() !== area) {
+      return false
+    }
+
+    return !item.asignaturaId || item.asignaturaId === subject.key
+  })
+}
+
 export function AssignmentFormModal({
   open,
   mode,
@@ -108,9 +149,9 @@ export function AssignmentFormModal({
   const [values, setValues] = useState<FormValues>(() => ({
     subjectKey: initialSubject,
     teacherValue: initialTeacherValue(row, teachers),
-    hours: row
-      ? String(row.assignedHours)
-      : String(subjects.find((item) => item.key === initialSubject)?.requiredHours ?? ''),
+    hours: editing
+      ? String(row?.assignedHours ?? '')
+      : pendingHours(row ?? subjects.find((item) => item.key === initialSubject)),
     kind: (row?.kind as CurricularKind | null) ?? 'PRINCIPAL',
     note: row?.note ?? (editing ? `Asignación curricular del grupo ${groupCode}` : ''),
   }))
@@ -118,12 +159,26 @@ export function AssignmentFormModal({
   const [kindOpen, setKindOpen] = useState(false)
   const [idoneidad, setIdoneidad] = useState({ key: '', valid: false })
   const [cargaDocente, setCargaDocente] = useState({ key: '', texto: '' })
+  const [idoneidadesDocentes, setIdoneidadesDocentes] = useState<IdoneidadesDocentes>({
+    estado: 'cargando',
+  })
   const formId = `assignment-${mode}-form`
   const selected = subjects.find((item) => item.key === values.subjectKey)
   const hoursValue = Number(values.hours)
   const hoursInvalid = !values.hours || !Number.isInteger(hoursValue) || hoursValue < 1
   const hoursCopy = selected ? hoursStatusCopy(selected.requiredHours, hoursInvalid ? 0 : hoursValue) : null
-  const teacherOptions = teacherSelectOptions(teachers, row)
+  const elegibles = docentesElegibles(selected, idoneidadesDocentes, areas)
+  const teacherOptions = teacherSelectOptions(teachers, row, elegibles)
+  const sinDocentesIdoneos =
+    elegibles !== null && teacherOptions.length <= 1
+      ? 'Ningún docente activo tiene idoneidad vigente para esta asignatura. Registra la idoneidad en el perfil del docente.'
+      : ''
+  const filtroIdoneidadHint =
+    idoneidadesDocentes.estado === 'cargando'
+      ? 'Cargando idoneidades de los docentes…'
+      : idoneidadesDocentes.estado === 'error'
+        ? 'No se pudieron consultar las idoneidades; se muestran todos los docentes activos.'
+        : ''
   const selectedTeacher = resolveSelectedTeacher(values.teacherValue, teachers)
   const teacherIdSeleccionado = parseTeacherSelection(values.teacherValue).teacherId
   const idoneidadKey =
@@ -148,9 +203,40 @@ export function AssignmentFormModal({
       : '',
     values.teacherValue ? assignmentTeacherPriorityHint : '',
     teacherLoad,
+    sinDocentesIdoneos,
+    filtroIdoneidadHint,
   ]
     .filter(Boolean)
     .join(' ')
+
+  // Idoneidades de todos los docentes activos, para ofrecer solo los idóneos.
+  const idsActivos = teachers
+    .filter((teacher) => teacher.estado === 'ACTIVO')
+    .map((teacher) => teacher.id)
+    .join(',')
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const ids = idsActivos ? idsActivos.split(',') : []
+
+    Promise.all(
+      ids.map((teacherId) =>
+        listarIdoneidadesPorDocente(teacherId, controller.signal).then(
+          (items) => [teacherId, items] as const,
+        ),
+      ),
+    )
+      .then((pares) => {
+        setIdoneidadesDocentes({ estado: 'listo', porDocente: Object.fromEntries(pares) })
+      })
+      .catch((cause) => {
+        if (!isAbortError(cause)) {
+          setIdoneidadesDocentes({ estado: 'error' })
+        }
+      })
+
+    return () => controller.abort()
+  }, [idsActivos])
 
   useEffect(() => {
     if (!teacherIdSeleccionado || !selected?.area) {
@@ -308,9 +394,14 @@ export function AssignmentFormModal({
               error={attempted && !values.subjectKey ? requiredChoiceMessage : undefined}
               onChange={(subjectKey) => {
                 const next = subjects.find((item) => item.key === subjectKey)
+                const elegiblesNext = docentesElegibles(next, idoneidadesDocentes, areas)
+                const teacherId = parseTeacherSelection(values.teacherValue).teacherId
+                const conservarDocente =
+                  !teacherId || elegiblesNext === null || elegiblesNext.has(teacherId)
                 patch({
                   subjectKey,
-                  hours: String(next ? Math.max(next.requiredHours - next.assignedHours, 1) : ''),
+                  hours: pendingHours(next),
+                  ...(conservarDocente ? {} : { teacherValue: '' }),
                 })
               }}
             />
@@ -437,11 +528,36 @@ function labelKind(kind: AssignmentKind) {
   return 'Principal'
 }
 
-function teacherSelectOptions(teachers: Teacher[], row?: AssignmentRow) {
+// null = sin filtro (idoneidades aún cargando o no disponibles).
+function docentesElegibles(
+  subject: AssignmentRow | undefined,
+  idoneidades: IdoneidadesDocentes,
+  areas: AreaResponse[],
+): Set<string> | null {
+  if (!subject || idoneidades.estado !== 'listo') {
+    return null
+  }
+
+  return new Set(
+    Object.entries(idoneidades.porDocente)
+      .filter(([, items]) => tieneIdoneidadPara(items, subject, areas))
+      .map(([teacherId]) => teacherId),
+  )
+}
+
+function teacherSelectOptions(
+  teachers: Teacher[],
+  row?: AssignmentRow,
+  elegibles: Set<string> | null = null,
+) {
   const options = [
     { value: '', label: 'Seleccionar docente' },
     ...teachers
       .filter((teacher) => teacher.estado === 'ACTIVO')
+      .filter(
+        (teacher) =>
+          elegibles === null || elegibles.has(teacher.id) || teacher.id === row?.teacherId,
+      )
       .map((teacher) => ({
         value: teacher.id,
         label: formatTeacherName(teacher),

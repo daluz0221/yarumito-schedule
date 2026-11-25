@@ -146,8 +146,13 @@ export {
   metricasDelTablero,
   pendientesDelTablero,
 } from './horarios'
-export { cargarDatosPublicacion } from './publicacionHorario'
-export type { DatosPublicacion } from './publicacionHorario'
+export {
+  cargarDatosPublicacion,
+  horariosPublicables,
+  publicarHorario,
+  publicarHorariosEnBorrador,
+} from './publicacionHorario'
+export type { DatosPublicacion, PublicarHorarioResponse } from './publicacionHorario'
 export {
   aConflictoRevisado,
   listarConflictosPendientes,
