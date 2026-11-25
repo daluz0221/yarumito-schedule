@@ -14,6 +14,7 @@ import {
   etiquetaGrado,
   listarAulasPorSede,
   listarCatalogoTurnos,
+  listarFranjasPorTurno,
   listarPlanesEstudio,
   metricasDelTablero,
   opcionesAniosEscolares,
@@ -106,6 +107,16 @@ function opcionesAula(aulas: AulaResponse[], actualId: string) {
   return options
 }
 
+type TimeBands = ReturnType<typeof bandasDelTablero>
+
+// Franjas de un turno adicional del plan (p. ej. Contrajornada en 10° y 11°).
+// El tablero del backend solo trae las franjas del turno principal del grupo.
+type JornadaAdicional = {
+  turnoId: string
+  nombre: string
+  franjas: TimeBands
+}
+
 type ClassDialog =
   | { name: 'create'; day: WeekDay; bandId: string; subjectKey: string }
   | { name: 'edit'; placementId: string }
@@ -127,7 +138,10 @@ export function ScheduleWorkspace() {
   const [planes, setPlanes] = useState<PlanEstudiosResponse[] | null>(null)
   const [turnosError, setTurnosError] = useState('')
   const [turnoNombre, setTurnoNombre] = useState('')
-  const [franjas, setFranjas] = useState<ReturnType<typeof bandasDelTablero>>([])
+  const [turnoPrincipalId, setTurnoPrincipalId] = useState('')
+  const [franjas, setFranjas] = useState<TimeBands>([])
+  const [jornadasAdicionales, setJornadasAdicionales] = useState<JornadaAdicional[]>([])
+  const [jornadasError, setJornadasError] = useState('')
   const [contexto, setContexto] = useState({ codigo: '', grado: '', anio: 0 })
   const [horarioError, setHorarioError] = useState('')
   const [horarioLoading, setHorarioLoading] = useState(false)
@@ -148,6 +162,7 @@ export function ScheduleWorkspace() {
     setResumen(tablero.resumen ?? null)
     setEstadoHorario(tablero.estadoHorario ?? null)
     setTurnoNombre(tablero.turnoNombre?.trim() || '')
+    setTurnoPrincipalId(tablero.turnoId ?? '')
     setFranjas(bandasDelTablero(tablero.franjas))
     setContexto({
       codigo: tablero.grupoCodigo?.trim() || '',
@@ -173,18 +188,24 @@ export function ScheduleWorkspace() {
     [grupos, yearId],
   )
 
-  // El turno de un grupo lo define el plan de estudios de su grado en el año
-  // (igual que en el backend: primer turno asignado en el plan). El selector
-  // muestra el catálogo completo; al elegir un turno solo quedan los grupos
-  // cuyo plan usa ese turno.
-  const turnoPorGrado = useMemo(() => {
-    const map = new Map<string, string>()
+  // Turnos que usa el plan de estudios de cada grado en el año, en orden de
+  // aparición. El primero es el turno principal (el backend arma el tablero
+  // con él); los demás son jornadas adicionales, como la contrajornada de la
+  // media. El selector muestra el catálogo completo; al elegir un turno quedan
+  // los grupos cuyo plan usa ese turno en alguna asignatura.
+  const turnosPorGrado = useMemo(() => {
+    const map = new Map<string, string[]>()
 
     ;(planes ?? []).forEach((plan) => {
-      const key = `${plan.anioEscolarId}:${plan.gradoId}`
+      if (!plan.turnoId || plan.activo === false) {
+        return
+      }
 
-      if (plan.turnoId && plan.activo !== false && !map.has(key)) {
-        map.set(key, plan.turnoId)
+      const key = `${plan.anioEscolarId}:${plan.gradoId}`
+      const lista = map.get(key) ?? []
+
+      if (!lista.includes(plan.turnoId)) {
+        map.set(key, [...lista, plan.turnoId])
       }
     })
 
@@ -202,15 +223,15 @@ export function ScheduleWorkspace() {
     [campusSeleccionada, gruposDelAnio],
   )
 
-  const turnoDe = (group: { anioEscolarId: string; gradoId: string }) =>
-    turnoPorGrado.get(`${group.anioEscolarId}:${group.gradoId}`) ?? ''
+  const turnosDe = (group: { anioEscolarId: string; gradoId: string }) =>
+    turnosPorGrado.get(`${group.anioEscolarId}:${group.gradoId}`) ?? []
 
   const turnosDelCatalogo = turnos ?? []
   const turnoActivo = turnosDelCatalogo.some((turno) => turno.id === turnoFiltro)
     ? turnoFiltro
     : ''
   const yearGroups = turnoActivo
-    ? gruposDeSede.filter((group) => turnoDe(group) === turnoActivo)
+    ? gruposDeSede.filter((group) => turnosDe(group).includes(turnoActivo))
     : gruposDeSede
 
   const groupId = idDisponible(
@@ -233,7 +254,10 @@ export function ScheduleWorkspace() {
     setResumen(null)
     setEstadoHorario(null)
     setTurnoNombre('')
+    setTurnoPrincipalId('')
     setFranjas([])
+    setJornadasAdicionales([])
+    setJornadasError('')
     setContexto({ codigo: '', grado: '', anio: 0 })
     setHorarioError('')
     setHorarioLoading(Boolean(groupId))
@@ -300,6 +324,55 @@ export function ScheduleWorkspace() {
   const grupo = yearGroups.find((item) => item.id === groupId) ?? null
   const sedeDelGrupo = grupo?.sedeId ?? ''
 
+  // Turnos del plan distintos al que ya trae el tablero (clave estable para el efecto).
+  const turnosAdicionalesKey = grupo && turnoPrincipalId
+    ? turnosDe(grupo)
+        .filter((turnoId) => turnoId !== turnoPrincipalId)
+        .join(',')
+    : ''
+
+  useEffect(() => {
+    if (!turnosAdicionalesKey) {
+      return
+    }
+
+    const controller = new AbortController()
+    const ids = turnosAdicionalesKey.split(',')
+
+    Promise.all(ids.map((turnoId) => listarFranjasPorTurno(turnoId, controller.signal)))
+      .then((listas) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        setJornadasAdicionales(
+          ids.map((turnoId, index) => ({
+            turnoId,
+            nombre:
+              (turnos ?? []).find((turno) => turno.id === turnoId)?.nombre?.trim() ||
+              listas[index][0]?.turnoNombre?.trim() ||
+              'Jornada adicional',
+            franjas: bandasDelTablero(listas[index]),
+          })),
+        )
+        setJornadasError('')
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setJornadasAdicionales([])
+        setJornadasError(
+          mensajeError(cause, 'No se pudieron cargar las franjas de la contrajornada.'),
+        )
+      })
+
+    return () => controller.abort()
+  }, [turnosAdicionalesKey, turnos])
+
+  const jornadasVisibles = turnosAdicionalesKey ? jornadasAdicionales : []
+
   const [sedeVista, setSedeVista] = useState(sedeDelGrupo)
 
   if (sedeVista !== sedeDelGrupo) {
@@ -348,9 +421,20 @@ export function ScheduleWorkspace() {
     clases.forEach((clase) => map.set(blockKey(clase.day, clase.bandId), clase))
     return map
   }, [clases])
-  const bandOptions = franjas
-    .filter((band) => band.kind === 'class')
-    .map((band) => ({ value: band.id, label: band.label }))
+  // Con jornadas adicionales, cada franja lleva el nombre de su turno para
+  // distinguir, p. ej., "Mañana · 06:25 – 07:20" de "Contrajornada · 13:30 – 14:25".
+  const conPrefijo = jornadasVisibles.length > 0
+  const bandOptions = [
+    { nombre: turnoNombre, franjas },
+    ...jornadasVisibles,
+  ].flatMap((jornada) =>
+    jornada.franjas
+      .filter((band) => band.kind === 'class')
+      .map((band) => ({
+        value: band.id,
+        label: conPrefijo && jornada.nombre ? `${jornada.nombre} · ${band.label}` : band.label,
+      })),
+  )
   const yearOptions = opcionesAniosEscolares(anios, aniosError)
   const groupOptions = gruposLoading
     ? [{ value: '', label: 'Cargando grupos…' }]
@@ -614,6 +698,11 @@ export function ScheduleWorkspace() {
           {aulasError}
         </p>
       ) : null}
+      {jornadasError ? (
+        <p className={styles.alert} role="alert">
+          {jornadasError}
+        </p>
+      ) : null}
 
       {!year && aniosLoading ? (
         <p className={styles.notice}>Cargando año lectivo...</p>
@@ -662,6 +751,30 @@ export function ScheduleWorkspace() {
                   setClassDialog({ name: 'edit', placementId })
                 }}
               />
+            )}
+            {jornadasVisibles.map((jornada) =>
+              jornada.franjas.length === 0 ? (
+                <p key={jornada.turnoId} className={styles.notice}>
+                  El turno {jornada.nombre} no tiene franjas horarias. Créalas en Franjas
+                  horarias para programar sus clases.
+                </p>
+              ) : (
+                <ScheduleGrid
+                  key={jornada.turnoId}
+                  groupCode={groupCode}
+                  groupId={grupo.id}
+                  shiftLabel={jornada.nombre}
+                  readOnly={readOnly}
+                  bands={jornada.franjas}
+                  blocks={blocks}
+                  onProgram={(day, bandId) => openCreate(day, bandId)}
+                  onEdit={(placementId) => {
+                    setSaveError('')
+                    setRemoveId(null)
+                    setClassDialog({ name: 'edit', placementId })
+                  }}
+                />
+              ),
             )}
           </div>
         </>
