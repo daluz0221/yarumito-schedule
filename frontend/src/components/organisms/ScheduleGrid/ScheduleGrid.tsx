@@ -15,10 +15,11 @@ export type ScheduleGridProps = {
   groupId: string
   shiftLabel: string
   readOnly: boolean
+  lectura?: boolean
   bands: TimeBand[]
-  blocks: Map<string, ScheduleBlock>
-  onProgram: (day: WeekDay, bandId: string) => void
-  onEdit: (placementId: string) => void
+  blocks: ReadonlyMap<string, ScheduleBlock | readonly ScheduleBlock[]>
+  onProgram?: (day: WeekDay, bandId: string) => void
+  onEdit?: (placementId: string) => void
 }
 
 export function ScheduleGrid({
@@ -26,6 +27,7 @@ export function ScheduleGrid({
   groupId,
   shiftLabel,
   readOnly,
+  lectura = false,
   bands,
   blocks,
   onProgram,
@@ -68,8 +70,8 @@ export function ScheduleGrid({
             return (
               <div key={band.id} className={styles.row} role="row">
                 <div className={styles.time} role="rowheader">
-                  <span>{index}</span>
-                  <span>{band.label}</span>
+                  <span className={styles.slotIndex}>{index}</span>
+                  <span className={styles.slotRange}>{band.label}</span>
                 </div>
                 {availabilityDays.map((day) => (
                   <Slot
@@ -78,6 +80,7 @@ export function ScheduleGrid({
                     bandId={band.id}
                     block={blocks.get(blockKey(day, band.id))}
                     readOnly={readOnly}
+                    lectura={lectura}
                     groupId={groupId}
                     onProgram={onProgram}
                     onEdit={onEdit}
@@ -89,7 +92,7 @@ export function ScheduleGrid({
         </div>
       </div>
 
-      {pause ? (
+      {pause && !lectura ? (
         <Text variant="caption">
           Verde sin observaciones · Rosa conflicto · Amarillo advertencia. El descanso no se programa.
         </Text>
@@ -101,22 +104,41 @@ export function ScheduleGrid({
 type SlotProps = {
   day: WeekDay
   bandId: string
-  block?: ScheduleBlock
+  block?: ScheduleBlock | readonly ScheduleBlock[]
   readOnly: boolean
+  lectura: boolean
   groupId: string
-  onProgram: (day: WeekDay, bandId: string) => void
-  onEdit: (placementId: string) => void
+  onProgram?: (day: WeekDay, bandId: string) => void
+  onEdit?: (placementId: string) => void
 }
 
-function Slot({ day, bandId, block, readOnly, groupId, onProgram, onEdit }: SlotProps) {
+function clasesDelSlot(block: ScheduleBlock | readonly ScheduleBlock[] | undefined) {
   if (!block) {
+    return []
+  }
+
+  return Array.isArray(block) ? block : [block]
+}
+
+function Slot({ day, bandId, block, readOnly, lectura, groupId, onProgram, onEdit }: SlotProps) {
+  const clases = clasesDelSlot(block)
+
+  if (clases.length === 0) {
+    if (lectura) {
+      return (
+        <div className={styles.cell} role="gridcell">
+          <div className={styles.vacia} />
+        </div>
+      )
+    }
+
     return (
       <div className={styles.cell} role="gridcell">
         <button
           type="button"
           className={styles.program}
           disabled={readOnly}
-          onClick={() => onProgram(day, bandId)}
+          onClick={() => onProgram?.(day, bandId)}
         >
           Programar
         </button>
@@ -124,32 +146,75 @@ function Slot({ day, bandId, block, readOnly, groupId, onProgram, onEdit }: Slot
     )
   }
 
-  const label = [block.subject, block.teacherName, block.classroom, block.reason]
-    .filter(Boolean)
-    .join('. ')
-
   return (
     <div className={styles.cell} role="gridcell">
       <div className={styles.occupied}>
-        <button
-          type="button"
-          className={`${styles.block} ${styles[block.tone]}`}
-          title={block.reason || undefined}
-          disabled={readOnly || Boolean(block.locked)}
-          aria-label={block.locked ? `Clase bloqueada. ${label}` : `Editar clase. ${label}`}
-          onClick={() => onEdit(block.id)}
-        >
-          <span className={styles.subject}>{block.subject}</span>
-          <span>{block.teacherName}</span>
-          <span>{block.classroom}</span>
-        </button>
-        <TextLink
-          className={styles.history}
-          to={rutaHistorialEntidad('ClaseProgramada', block.id, groupId)}
-        >
-          Ver historial
-        </TextLink>
+        {clases.map((clase) => (
+          <Clase
+            key={clase.id}
+            clase={clase}
+            lectura={lectura}
+            readOnly={readOnly}
+            groupId={groupId}
+            onEdit={onEdit}
+          />
+        ))}
       </div>
     </div>
+  )
+}
+
+function Clase({
+  clase,
+  lectura,
+  readOnly,
+  groupId,
+  onEdit,
+}: {
+  clase: ScheduleBlock
+  lectura: boolean
+  readOnly: boolean
+  groupId: string
+  onEdit?: (placementId: string) => void
+}) {
+  const label = [clase.subject, clase.teacherName, clase.classroom, clase.reason]
+    .filter(Boolean)
+    .join('. ')
+  const contenido = (
+    <>
+      <span className={styles.subject}>{clase.subject}</span>
+      <span>{clase.teacherName}</span>
+      <span>{clase.classroom}</span>
+      {lectura && clase.reason ? <span>{clase.reason}</span> : null}
+    </>
+  )
+
+  if (lectura) {
+    return (
+      <div className={`${styles.block} ${styles[clase.tone]} ${styles.lectura}`} aria-label={label}>
+        {contenido}
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className={`${styles.block} ${styles[clase.tone]}`}
+        title={clase.reason || undefined}
+        disabled={readOnly || Boolean(clase.locked)}
+        aria-label={clase.locked ? `Clase bloqueada. ${label}` : `Editar clase. ${label}`}
+        onClick={() => onEdit?.(clase.id)}
+      >
+        {contenido}
+      </button>
+      <TextLink
+        className={styles.history}
+        to={rutaHistorialEntidad('ClaseProgramada', clase.id, groupId)}
+      >
+        Ver historial
+      </TextLink>
+    </>
   )
 }

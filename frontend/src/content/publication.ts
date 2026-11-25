@@ -52,11 +52,15 @@ export const publicationCopy = {
   previousEmpty:
     'El servidor aún no expone el historial de versiones. Las versiones anteriores deben preservarse; el archivado de una versión previa queda pendiente de regla de negocio explícita.',
   logTitle: 'Registro de publicación',
-  logEmpty: 'El servidor aún no entrega el registro de publicaciones de este horario.',
+  logEmpty: 'Este horario sigue en borrador. Al publicarlo pasará a estado PUBLICADO.',
   logPublished: 'Este horario ya figura como publicado en el servidor.',
-  logNote: 'La publicación desde esta pantalla se habilitará cuando el servidor la soporte.',
+  logNote:
+    'Publica los horarios en borrador de los grupos activos. Los errores pendientes bloquean la publicación; las advertencias no.',
+  logPublishedNote: 'Los horarios de este año ya están publicados.',
   publish: 'Publicar horario',
+  publishing: 'Publicando…',
   published: 'Publicado',
+  warningsConfirm: 'Publicar de todas formas',
   seeWarnings: 'Ver advertencias',
   seeValidations: 'Ver validaciones',
   noBlocking: 'Sin errores bloqueantes',
