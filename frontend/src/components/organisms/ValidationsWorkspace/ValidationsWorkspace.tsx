@@ -162,7 +162,7 @@ export function ValidationsWorkspace() {
 
     const controller = new AbortController()
 
-    consultarHorarioGrupo(groupId, controller.signal)
+    consultarHorarioGrupo(groupId, controller.signal, { trabajo: true })
       .then((siguiente) => {
         setTablero(siguiente)
         setHorarioError('')

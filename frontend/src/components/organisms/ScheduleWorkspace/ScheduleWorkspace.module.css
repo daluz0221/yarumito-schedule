@@ -32,3 +32,42 @@
   line-height: 1.4;
 }
 
+.success {
+  margin: 0;
+  color: #1e7a46;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.draftBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.draftText {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.draftActions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 800px) {
+  .draftBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+

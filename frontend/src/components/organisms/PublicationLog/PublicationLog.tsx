@@ -5,34 +5,34 @@ import { Text } from '../../atoms/Text'
 import styles from './PublicationLog.module.css'
 
 export type PublicationLogProps = {
-  published: boolean
+  message: string
+  note: string
+  actionLabel: string
   busy?: boolean
   disabled?: boolean
-  onPublish?: () => void
+  onAction?: () => void
 }
 
-export function PublicationLog({ published, busy = false, disabled = false, onPublish }: PublicationLogProps) {
+export function PublicationLog({
+  message,
+  note,
+  actionLabel,
+  busy = false,
+  disabled = false,
+  onAction,
+}: PublicationLogProps) {
   return (
     <Card as="section" padding="lg" className={styles.card}>
       <Text as="h3" variant="sectionTitle">
         {publicationCopy.logTitle}
       </Text>
 
-      <p className={styles.empty}>
-        {published ? publicationCopy.logPublished : publicationCopy.logEmpty}
-      </p>
+      <p className={styles.empty}>{message}</p>
 
       <div className={styles.footer}>
-        <p className={styles.note}>
-          {published ? publicationCopy.logPublishedNote : publicationCopy.logNote}
-        </p>
-        <Button
-          variant="primary"
-          size="sm"
-          disabled={published || disabled || busy}
-          onClick={onPublish}
-        >
-          {busy ? publicationCopy.publishing : published ? publicationCopy.published : publicationCopy.publish}
+        <p className={styles.note}>{note}</p>
+        <Button variant="primary" size="sm" disabled={disabled || busy} onClick={onAction}>
+          {actionLabel}
         </Button>
       </div>
     </Card>

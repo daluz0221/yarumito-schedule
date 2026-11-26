@@ -140,8 +140,23 @@ public class HorarioService {
     // CONSULTA DEL TABLERO DEL GRUPO
     // =====================================================
 
+    // Consultas e informes: el horario PUBLICADO sigue vigente aunque
+    // exista un borrador de mejora más nuevo.
     @Transactional(readOnly = true)
     public HorarioGrupoResponse obtenerTablero(UUID grupoId) {
+        return construirTablero(grupoId, false);
+    }
+
+    // Construcción, validación y publicación: el borrador de mejora
+    // es el horario que se edita.
+    @Transactional(readOnly = true)
+    public HorarioGrupoResponse obtenerTableroDeTrabajo(UUID grupoId) {
+        return construirTablero(grupoId, true);
+    }
+
+    private HorarioGrupoResponse construirTablero(
+            UUID grupoId,
+            boolean preferirBorrador) {
 
         Grupo grupo = obtenerGrupo(grupoId);
 
@@ -152,10 +167,10 @@ public class HorarioService {
                                 grupo.getId());
 
         Optional<Horario> horarioActual =
-                horarioRepository
-                        .findFirstByAnioEscolarId_IdAndSedeId_IdOrderByVersionDesc(
-                                grupo.getAnioEscolar().getId(),
-                                grupo.getSede().getId());
+                resolverHorario(
+                        grupo.getAnioEscolar().getId(),
+                        grupo.getSede().getId(),
+                        preferirBorrador);
 
         List<ClaseProgramada> clases = horarioActual
                 .map(horario -> claseProgramadaRepository
@@ -924,20 +939,32 @@ public class HorarioService {
 
         UUID franjaId = franja.getId();
 
+        UUID sedeId = horario.getSedeId() == null
+                ? null
+                : horario.getSedeId().getId();
+
+        // No compara contra la versión publicada de la misma sede:
+        // el borrador de mejora es una copia que va a reemplazarla.
         boolean ocupado = claseId == null
                 ? claseProgramadaRepository
                 .existeDocenteOcupado(
+                        horario.getId(),
                         anioEscolarId,
-                        docenteId,
-                        dia,
-                        franjaId)
-                : claseProgramadaRepository
-                .existeDocenteOcupadoExcluyendo(
-                        anioEscolarId,
+                        sedeId,
                         docenteId,
                         dia,
                         franjaId,
-                        claseId);
+                        EstadoHorario.PUBLICADO)
+                : claseProgramadaRepository
+                .existeDocenteOcupadoExcluyendo(
+                        horario.getId(),
+                        anioEscolarId,
+                        sedeId,
+                        docenteId,
+                        dia,
+                        franjaId,
+                        claseId,
+                        EstadoHorario.PUBLICADO);
 
         if (ocupado) {
 
@@ -1045,14 +1072,42 @@ public class HorarioService {
             Grupo grupo,
             String correoUsuario) {
 
-        return horarioRepository
-                .findFirstByAnioEscolarId_IdAndSedeId_IdOrderByVersionDesc(
+        return resolverHorario(
                         grupo.getAnioEscolar().getId(),
-                        grupo.getSede().getId())
+                        grupo.getSede().getId(),
+                        true)
                 .orElseGet(() ->
                         crearHorario(
                                 grupo,
                                 correoUsuario));
+    }
+
+    // prioriza el borrador de mejora o el publicado y, si no hay,
+    // usa la versión más reciente.
+    private Optional<Horario> resolverHorario(
+            UUID anioEscolarId,
+            UUID sedeId,
+            boolean preferirBorrador) {
+
+        EstadoHorario preferido = preferirBorrador
+                ? EstadoHorario.BORRADOR
+                : EstadoHorario.PUBLICADO;
+
+        Optional<Horario> encontrado =
+                horarioRepository
+                        .findFirstByAnioEscolarId_IdAndSedeId_IdAndEstadoOrderByVersionDesc(
+                                anioEscolarId,
+                                sedeId,
+                                preferido);
+
+        if (encontrado.isPresent()) {
+            return encontrado;
+        }
+
+        return horarioRepository
+                .findFirstByAnioEscolarId_IdAndSedeId_IdOrderByVersionDesc(
+                        anioEscolarId,
+                        sedeId);
     }
 
     private Horario crearHorario(

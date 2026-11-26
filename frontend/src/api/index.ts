@@ -148,11 +148,15 @@ export {
 } from './horarios'
 export {
   cargarDatosPublicacion,
+  crearBorradorDeMejora,
+  crearBorradoresDeMejora,
+  descartarBorradorHorario,
   horariosPublicables,
+  listarVersionesHorario,
   publicarHorario,
   publicarHorariosEnBorrador,
 } from './publicacionHorario'
-export type { DatosPublicacion, PublicarHorarioResponse } from './publicacionHorario'
+export type { DatosPublicacion, HorarioVersionResponse, PublicarHorarioResponse } from './publicacionHorario'
 export {
   aConflictoRevisado,
   listarConflictosPendientes,
