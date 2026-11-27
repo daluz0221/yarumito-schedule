@@ -106,34 +106,22 @@ export function conflictDetailFacts(
   scheduleLabel: string,
   detectedAt: string,
 ) {
-  const extra =
-    conflict.kind === 'teacher-busy' || conflict.kind === 'lab-required'
-      ? [
-          { label: 'Asignatura', value: display(conflict.subject) },
-          { label: 'Aula', value: display(conflict.classroom) },
-        ]
-      : conflict.kind === 'classroom-busy'
-        ? [
-            { label: 'Docente', value: display(conflict.teacherName) },
-            { label: 'Grupo', value: display(conflict.groupCode) },
-          ]
-        : conflict.kind === 'group-busy'
-          ? [
-              { label: 'Docente', value: display(conflict.teacherName) },
-              { label: 'Asignatura', value: display(conflict.subject) },
-            ]
-          : [
-              { label: 'Grupo', value: display(conflict.groupCode) },
-              { label: 'Asignatura', value: display(conflict.subject) },
-            ]
-
-  return [
+  const facts = [
     { label: 'Horario', value: scheduleLabel },
-    { label: 'Día / Franja', value: conflict.slotLabel },
-    { label: 'Elemento afectado', value: display(conflict.affected) },
-    ...extra,
+    { label: 'Día / Franja', value: momento(conflict) },
+    { label: 'Docente', value: conflict.teacherName },
+    { label: 'Grupo', value: conflict.groupCode },
+    { label: 'Asignatura', value: conflict.subject },
+    { label: 'Aula', value: conflict.classroom },
     { label: 'Fecha de detección', value: detectedAt },
   ]
+
+  return facts.filter((fact) => tieneDato(fact.value))
+}
+
+function momento(conflict: ReviewedConflict) {
+  const dia = conflict.slotLabel && conflict.slotLabel !== '—' ? conflict.slotLabel : ''
+  return dia
 }
 
 
@@ -203,8 +191,9 @@ export function filterConflicts(conflicts: ReviewedConflict[], filters: Validati
 
 
 
-function display(value: string) {
-  return value || '—'
+function tieneDato(value: string) {
+  const texto = value?.trim()
+  return Boolean(texto) && texto !== '—' && texto !== '-'
 }
 
 function normalize(value: string) {

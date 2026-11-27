@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterConflicts, type ReviewedConflict } from './validations'
+import { conflictDetailFacts, filterConflicts, type ReviewedConflict } from './validations'
 
 function conflicto(partial: Partial<ReviewedConflict> & Pick<ReviewedConflict, 'id'>): ReviewedConflict {
   return {
@@ -58,5 +58,38 @@ describe('filterConflicts', () => {
 
   it('no descarta conflictos cuando los filtros están en todos', () => {
     expect(filterConflicts(conflictos, vacios)).toHaveLength(3)
+  })
+})
+
+describe('conflictDetailFacts', () => {
+  it('muestra quién, cuándo y dónde ocurrió el conflicto', () => {
+    const facts = conflictDetailFacts(
+      conflicto({
+        id: '1',
+        teacherName: 'Ana Gómez',
+        groupCode: '601',
+        subject: 'Matemáticas',
+        classroom: 'Salón 6',
+        slotLabel: 'lunes, 06:30–07:25',
+      }),
+      'Horario 2028',
+      '2026-11-25 02:37',
+    )
+
+    expect(facts.map((fact) => `${fact.label}: ${fact.value}`)).toEqual([
+      'Horario: Horario 2028',
+      'Día / Franja: lunes, 06:30–07:25',
+      'Docente: Ana Gómez',
+      'Grupo: 601',
+      'Asignatura: Matemáticas',
+      'Aula: Salón 6',
+      'Fecha de detección: 2026-11-25 02:37',
+    ])
+  })
+
+  it('omite las casillas vacías de un conflicto antiguo', () => {
+    const facts = conflictDetailFacts(conflicto({ id: '1' }), 'Horario 2028', '2026-11-25 02:37')
+
+    expect(facts.map((fact) => fact.label)).toEqual(['Horario', 'Fecha de detección'])
   })
 })

@@ -17,6 +17,13 @@ public class ConflictoResponse {
     private String mensaje;
     private boolean resuelto;
     private LocalDateTime fechaDeteccion;
+    private String dia;
+    private String franja;
+    private String elementoAfectado;
+    private String asignatura;
+    private String docente;
+    private String aula;
+    private String grupo;
 
     public UUID getId() {
         return id;
@@ -72,5 +79,61 @@ public class ConflictoResponse {
 
     public void setFechaDeteccion(LocalDateTime fechaDeteccion) {
         this.fechaDeteccion = fechaDeteccion;
+    }
+
+    public String getDia() {
+        return dia;
+    }
+
+    public void setDia(String dia) {
+        this.dia = dia;
+    }
+
+    public String getFranja() {
+        return franja;
+    }
+
+    public void setFranja(String franja) {
+        this.franja = franja;
+    }
+
+    public String getElementoAfectado() {
+        return elementoAfectado;
+    }
+
+    public void setElementoAfectado(String elementoAfectado) {
+        this.elementoAfectado = elementoAfectado;
+    }
+
+    public String getAsignatura() {
+        return asignatura;
+    }
+
+    public void setAsignatura(String asignatura) {
+        this.asignatura = asignatura;
+    }
+
+    public String getDocente() {
+        return docente;
+    }
+
+    public void setDocente(String docente) {
+        this.docente = docente;
+    }
+
+    public String getAula() {
+        return aula;
+    }
+
+    public void setAula(String aula) {
+        this.aula = aula;
+    }
+
+    public String getGrupo() {
+        return grupo;
+    }
+
+    public void setGrupo(String grupo) {
+        this.grupo = grupo;
     }
 }

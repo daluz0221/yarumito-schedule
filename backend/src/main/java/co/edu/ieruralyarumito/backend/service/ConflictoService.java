@@ -1,6 +1,7 @@
 package co.edu.ieruralyarumito.backend.service;
 
 import co.edu.ieruralyarumito.backend.dto.ConflictoResponse;
+import co.edu.ieruralyarumito.backend.dto.DetalleConflicto;
 import co.edu.ieruralyarumito.backend.entity.Conflicto;
 import co.edu.ieruralyarumito.backend.entity.Horario;
 import co.edu.ieruralyarumito.backend.entity.enums.SeveridadConflicto;
@@ -50,6 +51,35 @@ public class ConflictoService {
                     "El mensaje del conflicto es obligatorio");
         }
 
+        return registrarConflicto(
+                horario,
+                tipo,
+                mensaje,
+                null);
+    }
+
+    @Transactional
+    public ConflictoResponse registrarConflicto(
+            Horario horario,
+            TipoConflicto tipo,
+            String mensaje,
+            DetalleConflicto detalle) {
+
+        if (horario == null) {
+            throw new IllegalArgumentException(
+                    "El horario es obligatorio");
+        }
+
+        if (tipo == null) {
+            throw new IllegalArgumentException(
+                    "El tipo de conflicto es obligatorio");
+        }
+
+        if (mensaje == null || mensaje.isBlank()) {
+            throw new IllegalArgumentException(
+                    "El mensaje del conflicto es obligatorio");
+        }
+
         Conflicto conflicto =
                 new Conflicto();
 
@@ -62,6 +92,7 @@ public class ConflictoService {
         conflicto.setResuelto(false);
         conflicto.setFechaDeteccion(
                 LocalDateTime.now());
+        aplicarDetalle(conflicto, detalle);
 
         Conflicto guardado =
                 conflictoRepository.save(conflicto);
@@ -199,6 +230,41 @@ public class ConflictoService {
         response.setFechaDeteccion(
                 conflicto.getFechaDeteccion());
 
+        response.setDia(conflicto.getDia());
+        response.setFranja(conflicto.getFranja());
+        response.setElementoAfectado(
+                conflicto.getElementoAfectado());
+        response.setAsignatura(conflicto.getAsignatura());
+        response.setDocente(conflicto.getDocente());
+        response.setAula(conflicto.getAula());
+        response.setGrupo(conflicto.getGrupo());
+
         return response;
+    }
+
+    private void aplicarDetalle(
+            Conflicto conflicto,
+            DetalleConflicto detalle) {
+
+        if (detalle == null) {
+            return;
+        }
+
+        conflicto.setDia(texto(detalle.getDia()));
+        conflicto.setFranja(texto(detalle.getFranja()));
+        conflicto.setElementoAfectado(
+                texto(detalle.getElementoAfectado()));
+        conflicto.setAsignatura(texto(detalle.getAsignatura()));
+        conflicto.setDocente(texto(detalle.getDocente()));
+        conflicto.setAula(texto(detalle.getAula()));
+        conflicto.setGrupo(texto(detalle.getGrupo()));
+    }
+
+    private String texto(String valor) {
+        if (valor == null || valor.isBlank()) {
+            return null;
+        }
+
+        return valor.trim();
     }
 }
