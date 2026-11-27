@@ -38,6 +38,7 @@ import {
   type CurricularAssignmentSource,
 } from '../../../content/academicAssignment'
 import type { AcademicYearStatus } from '../../../content/academicYear'
+import { useAnioDeTrabajo } from '../../../content/anioDeTrabajo'
 import { idDisponible } from '../../../content/idDisponible'
 import { formatTeacherName, type Teacher } from '../../../content/teachers'
 import { Card } from '../../atoms/Card'
@@ -121,7 +122,7 @@ function fuenteAsignacion(item: AsignacionAcademicaResponse): CurricularAssignme
 export function AssignmentWorkspace() {
   const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
   const { grupos, error: gruposError, loading: gruposLoading } = useCatalogoGrupos()
-  const [yearElegido, setYearElegido] = useState('')
+  const [yearElegido, elegirAnio] = useAnioDeTrabajo()
   const [groupElegido, setGroupElegido] = useState('')
   const [tab, setTab] = useState<AssignmentTab>('curricular')
   const [actividadesCarga, setActividadesCarga] = useState<{
@@ -444,7 +445,7 @@ export function AssignmentWorkspace() {
   }
 
   const selectYear = (nextYearId: string) => {
-    setYearElegido(nextYearId)
+    elegirAnio(nextYearId)
     setDialog(null)
     setActionError('')
   }

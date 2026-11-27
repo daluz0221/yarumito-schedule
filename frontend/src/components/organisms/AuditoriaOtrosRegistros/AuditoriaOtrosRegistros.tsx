@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useAnioDeTrabajo } from '../../../content/anioDeTrabajo'
 import {
   anioEscolarVisible,
   aRestriccionVista,
@@ -114,7 +115,7 @@ export function AuditoriaOtrosRegistros({
   const { anios, error: aniosError } = useCatalogoAniosEscolares()
   const [tipo, setTipo] = useState<EntidadOtra>(solicitud?.entidad ?? 'Aula')
   const [sedeElegida, setSedeElegida] = useState('')
-  const [anioElegido, setAnioElegido] = useState('')
+  const [anioElegido, elegirAnio] = useAnioDeTrabajo()
   const [docenteElegido, setDocenteElegido] = useState('')
   const [registroId, setRegistroId] = useState(solicitud?.id ?? '')
   const franjas = resolvedor.franjas
@@ -403,7 +404,7 @@ export function AuditoriaOtrosRegistros({
             options={yearOptions}
             disabled={Boolean(aniosError) || !anios?.length}
             onChange={(value) => {
-              setAnioElegido(value)
+              elegirAnio(value)
               setRegistroId('')
             }}
           />

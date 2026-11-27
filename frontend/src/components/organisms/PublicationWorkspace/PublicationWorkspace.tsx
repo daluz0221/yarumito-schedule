@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useAnioDeTrabajo } from '../../../content/anioDeTrabajo'
 import { useNavigate } from 'react-router-dom'
 import {
   anioEscolarVisible,
@@ -44,7 +45,7 @@ export function PublicationWorkspace() {
   const navigate = useNavigate()
   const { anios, error: aniosError } = useCatalogoAniosEscolares()
   const { grupos, error: gruposError } = useCatalogoGrupos()
-  const [yearIdState, setYearIdState] = useState('')
+  const [yearIdState, elegirAnio] = useAnioDeTrabajo()
   const [datos, setDatos] = useState<DatosPublicacion | null>(null)
   const [datosError, setDatosError] = useState('')
   const [publicacionError, setPublicacionError] = useState('')
@@ -361,7 +362,7 @@ export function PublicationWorkspace() {
             yearId={year.id}
             yearOptions={opcionesAniosEscolares(anios, aniosError)}
             view={view}
-            onYearChange={setYearIdState}
+            onYearChange={elegirAnio}
           />
           {cargando ? <p className={styles.notice}>Cargando horario…</p> : null}
           <PublicationMetrics view={view} />

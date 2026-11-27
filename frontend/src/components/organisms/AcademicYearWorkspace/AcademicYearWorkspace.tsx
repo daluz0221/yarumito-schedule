@@ -5,6 +5,7 @@ import {
   useCatalogoAniosEscolares,
 } from '../../../api'
 import type { AcademicYear } from '../../../content/academicYear'
+import { useAnioDeTrabajo } from '../../../content/anioDeTrabajo'
 import { Button } from '../../atoms/Button'
 import { Text } from '../../atoms/Text'
 import { AcademicYearCard } from '../AcademicYearCard'
@@ -15,7 +16,7 @@ import styles from './AcademicYearWorkspace.module.css'
 export function AcademicYearWorkspace() {
   const { anios, error, loading, incorporar, retirar } = useCatalogoAniosEscolares()
   const catalogo = anios
-  const [yearId, setYearId] = useState('')
+  const [yearId, elegirAnio] = useAnioDeTrabajo()
   const selectedYearId = catalogo?.some((year) => year.id === yearId)
     ? yearId
     : catalogo?.length
@@ -25,12 +26,12 @@ export function AcademicYearWorkspace() {
 
   const year = catalogo?.find((item) => item.id === selectedYearId) ?? null
   const selectYear = (nextYearId: string) => {
-    setYearId(nextYearId)
+    elegirAnio(nextYearId)
   }
 
   const guardarAnio = (anio: AcademicYear) => {
     incorporar(anio)
-    setYearId(anio.id)
+    elegirAnio(anio.id)
   }
 
   return (

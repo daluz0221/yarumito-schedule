@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAnioDeTrabajo } from '../../../content/anioDeTrabajo'
 import { idDisponible } from '../../../content/idDisponible'
 import {
   actualizarClaseProgramada,
@@ -131,7 +132,7 @@ export function ScheduleWorkspace() {
   const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
   const { grupos, error: gruposError, loading: gruposLoading } = useCatalogoGrupos()
   const { sedes, error: sedesError } = useCatalogoSedes()
-  const [yearElegido, setYearElegido] = useState('')
+  const [yearElegido, elegirAnio] = useAnioDeTrabajo()
   const [campusId, setCampusId] = useState('')
   const [groupElegido, setGroupElegido] = useState('')
   const [tableroGrupoId, setTableroGrupoId] = useState('')
@@ -464,7 +465,7 @@ export function ScheduleWorkspace() {
   const hayAulasActivas = (aulas ?? []).some((aula) => aula.activa)
 
   const selectYear = (nextYearId: string) => {
-    setYearElegido(nextYearId)
+    elegirAnio(nextYearId)
   }
 
   const openCreate = (day: WeekDay, bandId: string, subjectKey = pending[0]?.key ?? '') => {

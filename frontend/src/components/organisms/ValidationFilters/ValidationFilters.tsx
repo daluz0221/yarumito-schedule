@@ -13,8 +13,6 @@ import styles from './ValidationFilters.module.css'
 export type ValidationFiltersProps = {
   values: ValidationFilterValues
   groupOptions: { value: string; label: string }[]
-  teacherOptions: { value: string; label: string }[]
-  classroomOptions: { value: string; label: string }[]
   kindOptions?: { value: string; label: string }[]
   validating: boolean
   onChange: (patch: Partial<ValidationFilterValues>) => void
@@ -24,8 +22,6 @@ export type ValidationFiltersProps = {
 export function ValidationFilters({
   values,
   groupOptions,
-  teacherOptions,
-  classroomOptions,
   kindOptions = kindFilterOptions,
   validating,
   onChange,
@@ -67,25 +63,9 @@ export function ValidationFilters({
           id="validation-group"
           label="Grupo"
           name="group"
-          value={values.groupId}
+          value={groupOptions.some((option) => option.value === values.groupId) ? values.groupId : ''}
           options={groupOptions}
           onChange={(groupId) => onChange({ groupId })}
-        />
-        <SelectField
-          id="validation-teacher"
-          label="Docente"
-          name="teacher"
-          value={values.teacherName}
-          options={teacherOptions}
-          onChange={(teacherName) => onChange({ teacherName })}
-        />
-        <SelectField
-          id="validation-classroom"
-          label="Aula"
-          name="classroom"
-          value={values.classroom}
-          options={classroomOptions}
-          onChange={(classroom) => onChange({ classroom })}
         />
         <div className={styles.action}>
           <Button variant="primary" size="sm" disabled={validating} onClick={onRevalidate}>

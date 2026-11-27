@@ -12,6 +12,7 @@ import {
   matchesAcademicYear,
   schoolGroupStats,
 } from '../../../content/academicYear'
+import { useAnioDeTrabajo } from '../../../content/anioDeTrabajo'
 import { Text } from '../../atoms/Text'
 import { SelectField } from '../../molecules/SelectField'
 import { SchoolGroupsSection } from '../SchoolGroupsSection'
@@ -27,7 +28,7 @@ export function SchoolGroupsWorkspace() {
   } = useCatalogoGrupos()
   const { grados } = useCatalogoGrados()
   const catalogo = anios
-  const [yearId, setYearId] = useState('')
+  const [yearId, elegirAnio] = useAnioDeTrabajo()
   const selectedYearId = catalogo?.some((year) => year.id === yearId)
     ? yearId
     : catalogo?.length
@@ -44,7 +45,7 @@ export function SchoolGroupsWorkspace() {
   const rows = filterSchoolGroups(yearGroups, { grade, status, query })
 
   const selectYear = (nextYearId: string) => {
-    setYearId(nextYearId)
+    elegirAnio(nextYearId)
     setGrade('')
     setStatus('')
     setQuery('')

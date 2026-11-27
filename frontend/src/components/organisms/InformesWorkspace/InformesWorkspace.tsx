@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useAuth } from '../../../auth'
+import { guardarAnioDeTrabajo, leerAnioDeTrabajo } from '../../../content/anioDeTrabajo'
 import {
   ApiError,
   consultarInformeAreasAsignaturas,
@@ -204,7 +205,7 @@ export function InformesWorkspace() {
   const [vinculacion, setVinculacion] = useState('')
   const [activa, setActiva] = useState('')
   const [docenteId, setDocenteId] = useState('')
-  const [anioId, setAnioId] = useState('')
+  const [anioId, setAnioId] = useState(leerAnioDeTrabajo)
   const [tipoIdoneidad, setTipoIdoneidad] = useState('')
   const [areas, setAreas] = useState<{ id: string; nombre: string }[] | null>(null)
   const [areasError, setAreasError] = useState('')
@@ -480,7 +481,10 @@ export function InformesWorkspace() {
                 ...(anios && anios.length > 0 ? opcionesAniosEscolares(anios, '') : []),
               ]}
               disabled={!esRector || aniosLoading || Boolean(aniosError)}
-              onChange={setAnioId}
+              onChange={(value) => {
+                setAnioId(value)
+                if (value) guardarAnioDeTrabajo(value)
+              }}
             />
           ) : null}
           <SelectField

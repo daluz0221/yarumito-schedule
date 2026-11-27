@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useAuth } from '../../../auth'
+import { useAnioDeTrabajo } from '../../../content/anioDeTrabajo'
 import {
   anioEscolarVisible,
   ApiError,
@@ -335,7 +336,7 @@ export function ConsultasWorkspace() {
   const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
   const { grupos, error: gruposError, loading: gruposLoading } = useCatalogoGrupos()
   const { sedes, error: sedesError } = useCatalogoSedes()
-  const [yearElegido, setYearElegido] = useState('')
+  const [yearElegido, elegirAnio] = useAnioDeTrabajo()
   const [campusId, setCampusId] = useState('')
   const [groupElegido, setGroupElegido] = useState('')
   const [version, setVersion] = useState<VersionInformeHorario>('institucional')
@@ -577,7 +578,7 @@ export function ConsultasWorkspace() {
             value={year?.id ?? ''}
             options={opcionesAniosEscolares(anios, aniosError)}
             disabled={!esRector || aniosLoading || Boolean(aniosError) || !anios?.length}
-            onChange={setYearElegido}
+            onChange={elegirAnio}
           />
           <SelectField
             id="consulta-campus"
