@@ -257,16 +257,22 @@ export function ValidationsWorkspace() {
     return () => controller.abort()
   }, [filters.severity, filters.status, horarioId, revision, yearId])
 
+  const sedeId = tablero?.sedeId ?? ''
   const gruposDeLaSede = useMemo(
-    () =>
-      gruposDelAnio.filter((group) => !tablero?.sedeId || group.sedeId === tablero.sedeId),
-    [gruposDelAnio, tablero?.sedeId],
+    () => gruposDelAnio.filter((group) => !sedeId || group.sedeId === sedeId),
+    [gruposDelAnio, sedeId],
   )
   const gruposClave = gruposDeLaSede.map((group) => group.id).join(',')
+  const huecosClave = yearId && gruposClave ? `${yearId}:${gruposClave}:${revision}` : ''
+  const [huecosVistos, setHuecosVistos] = useState(huecosClave)
+
+  if (huecosVistos !== huecosClave) {
+    setHuecosVistos(huecosClave)
+    setHuecos([])
+  }
 
   useEffect(() => {
-    if (!yearId || gruposDeLaSede.length === 0) {
-      setHuecos([])
+    if (!huecosClave || !yearId) {
       return
     }
 
@@ -315,7 +321,7 @@ export function ValidationsWorkspace() {
       })
 
     return () => controller.abort()
-  }, [gruposClave, gruposDeLaSede, revision, yearId])
+  }, [gruposDeLaSede, huecosClave, yearId])
 
   const huecosVisibles =
     filters.severity === 'ADVERTENCIA' || filters.status === 'RESUELTO' ? [] : huecos
