@@ -83,6 +83,40 @@ describe('buildPublicationView', () => {
     expect(view.versionCaption).toBe('Horario General 2027 · publicado')
   })
 
+  it('bloquea la publicación cuando un grupo todavía tiene horas sin programar', () => {
+    const view = buildPublicationView({
+      year,
+      campusName: 'Sede Principal',
+      datos: {
+        tableros: [
+          tablero({
+            estadoHorario: 'BORRADOR',
+            grupoId: 'g1',
+            grupoCodigo: '601',
+            resumen: {
+              asignacionesProgramadas: 0,
+              totalAsignaciones: 2,
+              horasProgramadas: 2,
+              totalHoras: 6,
+              horasPendientes: 4,
+              conflictos: 0,
+              advertencias: 0,
+            },
+          }),
+          tablero({ estadoHorario: 'BORRADOR', grupoId: 'g2', grupoCodigo: '602' }),
+        ],
+        conflictos: [],
+        fallidos: 0,
+      },
+    })
+
+    expect(view.errors).toBe(1)
+    expect(view.pendingHours).toBe(4)
+    expect(view.readiness).toBe('blocked')
+    expect(view.checks.find((item) => item.id === 'assignments')?.passed).toBe(false)
+    expect(view.checks.find((item) => item.id === 'teacher')?.passed).toBe(true)
+  })
+
   it('no considera publicado un año sin horarios construidos', () => {
     const view = buildPublicationView({
       year,

@@ -127,6 +127,37 @@ function momento(conflict: ReviewedConflict) {
 
 
 
+export function conflictosHorasIncompletas(
+  grupos: { grupoId: string; grupoCodigo: string; horasPendientes: number }[],
+  yearId: string,
+): ReviewedConflict[] {
+  return grupos
+    .filter((grupo) => grupo.horasPendientes > 0)
+    .map((grupo) => ({
+      id: `horas-incompletas:${grupo.grupoId}`,
+      yearId,
+      severity: 'ERROR' as const,
+      kind: 'incomplete-hours' as const,
+      message: `El grupo ${grupo.grupoCodigo} tiene ${textoHoras(grupo.horasPendientes)} sin programar.`,
+      day: null,
+      bandId: null,
+      slotLabel: '—',
+      affected: grupo.grupoCodigo,
+      subject: '',
+      teacherName: '',
+      classroom: '',
+      groupCode: grupo.grupoCodigo,
+      groupIds: [grupo.grupoId],
+      teacherNames: [],
+      classrooms: [],
+      status: 'PENDIENTE' as const,
+    }))
+}
+
+function textoHoras(cantidad: number) {
+  return `${cantidad} ${cantidad === 1 ? 'hora' : 'horas'}`
+}
+
 export function conflictosPorId<T extends { id: string }>(conflicts: T[]) {
   const vistos = new Set<string>()
 

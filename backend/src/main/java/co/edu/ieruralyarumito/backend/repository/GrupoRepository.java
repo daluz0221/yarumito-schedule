@@ -27,6 +27,11 @@ public interface GrupoRepository extends JpaRepository<Grupo, UUID> {
             UUID gradoId,
             UUID anioEscolarId);
 
+    // Grupos activos de un año y una sede, para exigir el horario completo.
+    List<Grupo> findByAnioEscolar_IdAndSede_IdAndActivoTrue(
+            UUID anioEscolarId,
+            UUID sedeId);
+
     // Verifica si un aula está o ha quedado referenciada
     // actualmente como aula fija de algún grupo.
     boolean existsByAulaFija_Id(

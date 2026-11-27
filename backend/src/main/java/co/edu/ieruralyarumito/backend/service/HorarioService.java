@@ -156,6 +156,79 @@ public class HorarioService {
         return construirTablero(grupoId, true);
     }
 
+    // Grupos activos de la misma sede que todavía no tienen todas
+    // sus horas de clase ubicadas en este horario.
+    @Transactional(readOnly = true)
+    public List<String> describirGruposConHorasPendientes(Horario horario) {
+        if (horario == null
+                || horario.getId() == null
+                || horario.getAnioEscolarId() == null
+                || horario.getAnioEscolarId().getId() == null
+                || horario.getSedeId() == null
+                || horario.getSedeId().getId() == null) {
+            return List.of();
+        }
+
+        UUID anioId = horario.getAnioEscolarId().getId();
+        UUID sedeId = horario.getSedeId().getId();
+
+        return grupoRepository
+                .findByAnioEscolar_IdAndSede_IdAndActivoTrue(anioId, sedeId)
+                .stream()
+                .map(grupo -> describirSiIncompleto(
+                        horario.getId(),
+                        anioId,
+                        grupo))
+                .filter(Objects::nonNull)
+                .sorted()
+                .toList();
+    }
+
+    private String describirSiIncompleto(
+            UUID horarioId,
+            UUID anioId,
+            Grupo grupo) {
+
+        int pendientes = horasPendientes(horarioId, anioId, grupo.getId());
+
+        if (pendientes <= 0) {
+            return null;
+        }
+
+        String horas = pendientes == 1
+                ? "1 hora sin programar"
+                : pendientes + " horas sin programar";
+
+        return grupo.getCodigo() + " (" + horas + ")";
+    }
+
+    private int horasPendientes(
+            UUID horarioId,
+            UUID anioId,
+            UUID grupoId) {
+
+        Map<UUID, Long> bloques = claseProgramadaRepository
+                .findByHorarioAndGrupo(horarioId, grupoId)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        clase -> clase.getAsignacionAcademicaId().getId(),
+                        Collectors.counting()));
+
+        return asignacionAcademicaRepository
+                .findByAnioEscolar_IdAndGrupo_Id(anioId, grupoId)
+                .stream()
+                .mapToInt(asignacion -> {
+                    int programadas = bloques
+                            .getOrDefault(asignacion.getId(), 0L)
+                            .intValue();
+
+                    return Math.max(
+                            asignacion.getHorasSemanales() - programadas,
+                            0);
+                })
+                .sum();
+    }
+
     private HorarioGrupoResponse construirTablero(
             UUID grupoId,
             boolean preferirBorrador) {

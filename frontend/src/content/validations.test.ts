@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { conflictDetailFacts, filterConflicts, summarizeConflicts, type ReviewedConflict } from './validations'
+import {
+  conflictDetailFacts,
+  conflictosHorasIncompletas,
+  filterConflicts,
+  summarizeConflicts,
+  type ReviewedConflict,
+} from './validations'
 
 function conflicto(partial: Partial<ReviewedConflict> & Pick<ReviewedConflict, 'id'>): ReviewedConflict {
   return {
@@ -91,6 +97,26 @@ describe('conflictDetailFacts', () => {
     const facts = conflictDetailFacts(conflicto({ id: '1' }), 'Horario 2028', '2026-11-25 02:37')
 
     expect(facts.map((fact) => fact.label)).toEqual(['Horario', 'Fecha de detección'])
+  })
+})
+
+describe('conflictosHorasIncompletas', () => {
+  it('marca como error pendiente cada grupo que no tiene el horario lleno', () => {
+    const conflictos = conflictosHorasIncompletas(
+      [
+        { grupoId: 'g1', grupoCodigo: '601', horasPendientes: 4 },
+        { grupoId: 'g2', grupoCodigo: '602', horasPendientes: 0 },
+        { grupoId: 'g3', grupoCodigo: '701', horasPendientes: 1 },
+      ],
+      'anio',
+    )
+
+    expect(conflictos.map((item) => item.message)).toEqual([
+      'El grupo 601 tiene 4 horas sin programar.',
+      'El grupo 701 tiene 1 hora sin programar.',
+    ])
+    expect(summarizeConflicts(conflictos).readiness).toBe('blocked')
+    expect(summarizeConflicts(conflictos).pending).toBe(2)
   })
 })
 

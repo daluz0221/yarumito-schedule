@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react'
-import {
-  ApiError,
-  consultarParametroInstitucionalPorClave,
-  listarParametrosInstitucionalesPorAnio,
-} from '../../../api'
+import { ApiError, listarParametrosInstitucionalesPorAnio } from '../../../api'
 import type { ParametroInstitucionalResponse } from '../../../api/parametrosInstitucionales'
 import { Card } from '../../atoms/Card'
-import { Text } from '../../atoms/Text'
 import { SectionHeader } from '../../molecules/SectionHeader'
 import styles from './ParametrosInstitucionalesSection.module.css'
 
@@ -20,21 +15,10 @@ type ListaEstado =
   | { estado: 'error'; mensaje: string }
   | { estado: 'listo'; items: ParametroInstitucionalResponse[] }
 
-type DetalleEstado =
-  | { estado: 'idle' }
-  | { estado: 'cargando' }
-  | { estado: 'error'; mensaje: string }
-  | { estado: 'listo'; item: ParametroInstitucionalResponse }
-
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-const TIPOS: Record<string, string> = {
-  INT: 'Entero',
-  DECIMAL: 'Decimal',
-  BOOL: 'Sí o no',
-  STRING: 'Texto',
-}
+const ORDEN = ['HORAS_DOCENTE_SEMANALES', 'MAX_HORAS_EXTRA']
 
 function esUuid(value: string) {
   return UUID.test(value)
@@ -49,39 +33,83 @@ function mensajeLista(cause: unknown) {
     return cause.message
   }
 
-  return 'No se pudieron cargar los parámetros institucionales de este año.'
+  return 'No se pudo consultar la carga de los docentes para este año.'
 }
 
-function mensajeDetalle(cause: unknown) {
-  if (cause instanceof ApiError) {
-    if (cause.status === 404) {
-      return 'Ese parámetro ya no está disponible para el año lectivo.'
-    }
-
-    return cause.message
-  }
-
-  return 'No se pudo consultar el parámetro institucional.'
+function horas(parametro: ParametroInstitucionalResponse | undefined) {
+  const valor = Number(parametro?.valor)
+  return Number.isFinite(valor) ? valor : null
 }
 
-function etiquetaTipo(tipoDato: string) {
-  return TIPOS[tipoDato] ?? tipoDato
+function textoHoras(valor: number) {
+  return `${valor} ${valor === 1 ? 'hora' : 'horas'}`
 }
 
-function mostrarValor(parametro: ParametroInstitucionalResponse) {
-  if (parametro.tipoDato === 'BOOL') {
-    return parametro.valor.toLowerCase() === 'true' ? 'Sí' : 'No'
+function explicar(item: ParametroInstitucionalResponse) {
+  const valor = horas(item)
+
+  if (item.clave === 'HORAS_DOCENTE_SEMANALES' && valor !== null) {
+    return `Cada docente puede dictar ${textoHoras(valor)} de clase a la semana dentro de su jornada habitual.`
   }
 
-  if (parametro.clave.includes('HORAS') && parametro.valor.trim()) {
-    return `${parametro.valor} h`
+  if (item.clave === 'MAX_HORAS_EXTRA' && valor !== null) {
+    return `Si el horario lo necesita, puede sumar hasta ${textoHoras(valor)} extra en esa misma semana.`
   }
 
-  return parametro.valor
+  if (item.tipoDato === 'BOOL') {
+    const activo = item.valor.toLowerCase() === 'true'
+    return activo ? 'Está activo para este año.' : 'Está inactivo para este año.'
+  }
+
+  return item.descripcion?.trim() || 'Valor definido para este año lectivo.'
+}
+
+function titulo(item: ParametroInstitucionalResponse) {
+  if (item.clave === 'HORAS_DOCENTE_SEMANALES') {
+    return 'Jornada habitual'
+  }
+
+  if (item.clave === 'MAX_HORAS_EXTRA') {
+    return 'Horas extra'
+  }
+
+  return item.descripcion?.trim() || 'Límite del año'
+}
+
+function valorVisible(item: ParametroInstitucionalResponse) {
+  const cantidad = horas(item)
+
+  if (item.clave.includes('HORAS') && cantidad !== null) {
+    return textoHoras(cantidad)
+  }
+
+  if (item.tipoDato === 'BOOL') {
+    return item.valor.toLowerCase() === 'true' ? 'Sí' : 'No'
+  }
+
+  return item.valor
 }
 
 function ordenar(items: ParametroInstitucionalResponse[]) {
-  return [...items].sort((left, right) => left.clave.localeCompare(right.clave, 'es'))
+  return [...items].sort((left, right) => {
+    const izquierda = ORDEN.indexOf(left.clave)
+    const derecha = ORDEN.indexOf(right.clave)
+    const ordenIzquierda = izquierda === -1 ? ORDEN.length : izquierda
+    const ordenDerecha = derecha === -1 ? ORDEN.length : derecha
+
+    return ordenIzquierda - ordenDerecha || left.clave.localeCompare(right.clave, 'es')
+  })
+}
+
+function resumen(items: ParametroInstitucionalResponse[], yearLabel: number) {
+  const ordinaria = horas(items.find((item) => item.clave === 'HORAS_DOCENTE_SEMANALES'))
+  const extra = horas(items.find((item) => item.clave === 'MAX_HORAS_EXTRA'))
+
+  if (ordinaria === null || extra === null) {
+    return `Estos límites se usan al armar el horario de ${yearLabel}.`
+  }
+
+  return `En ${yearLabel} un docente puede llegar a ${textoHoras(ordinaria + extra)} de clase por semana: ${textoHoras(ordinaria)} de jornada habitual y ${textoHoras(extra)} extra.`
 }
 
 export function ParametrosInstitucionalesSection({
@@ -89,9 +117,6 @@ export function ParametrosInstitucionalesSection({
   yearLabel,
 }: ParametrosInstitucionalesSectionProps) {
   const [lista, setLista] = useState<ListaEstado>({ estado: 'cargando' })
-  const [clave, setClave] = useState('')
-  const [consulta, setConsulta] = useState(0)
-  const [detalle, setDetalle] = useState<DetalleEstado>({ estado: 'idle' })
 
   useEffect(() => {
     if (!esUuid(yearId)) {
@@ -119,57 +144,27 @@ export function ParametrosInstitucionalesSection({
     return () => controller.abort()
   }, [yearId])
 
-  useEffect(() => {
-    if (!clave || !esUuid(yearId)) {
-      return
-    }
-
-    const controller = new AbortController()
-
-    consultarParametroInstitucionalPorClave(yearId, clave, controller.signal)
-      .then((item) => {
-        if (controller.signal.aborted) {
-          return
-        }
-
-        setDetalle({ estado: 'listo', item })
-      })
-      .catch((cause) => {
-        if (isAbortError(cause) || controller.signal.aborted) {
-          return
-        }
-
-        setDetalle({ estado: 'error', mensaje: mensajeDetalle(cause) })
-      })
-
-    return () => controller.abort()
-  }, [clave, consulta, yearId])
-
-  const elegir = (siguiente: string) => {
-    setDetalle({ estado: 'cargando' })
-    setClave(siguiente)
-    setConsulta((actual) => actual + 1)
-  }
-
   const filas = lista.estado === 'listo' ? lista.items : []
-  const seleccionado = detalle.estado === 'listo' ? detalle.item : null
 
   return (
     <Card as="section" padding="lg" className={styles.section}>
       <SectionHeader
-        title="Parámetros institucionales"
-        description={`Carga ordinaria y tope de horas extra del año lectivo ${yearLabel}.`}
+        title="Carga de los docentes"
+        description={
+          filas.length > 0
+            ? resumen(filas, yearLabel)
+            : `Límites de clase de cada docente en ${yearLabel}.`
+        }
       />
 
       {!esUuid(yearId) ? (
         <p className={styles.notice}>
-          Estos parámetros se consultan en el servidor. Los años de referencia locales no
-          tienen parámetros institucionales.
+          La carga semanal se consulta en el servidor. Este año de referencia todavía no la tiene.
         </p>
       ) : null}
 
       {esUuid(yearId) && lista.estado === 'cargando' ? (
-        <p className={styles.notice}>Cargando parámetros institucionales…</p>
+        <p className={styles.notice}>Cargando la carga de los docentes…</p>
       ) : null}
 
       {lista.estado === 'error' ? (
@@ -180,114 +175,20 @@ export function ParametrosInstitucionalesSection({
 
       {lista.estado === 'listo' && filas.length === 0 ? (
         <p className={styles.notice}>
-          Este año lectivo no tiene parámetros institucionales. Al crear un año, el
-          servidor registra la carga ordinaria y el máximo de horas extra.
+          Este año todavía no tiene definida la carga semanal de los docentes.
         </p>
       ) : null}
 
       {filas.length > 0 ? (
-        <div className={styles.tableHost}>
-          <div className={styles.scroll}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Parámetro</th>
-                  <th>Clave</th>
-                  <th>Valor</th>
-                  <th>Tipo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filas.map((item) => (
-                  <tr
-                    key={item.id}
-                    className={item.clave === clave ? styles.selected : ''}
-                    tabIndex={0}
-                    onClick={() => elegir(item.clave)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault()
-                        elegir(item.clave)
-                      }
-                    }}
-                  >
-                    <td>{item.descripcion?.trim() || item.clave}</td>
-                    <td className={styles.clave}>{item.clave}</td>
-                    <td className={styles.valor}>{mostrarValor(item)}</td>
-                    <td>{etiquetaTipo(item.tipoDato)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <ul className={styles.cards}>
-            {filas.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  className={[
-                    styles.mobileCard,
-                    item.clave === clave ? styles.selected : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  onClick={() => elegir(item.clave)}
-                >
-                  <strong>{item.descripcion?.trim() || item.clave}</strong>
-                  <span>{item.clave}</span>
-                  <span>
-                    {mostrarValor(item)} · {etiquetaTipo(item.tipoDato)}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {clave ? (
-        <div className={styles.detail} aria-live="polite">
-          <h3 className={styles.detailTitle}>Detalle por clave</h3>
-          <Text variant="caption">
-            Consultado aparte del listado, con la clave {clave}.
-          </Text>
-
-          {detalle.estado === 'cargando' ? (
-            <p className={styles.notice}>Consultando {clave}…</p>
-          ) : null}
-
-          {detalle.estado === 'error' ? (
-            <p className={styles.alert} role="alert">
-              {detalle.mensaje}
-            </p>
-          ) : null}
-
-          {seleccionado ? (
-            <dl className={styles.facts}>
-              <div>
-                <dt>Descripción</dt>
-                <dd>{seleccionado.descripcion?.trim() || '—'}</dd>
-              </div>
-              <div>
-                <dt>Clave</dt>
-                <dd>{seleccionado.clave}</dd>
-              </div>
-              <div>
-                <dt>Valor</dt>
-                <dd>{mostrarValor(seleccionado)}</dd>
-              </div>
-              <div>
-                <dt>Tipo de dato</dt>
-                <dd>{etiquetaTipo(seleccionado.tipoDato)}</dd>
-              </div>
-            </dl>
-          ) : null}
-        </div>
-      ) : filas.length > 0 ? (
-        <p className={styles.notice}>
-          Elige un parámetro para consultar su detalle por clave.
-        </p>
+        <ul className={styles.facts}>
+          {filas.map((item) => (
+            <li key={item.id} className={styles.fact}>
+              <p className={styles.label}>{titulo(item)}</p>
+              <p className={styles.value}>{valorVisible(item)}</p>
+              <p className={styles.explain}>{explicar(item)}</p>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </Card>
   )

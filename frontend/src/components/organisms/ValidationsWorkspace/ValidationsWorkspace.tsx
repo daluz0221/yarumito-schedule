@@ -19,6 +19,7 @@ import {
 } from '../../../api'
 import { useAnioDeTrabajo } from '../../../content/anioDeTrabajo'
 import {
+  conflictosHorasIncompletas,
   filterConflicts,
   kindFilterOptions,
   summarizeConflicts,
@@ -39,7 +40,8 @@ const tiposConflicto = kindFilterOptions.filter(
     option.value === '' ||
     option.value === 'teacher-busy' ||
     option.value === 'classroom-busy' ||
-    option.value === 'capacity',
+    option.value === 'capacity' ||
+    option.value === 'incomplete-hours',
 )
 
 function isAbortError(error: unknown) {
@@ -119,6 +121,7 @@ export function ValidationsWorkspace() {
   const [resolviendo, setResolviendo] = useState(false)
   const [resolverError, setResolverError] = useState('')
   const [revision, setRevision] = useState(0)
+  const [huecos, setHuecos] = useState<ConflictoVista[]>([])
   const [filters, setFilters] = useState<Omit<ValidationFilterValues, 'groupId'>>({
     severity: '',
     status: 'PENDIENTE',
@@ -254,8 +257,70 @@ export function ValidationsWorkspace() {
     return () => controller.abort()
   }, [filters.severity, filters.status, horarioId, revision, yearId])
 
-  const summary = summarizeConflicts(todos)
-  const rows = filterConflicts(visibles, {
+  const gruposDeLaSede = useMemo(
+    () =>
+      gruposDelAnio.filter((group) => !tablero?.sedeId || group.sedeId === tablero.sedeId),
+    [gruposDelAnio, tablero?.sedeId],
+  )
+  const gruposClave = gruposDeLaSede.map((group) => group.id).join(',')
+
+  useEffect(() => {
+    if (!yearId || gruposDeLaSede.length === 0) {
+      setHuecos([])
+      return
+    }
+
+    const controller = new AbortController()
+    const gruposConsulta = gruposDeLaSede
+
+    Promise.all(
+      gruposConsulta.map((group) =>
+        consultarHorarioGrupo(group.id, controller.signal, { trabajo: true }).catch((cause) => {
+          if (isAbortError(cause)) {
+            throw cause
+          }
+
+          return null
+        }),
+      ),
+    )
+      .then((tableros) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        const incompletos = conflictosHorasIncompletas(
+          tableros.flatMap((item) =>
+            item
+              ? [
+                  {
+                    grupoId: item.grupoId,
+                    grupoCodigo: item.grupoCodigo,
+                    horasPendientes: item.resumen?.horasPendientes ?? 0,
+                  },
+                ]
+              : [],
+          ),
+          yearId,
+        ).map((item) => ({ ...item, detectedAt: '' }))
+
+        setHuecos(incompletos)
+      })
+      .catch((cause) => {
+        if (isAbortError(cause) || controller.signal.aborted) {
+          return
+        }
+
+        setHuecos([])
+      })
+
+    return () => controller.abort()
+  }, [gruposClave, gruposDeLaSede, revision, yearId])
+
+  const huecosVisibles =
+    filters.severity === 'ADVERTENCIA' || filters.status === 'RESUELTO' ? [] : huecos
+  const summary = summarizeConflicts([...todos, ...huecos])
+  const rows = filterConflicts([...visibles, ...huecosVisibles], {
     severity: consultaDe(filters) === 'severidad' ? '' : filters.severity,
     status: consultaDe(filters) === 'pendientes' ? '' : filters.status,
     kind: filters.kind,
@@ -263,7 +328,8 @@ export function ValidationsWorkspace() {
     teacherName: '',
     classroom: '',
   })
-  const selected = todos.find((item) => item.id === selectedId) ?? null
+  const selected =
+    [...todos, ...huecos].find((item) => item.id === selectedId) ?? null
   const scheduleLabel = tablero
     ? `Horario ${tablero.anioEscolar} - ${tablero.sedeNombre} · v${tablero.versionHorario || 1}`
     : 'Sin horario'
@@ -409,7 +475,7 @@ export function ValidationsWorkspace() {
           setResolverError('')
         }}
         onOpenSchedule={() => navigate('/dashboard/horario')}
-        onResolve={marcarResuelto}
+        onResolve={selected?.kind === 'incomplete-hours' ? undefined : marcarResuelto}
       />
       <ValidationReadyModal
         open={readyOpen}

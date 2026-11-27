@@ -114,7 +114,6 @@ export const sidebarSections: SidebarSection[] = [
         icon: 'calendar',
         to: '/dashboard/anio-lectivo',
       },
-      { id: 'grados', label: 'Grados', icon: 'list', to: '/dashboard/grados' },
       { id: 'groups', label: 'Grupos', icon: 'users', to: '/dashboard/grupos' },
       {
         id: 'areas',
@@ -206,7 +205,7 @@ export const dashboardModules: ModuleItemData[] = [
   {
     id: 'academic',
     title: 'Gestión académica',
-    description: 'Configure grados, áreas, asignaturas y el plan de estudios.',
+    description: 'Configure áreas, asignaturas y el plan de estudios.',
     icon: 'layers',
     available: true,
     to: '/dashboard/areas',
