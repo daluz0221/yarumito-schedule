@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { conflictDetailFacts, filterConflicts, type ReviewedConflict } from './validations'
+import { conflictDetailFacts, filterConflicts, summarizeConflicts, type ReviewedConflict } from './validations'
 
 function conflicto(partial: Partial<ReviewedConflict> & Pick<ReviewedConflict, 'id'>): ReviewedConflict {
   return {
@@ -91,5 +91,21 @@ describe('conflictDetailFacts', () => {
     const facts = conflictDetailFacts(conflicto({ id: '1' }), 'Horario 2028', '2026-11-25 02:37')
 
     expect(facts.map((fact) => fact.label)).toEqual(['Horario', 'Fecha de detección'])
+  })
+})
+
+describe('summarizeConflicts', () => {
+  it('no cuenta dos veces el mismo conflicto ni suma los resueltos como pendientes', () => {
+    const resumen = summarizeConflicts([
+      conflicto({ id: '1', status: 'PENDIENTE' }),
+      conflicto({ id: '1', status: 'PENDIENTE' }),
+      conflicto({ id: '2', severity: 'ADVERTENCIA', kind: 'capacity', status: 'PENDIENTE' }),
+      conflicto({ id: '3', status: 'RESUELTO' }),
+    ])
+
+    expect(resumen.total).toBe(3)
+    expect(resumen.pending).toBe(2)
+    expect(resumen.resolved).toBe(1)
+    expect(resumen.readiness).toBe('blocked')
   })
 })

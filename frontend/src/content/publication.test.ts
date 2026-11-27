@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AcademicYear } from './academicYear'
-import { buildPublicationView } from './publication'
+import { buildPublicationView, pendingPublicationWarnings } from './publication'
+import type { ConflictoVista } from '../api/conflictos'
 import type { DatosPublicacion } from '../api/publicacionHorario'
 import type { HorarioGrupoResponse } from '../api/horarios'
 
@@ -93,4 +94,85 @@ describe('buildPublicationView', () => {
     expect(view.status).toBe('BORRADOR')
     expect(view.campusFull).toBe('Sede no disponible')
   })
+
+  it('cuenta una sola vez los pendientes de un horario compartido por varios grupos', () => {
+    const pendientes = [
+      ...Array.from({ length: 9 }, (_, index) => conflicto({ id: `error-${index}` })),
+      conflicto({ id: 'aviso-1', severity: 'ADVERTENCIA', kind: 'capacity' }),
+      conflicto({ id: 'aviso-2', severity: 'ADVERTENCIA', kind: 'capacity' }),
+      conflicto({ id: 'resuelto-1', status: 'RESUELTO' }),
+    ]
+    const repetidos = Array.from({ length: 8 }, () => pendientes).flat()
+    const tableros = Array.from({ length: 8 }, (_, index) =>
+      tablero({
+        estadoHorario: 'BORRADOR',
+        grupoId: `grupo-${index}`,
+        grupoCodigo: `60${index}`,
+        horarioId: 'horario-compartido',
+      }),
+    )
+
+    const view = buildPublicationView({
+      year,
+      campusName: 'Sede Principal',
+      datos: { tableros, conflictos: repetidos, fallidos: 0 },
+    })
+
+    expect(view.errors).toBe(9)
+    expect(view.warnings).toBe(2)
+    expect(view.readiness).toBe('blocked')
+    expect(view.checks.find((item) => item.id === 'teacher')?.passed).toBe(false)
+    expect(view.checks.find((item) => item.id === 'classroom')?.passed).toBe(true)
+    expect(view.classes).toBe(0)
+    expect(view.pendingHours).toBe(0)
+    expect(pendingPublicationWarnings(repetidos)).toHaveLength(2)
+  })
+
+  it('suma horarios distintos y no cuenta un conflicto repetido ni uno resuelto', () => {
+    const view = buildPublicationView({
+      year,
+      campusName: 'Sede Principal',
+      datos: {
+        tableros: [
+          tablero({ estadoHorario: 'BORRADOR', horarioId: 'horario-a', grupoId: 'g1' }),
+          tablero({ estadoHorario: 'BORRADOR', horarioId: 'horario-b', grupoId: 'g2' }),
+        ],
+        conflictos: [
+          conflicto({ id: 'a' }),
+          conflicto({ id: 'b' }),
+          conflicto({ id: 'b' }),
+          conflicto({ id: 'c', severity: 'ADVERTENCIA', kind: 'capacity' }),
+          conflicto({ id: 'd', status: 'RESUELTO' }),
+        ],
+        fallidos: 0,
+      },
+    })
+
+    expect(view.errors).toBe(2)
+    expect(view.warnings).toBe(1)
+    expect(view.readiness).toBe('blocked')
+  })
 })
+
+function conflicto(partial: Partial<ConflictoVista> & Pick<ConflictoVista, 'id'>): ConflictoVista {
+  return {
+    yearId: year.id,
+    severity: 'ERROR',
+    kind: 'teacher-busy',
+    message: 'Docente ocupado',
+    day: null,
+    bandId: null,
+    slotLabel: '—',
+    affected: '—',
+    subject: '',
+    teacherName: '',
+    classroom: '',
+    groupCode: '',
+    groupIds: [],
+    teacherNames: [],
+    classrooms: [],
+    status: 'PENDIENTE',
+    detectedAt: '2026-11-26 22:57',
+    ...partial,
+  }
+}

@@ -127,20 +127,46 @@ function momento(conflict: ReviewedConflict) {
 
 
 
-export function summarizeConflicts(conflicts: ReviewedConflict[]) {
-  const errors = conflicts.filter((item) => item.severity === 'ERROR')
-  const warnings = conflicts.filter((item) => item.severity === 'ADVERTENCIA')
-  const resolved = conflicts.filter((item) => item.status === 'RESUELTO')
-  const pending = conflicts.filter((item) => item.status === 'PENDIENTE')
-  const pendingErrors = errors.filter((item) => item.status === 'PENDIENTE').length
+export function conflictosPorId<T extends { id: string }>(conflicts: T[]) {
+  const vistos = new Set<string>()
+
+  return conflicts.filter((item) => {
+    if (!item.id || vistos.has(item.id)) {
+      return false
+    }
+
+    vistos.add(item.id)
+    return true
+  })
+}
+
+export function contarConflictosPendientes(conflicts: ReviewedConflict[]) {
+  const pending = conflictosPorId(conflicts).filter((item) => item.status === 'PENDIENTE')
+  const errors = pending.filter((item) => item.severity === 'ERROR').length
+  const warnings = pending.filter((item) => item.severity === 'ADVERTENCIA').length
 
   return {
-    total: conflicts.length,
+    pending,
+    errors,
+    warnings,
+    readiness: publishReadiness(errors, warnings),
+  }
+}
+
+export function summarizeConflicts(conflicts: ReviewedConflict[]) {
+  const unicos = conflictosPorId(conflicts)
+  const conteo = contarConflictosPendientes(unicos)
+  const errors = unicos.filter((item) => item.severity === 'ERROR')
+  const warnings = unicos.filter((item) => item.severity === 'ADVERTENCIA')
+  const resolved = unicos.filter((item) => item.status === 'RESUELTO')
+
+  return {
+    total: unicos.length,
     errors: errors.length,
     warnings: warnings.length,
     resolved: resolved.length,
-    pending: pending.length,
-    readiness: publishReadiness(pendingErrors, pending.filter((item) => item.severity === 'ADVERTENCIA').length),
+    pending: conteo.pending.length,
+    readiness: conteo.readiness,
   }
 }
 
