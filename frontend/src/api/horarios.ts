@@ -115,8 +115,21 @@ export function diaSemanaApi(day: WeekDay) {
   return DIA_API[day]
 }
 
-export function consultarHorarioGrupo(grupoId: string, signal?: AbortSignal) {
-  return api.get<HorarioGrupoResponse>(`/api/horarios/grupos/${grupoId}`, { signal })
+export function consultarHorarioGrupo(
+  grupoId: string,
+  signal?: AbortSignal,
+  options?: { trabajo?: boolean },
+) {
+  const params = new URLSearchParams()
+
+  if (options?.trabajo) {
+    params.set('trabajo', 'true')
+  }
+
+  const query = params.toString()
+  const path = query ? `/api/horarios/grupos/${grupoId}?${query}` : `/api/horarios/grupos/${grupoId}`
+
+  return api.get<HorarioGrupoResponse>(path, { signal })
 }
 
 export function crearClaseProgramada(payload: CrearClaseProgramadaRequest) {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { idDisponible } from '../../../content/idDisponible'
 import {
   actualizarClaseProgramada,
@@ -7,7 +8,9 @@ import {
   bandasDelTablero,
   clasesDelTablero,
   consultarHorarioGrupo,
+  crearBorradorDeMejora,
   crearClaseProgramada,
+  descartarBorradorHorario,
   diaSemanaApi,
   eliminarClaseProgramada,
   etiquetaEstadoHorario,
@@ -34,7 +37,9 @@ import {
 } from '../../../api'
 import { blockKey, type PendingPlacement } from '../../../content/scheduleConstruction'
 import type { WeekDay } from '../../../content/teacherRestrictions'
+import { Button } from '../../atoms/Button'
 import { Text } from '../../atoms/Text'
+import { ConfirmActionModal } from '../ConfirmActionModal'
 import type { BadgeTone } from '../../atoms/Badge'
 import { RemoveScheduleClassModal } from '../RemoveScheduleClassModal'
 import {
@@ -122,6 +127,7 @@ type ClassDialog =
   | { name: 'edit'; placementId: string }
 
 export function ScheduleWorkspace() {
+  const navigate = useNavigate()
   const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
   const { grupos, error: gruposError, loading: gruposLoading } = useCatalogoGrupos()
   const { sedes, error: sedesError } = useCatalogoSedes()
@@ -133,6 +139,13 @@ export function ScheduleWorkspace() {
   const [pending, setPending] = useState<PendingPlacement[]>([])
   const [resumen, setResumen] = useState<ResumenHorarioResponse | null>(null)
   const [estadoHorario, setEstadoHorario] = useState<EstadoHorario | null>(null)
+  const [horarioId, setHorarioId] = useState<string | null>(null)
+  const [versionHorario, setVersionHorario] = useState(0)
+  const [mejoraAviso, setMejoraAviso] = useState('')
+  const [mejoraError, setMejoraError] = useState('')
+  const [creandoBorrador, setCreandoBorrador] = useState(false)
+  const [descartarAbierto, setDescartarAbierto] = useState(false)
+  const [descartandoBorrador, setDescartandoBorrador] = useState(false)
   const [turnoFiltro, setTurnoFiltro] = useState('')
   const [turnos, setTurnos] = useState<TurnoResponse[] | null>(null)
   const [planes, setPlanes] = useState<PlanEstudiosResponse[] | null>(null)
@@ -161,6 +174,8 @@ export function ScheduleWorkspace() {
     setPending(pendientesDelTablero(tablero))
     setResumen(tablero.resumen ?? null)
     setEstadoHorario(tablero.estadoHorario ?? null)
+    setHorarioId(tablero.horarioId)
+    setVersionHorario(tablero.versionHorario || 0)
     setTurnoNombre(tablero.turnoNombre?.trim() || '')
     setTurnoPrincipalId(tablero.turnoId ?? '')
     setFranjas(bandasDelTablero(tablero.franjas))
@@ -253,6 +268,11 @@ export function ScheduleWorkspace() {
     setPending([])
     setResumen(null)
     setEstadoHorario(null)
+    setHorarioId(null)
+    setVersionHorario(0)
+    setMejoraAviso('')
+    setMejoraError('')
+    setDescartarAbierto(false)
     setTurnoNombre('')
     setTurnoPrincipalId('')
     setFranjas([])
@@ -296,7 +316,7 @@ export function ScheduleWorkspace() {
     const solicitud = ++solicitudRef.current
     const controller = new AbortController()
 
-    consultarHorarioGrupo(groupId, controller.signal)
+    consultarHorarioGrupo(groupId, controller.signal, { trabajo: true })
       .then((tablero) => {
         if (controller.signal.aborted || solicitudRef.current !== solicitud) {
           return
@@ -506,7 +526,7 @@ export function ScheduleWorkspace() {
       }
 
       try {
-        const tablero = await consultarHorarioGrupo(grupoSolicitado)
+        const tablero = await consultarHorarioGrupo(grupoSolicitado, undefined, { trabajo: true })
 
         if (solicitudRef.current !== solicitud) {
           return
@@ -564,7 +584,7 @@ export function ScheduleWorkspace() {
       await eliminarClaseProgramada(clase.id)
 
       try {
-        const tablero = await consultarHorarioGrupo(grupoSolicitado)
+        const tablero = await consultarHorarioGrupo(grupoSolicitado, undefined, { trabajo: true })
 
         if (solicitudRef.current !== solicitud) {
           return
@@ -613,6 +633,55 @@ export function ScheduleWorkspace() {
     aulaInicial(aulas ?? [], grupo?.aulaFijaId, creatingItem?.note ?? null)
   const primeraFranja = bandOptions[0]?.value ?? ''
   const classroomOptions = opcionesAula(aulas ?? [], classroomValue)
+  const esBorradorMejora = estadoHorario === 'BORRADOR' && versionHorario > 1
+  const puedeCrearBorrador =
+    Boolean(horarioId) && estadoHorario === 'PUBLICADO' && year?.status !== 'CERRADO'
+
+  const crearBorrador = async () => {
+    if (!horarioId || !grupo || creandoBorrador) {
+      return
+    }
+
+    setCreandoBorrador(true)
+    setMejoraError('')
+    setMejoraAviso('')
+
+    try {
+      const resultado = await crearBorradorDeMejora(horarioId)
+      const tablero = await consultarHorarioGrupo(grupo.id, undefined, { trabajo: true })
+      mostrarTablero(grupo.id, tablero)
+      setMejoraAviso(
+        resultado.nuevo
+          ? 'Se creó el borrador de mejora. El horario publicado sigue vigente.'
+          : 'Ya hay un borrador de mejora. Puedes seguir editándolo.',
+      )
+    } catch (cause) {
+      setMejoraError(mensajeError(cause, 'No se pudo crear el borrador de mejora.'))
+    } finally {
+      setCreandoBorrador(false)
+    }
+  }
+
+  const descartarBorrador = async () => {
+    if (!horarioId || !grupo || descartandoBorrador) {
+      return
+    }
+
+    setDescartandoBorrador(true)
+    setMejoraError('')
+
+    try {
+      await descartarBorradorHorario(horarioId)
+      const tablero = await consultarHorarioGrupo(grupo.id, undefined, { trabajo: true })
+      mostrarTablero(grupo.id, tablero)
+      setDescartarAbierto(false)
+      setMejoraAviso('Se descartó el borrador. El horario publicado sigue vigente.')
+    } catch (cause) {
+      setMejoraError(mensajeError(cause, 'No se pudo descartar el borrador.'))
+    } finally {
+      setDescartandoBorrador(false)
+    }
+  }
 
   return (
     <section className={styles.workspace}>
@@ -723,6 +792,48 @@ export function ScheduleWorkspace() {
         <p className={styles.notice}>Cargando horario del grupo...</p>
       ) : null}
 
+      {grupo && tableroListo && !horarioError && year?.status !== 'CERRADO' && (puedeCrearBorrador || esBorradorMejora) ? (
+        <div className={styles.draftBar}>
+          <p className={styles.draftText}>
+            {esBorradorMejora
+              ? `Estás editando el borrador de mejora v${versionHorario}. El horario publicado sigue vigente. Si publicas este borrador, esa versión queda archivada.`
+              : 'Este horario está publicado. Las mejoras se hacen en un borrador y el publicado sigue vigente hasta que publiques esa versión.'}
+          </p>
+          <div className={styles.draftActions}>
+            {esBorradorMejora ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={descartandoBorrador || creandoBorrador}
+                  onClick={() => setDescartarAbierto(true)}
+                >
+                  Descartar borrador
+                </Button>
+                <Button variant="primary" size="sm" onClick={() => navigate('/dashboard/publicacion')}>
+                  Ir a publicación
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={creandoBorrador}
+                onClick={() => void crearBorrador()}
+              >
+                {creandoBorrador ? 'Creando borrador…' : 'Crear borrador de mejora'}
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : null}
+      {mejoraAviso ? <p className={styles.success}>{mejoraAviso}</p> : null}
+      {mejoraError ? (
+        <p className={styles.alert} role="alert">
+          {mejoraError}
+        </p>
+      ) : null}
+
       {grupo && tableroListo && !horarioError ? (
         <>
           <ScheduleMetrics {...metrics} />
@@ -831,6 +942,21 @@ export function ScheduleWorkspace() {
           }
         }}
         onConfirm={confirmRemove}
+      />
+      <ConfirmActionModal
+        open={descartarAbierto}
+        title="Descartar borrador"
+        description="Se elimina el borrador de mejora y vuelves a ver el horario publicado, que sigue vigente."
+        confirmLabel="Descartar borrador"
+        busyLabel="Descartando..."
+        submitting={descartandoBorrador}
+        error={mejoraError}
+        onClose={() => {
+          if (!descartandoBorrador) {
+            setDescartarAbierto(false)
+          }
+        }}
+        onConfirm={() => void descartarBorrador()}
       />
     </section>
   )

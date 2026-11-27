@@ -21,7 +21,7 @@ export async function cargarDatosPublicacion(
   signal?: AbortSignal,
 ): Promise<DatosPublicacion> {
   const consultas = await Promise.allSettled(
-    grupoIds.map((grupoId) => consultarHorarioGrupo(grupoId, signal)),
+    grupoIds.map((grupoId) => consultarHorarioGrupo(grupoId, signal, { trabajo: true })),
   )
 
   const abortada = consultas.find(
@@ -75,6 +75,47 @@ export type PublicarHorarioResponse = {
   version: number
 }
 
+export type HorarioVersionResponse = {
+  id: string
+  anioEscolarId: string | null
+  sedeId: string | null
+  sedeNombre: string | null
+  nombre: string
+  version: number
+  estado: EstadoHorario
+  fechaPublicacion: string | null
+  notas: string | null
+  nuevo: boolean
+}
+
+export function listarVersionesHorario(anioEscolarId: string, signal?: AbortSignal) {
+  return api.get<HorarioVersionResponse[]>(`/api/horarios/anios/${anioEscolarId}/versiones`, { signal })
+}
+
+export function crearBorradorDeMejora(horarioId: string) {
+  return api.post<HorarioVersionResponse>(`/api/horarios/${horarioId}/borrador`)
+}
+
+export function descartarBorradorHorario(horarioId: string) {
+  return api.post<null>(`/api/horarios/${horarioId}/descartar`)
+}
+
+export async function crearBorradoresDeMejora(horarioIds: string[]) {
+  const unicos = [...new Set(horarioIds)]
+
+  if (unicos.length === 0) {
+    throw new ApiError('No hay un horario publicado del cual crear un borrador.', 0)
+  }
+
+  const resultados: HorarioVersionResponse[] = []
+
+  for (const horarioId of unicos) {
+    resultados.push(await crearBorradorDeMejora(horarioId))
+  }
+
+  return resultados
+}
+
 export function horariosPublicables(tableros: HorarioGrupoResponse[]) {
   return tableros.filter((item) => Boolean(item.horarioId) && item.estadoHorario === 'BORRADOR')
 }
@@ -87,24 +128,27 @@ export function publicarHorario(horarioId: string) {
 // clases programadas o si quedan conflictos con severidad ERROR.
 export async function publicarHorariosEnBorrador(tableros: HorarioGrupoResponse[]) {
   const pendientes = horariosPublicables(tableros)
+  const ids = [...new Set(pendientes.map((item) => item.horarioId as string))]
 
-  if (pendientes.length === 0) {
+  if (ids.length === 0) {
     throw new ApiError('No hay horarios en borrador para publicar.', 0)
   }
 
   const errores: string[] = []
   let publicados = 0
 
-  for (const item of pendientes) {
+  for (const horarioId of ids) {
+    const item = pendientes.find((candidato) => candidato.horarioId === horarioId)
+
     try {
-      await publicarHorario(item.horarioId as string)
+      await publicarHorario(horarioId)
       publicados += 1
     } catch (error) {
       const detalle =
         error instanceof ApiError && error.message
           ? error.message
           : 'No se pudo publicar el horario'
-      const grupo = item.grupoCodigo || 'un grupo'
+      const grupo = item?.grupoCodigo || 'un grupo'
       errores.push(`${grupo}: ${detalle}`)
     }
   }
@@ -112,7 +156,7 @@ export async function publicarHorariosEnBorrador(tableros: HorarioGrupoResponse[
   if (errores.length > 0) {
     throw new ApiError(
       publicados > 0
-        ? `Se publicaron ${publicados} de ${pendientes.length} horarios. ${errores.join(' ')}`
+        ? `Se publicaron ${publicados} de ${ids.length} horarios. ${errores.join(' ')}`
         : errores.join(' '),
       0,
     )

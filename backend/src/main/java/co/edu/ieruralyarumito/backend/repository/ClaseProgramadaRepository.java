@@ -3,7 +3,10 @@ package co.edu.ieruralyarumito.backend.repository;
 import co.edu.ieruralyarumito.backend.entity.ClaseProgramada;
 import co.edu.ieruralyarumito.backend.entity.enums.DiasSemana;
 
+import co.edu.ieruralyarumito.backend.entity.enums.EstadoHorario;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -15,6 +18,15 @@ public interface ClaseProgramadaRepository
 
     // Verifica si un horario tiene al menos una clase programada.
     boolean existsByHorarioId_Id(UUID horarioId);
+
+    List<ClaseProgramada> findByHorarioId_Id(UUID horarioId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            delete from ClaseProgramada clase
+             where clase.horarioId.id = :horarioId
+            """)
+    void eliminarPorHorario(@Param("horarioId") UUID horarioId);
 
     // Lista las clases de un grupo dentro de un horario.
     @Query("""
@@ -51,37 +63,58 @@ public interface ClaseProgramadaRepository
             @Param("anioEscolarId") UUID anioEscolarId,
             @Param("docenteId") UUID docenteId);
 
-    // Verifica si el docente está ocupado.
+    // El docente está ocupado en el horario que se edita, o en un horario
+    // PUBLICADO de otra sede. La versión publicada de la misma sede no cuenta:
+    // el borrador de mejora la reemplaza y copia sus clases.
     @Query("""
             select count(clase) > 0
               from ClaseProgramada clase
-             where clase.horarioId.anioEscolarId.id = :anioEscolarId
-               and clase.asignacionAcademicaId.docente.id = :docenteId
+             where clase.asignacionAcademicaId.docente.id = :docenteId
                and clase.dia = :dia
                and clase.franjaHorariaId.id = :franjaHorariaId
+               and (
+                    clase.horarioId.id = :horarioId
+                    or (
+                        clase.horarioId.estado = :estadoPublicado
+                        and clase.horarioId.anioEscolarId.id = :anioEscolarId
+                        and clase.horarioId.sedeId.id <> :sedeId
+                    )
+               )
             """)
     boolean existeDocenteOcupado(
+            @Param("horarioId") UUID horarioId,
             @Param("anioEscolarId") UUID anioEscolarId,
-            @Param("docenteId") UUID docenteId,
-            @Param("dia") DiasSemana dia,
-            @Param("franjaHorariaId") UUID franjaHorariaId);
-
-    // Verifica ocupación docente excluyendo la clase editada.
-    @Query("""
-            select count(clase) > 0
-              from ClaseProgramada clase
-             where clase.horarioId.anioEscolarId.id = :anioEscolarId
-               and clase.asignacionAcademicaId.docente.id = :docenteId
-               and clase.dia = :dia
-               and clase.franjaHorariaId.id = :franjaHorariaId
-               and clase.id <> :claseId
-            """)
-    boolean existeDocenteOcupadoExcluyendo(
-            @Param("anioEscolarId") UUID anioEscolarId,
+            @Param("sedeId") UUID sedeId,
             @Param("docenteId") UUID docenteId,
             @Param("dia") DiasSemana dia,
             @Param("franjaHorariaId") UUID franjaHorariaId,
-            @Param("claseId") UUID claseId);
+            @Param("estadoPublicado") EstadoHorario estadoPublicado);
+
+    @Query("""
+            select count(clase) > 0
+              from ClaseProgramada clase
+             where clase.asignacionAcademicaId.docente.id = :docenteId
+               and clase.dia = :dia
+               and clase.franjaHorariaId.id = :franjaHorariaId
+               and clase.id <> :claseId
+               and (
+                    clase.horarioId.id = :horarioId
+                    or (
+                        clase.horarioId.estado = :estadoPublicado
+                        and clase.horarioId.anioEscolarId.id = :anioEscolarId
+                        and clase.horarioId.sedeId.id <> :sedeId
+                    )
+               )
+            """)
+    boolean existeDocenteOcupadoExcluyendo(
+            @Param("horarioId") UUID horarioId,
+            @Param("anioEscolarId") UUID anioEscolarId,
+            @Param("sedeId") UUID sedeId,
+            @Param("docenteId") UUID docenteId,
+            @Param("dia") DiasSemana dia,
+            @Param("franjaHorariaId") UUID franjaHorariaId,
+            @Param("claseId") UUID claseId,
+            @Param("estadoPublicado") EstadoHorario estadoPublicado);
 
     // Verifica si el aula está ocupada.
     @Query("""

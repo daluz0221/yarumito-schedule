@@ -44,22 +44,34 @@ export type PublicationModal = 'none' | 'warnings' | 'blocked'
 
 export const publicationCopy = {
   pageTitle: 'Publicación del horario',
-  pageSubtitle: 'Revisa el resultado final y publica la versión del horario académico.',
+  pageSubtitle:
+    'Revisa el resultado final. Si el horario ya está publicado, las mejoras se preparan en un borrador y, al publicarlo, la versión vigente queda archivada.',
   summaryTitle: 'Resumen final',
   checksTitle: 'Comprobaciones antes de publicar',
   versionsTitle: 'Versiones del horario',
   previousTitle: 'Versiones anteriores',
-  previousEmpty:
-    'El servidor aún no expone el historial de versiones. Las versiones anteriores deben preservarse; el archivado de una versión previa queda pendiente de regla de negocio explícita.',
+  previousEmpty: 'Todavía no hay versiones archivadas.',
+  versionsEmpty: 'Este año aún no tiene horarios.',
+  versionsLoading: 'Cargando versiones…',
   logTitle: 'Registro de publicación',
   logEmpty: 'Este horario sigue en borrador. Al publicarlo pasará a estado PUBLICADO.',
-  logPublished: 'Este horario ya figura como publicado en el servidor.',
+  logPublished:
+    'Este horario ya está publicado. Para cambiarlo, crea un borrador de mejora: el publicado sigue vigente hasta que publiques esa versión.',
+  logDraft:
+    'Hay un borrador de mejora. Si lo publicas, la versión que está publicada pasa a archivada.',
   logNote:
-    'Publica los horarios en borrador de los grupos activos. Los errores pendientes bloquean la publicación; las advertencias no.',
-  logPublishedNote: 'Los horarios de este año ya están publicados.',
+    'Publica los horarios en borrador. Los errores pendientes bloquean la publicación; las advertencias no.',
+  logPublishedNote:
+    'El horario publicado no se modifica directo. Las mejoras se hacen en un borrador y, al publicarlo, la versión actual queda archivada.',
+  logDraftNote: 'Puedes seguir editando el borrador en Construcción de horario, descartarlo o publicarlo.',
   publish: 'Publicar horario',
+  publishDraft: 'Publicar borrador',
   publishing: 'Publicando…',
   published: 'Publicado',
+  createDraft: 'Crear borrador de mejora',
+  creatingDraft: 'Creando borrador…',
+  discardDraft: 'Descartar borrador',
+  discardingDraft: 'Descartando…',
   warningsConfirm: 'Publicar de todas formas',
   seeWarnings: 'Ver advertencias',
   seeValidations: 'Ver validaciones',
