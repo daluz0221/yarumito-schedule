@@ -4,6 +4,7 @@ import co.edu.ieruralyarumito.backend.dto.ActualizarClaseProgramadaRequest;
 import co.edu.ieruralyarumito.backend.dto.AsignacionPendienteResponse;
 import co.edu.ieruralyarumito.backend.dto.ClaseProgramadaResponse;
 import co.edu.ieruralyarumito.backend.dto.CrearClaseProgramadaRequest;
+import co.edu.ieruralyarumito.backend.dto.DetalleConflicto;
 import co.edu.ieruralyarumito.backend.dto.FranjaHorariaResponse;
 import co.edu.ieruralyarumito.backend.dto.HorarioGrupoResponse;
 import co.edu.ieruralyarumito.backend.dto.ResumenHorarioResponse;
@@ -41,6 +42,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -354,6 +356,7 @@ public class HorarioService {
         validarDocenteDisponible(
                 horario,
                 asignacion,
+                aula,
                 request.getDia(),
                 franja,
                 null);
@@ -368,6 +371,7 @@ public class HorarioService {
         // Aula ocupada.
         validarAulaDisponible(
                 horario,
+                asignacion,
                 aula,
                 request.getDia(),
                 franja,
@@ -408,7 +412,10 @@ public class HorarioService {
         response.setWarnings(calcularAdvertencias(
                 horario,
                 grupo,
-                aula));
+                aula,
+                asignacion,
+                request.getDia(),
+                franja));
 
         // HU-14: registrar creación exitosa.
         if (registroAuditoriaService != null) {
@@ -475,6 +482,7 @@ public class HorarioService {
         validarDocenteDisponible(
                 horario,
                 asignacion,
+                aula,
                 request.getDia(),
                 franja,
                 clase.getId());
@@ -489,6 +497,7 @@ public class HorarioService {
         // Aula ocupada.
         validarAulaDisponible(
                 horario,
+                asignacion,
                 aula,
                 request.getDia(),
                 franja,
@@ -519,7 +528,10 @@ public class HorarioService {
         response.setWarnings(calcularAdvertencias(
                 horario,
                 asignacion.getGrupo(),
-                aula));
+                aula,
+                asignacion,
+                request.getDia(),
+                franja));
 
         // HU-14: registrar actualización.
         if (registroAuditoriaService != null) {
@@ -927,6 +939,7 @@ public class HorarioService {
     private void validarDocenteDisponible(
             Horario horario,
             AsignacionAcademica asignacion,
+            Aula aula,
             DiasSemana dia,
             FranjaHoraria franja,
             UUID claseId) {
@@ -967,15 +980,29 @@ public class HorarioService {
                         EstadoHorario.PUBLICADO);
 
         if (ocupado) {
-
-            String mensaje =
-                    "El docente ya tiene una clase "
-                            + "programada en esta misma franja.";
+            String docente = nombreDocente(asignacion);
+            String momento = momento(dia, franja);
+            String mensaje = docente
+                    + " ya tiene una clase programada "
+                    + momento
+                    + ". No se pudo agregar "
+                    + nombreAsignatura(asignacion)
+                    + " del grupo "
+                    + codigoGrupo(asignacion)
+                    + ".";
 
             conflictoHorarioRegistroService
                     .registrarDocenteOcupado(
                             horario,
-                            mensaje);
+                            mensaje,
+                            detalle(
+                                    dia,
+                                    franja,
+                                    docente,
+                                    nombreAsignatura(asignacion),
+                                    docente,
+                                    nombreAula(aula),
+                                    codigoGrupo(asignacion)));
 
             throw new ConflictoHorarioException(
                     "DOCENTE_OCUPADO",
@@ -986,6 +1013,7 @@ public class HorarioService {
     // Aula ocupada.
     private void validarAulaDisponible(
             Horario horario,
+            AsignacionAcademica asignacion,
             Aula aula,
             DiasSemana dia,
             FranjaHoraria franja,
@@ -1011,15 +1039,29 @@ public class HorarioService {
                         claseId);
 
         if (ocupada) {
-
-            String mensaje =
-                    "El aula seleccionada ya está ocupada "
-                            + "en la franja seleccionada.";
+            String nombreAula = nombreAula(aula);
+            String momento = momento(dia, franja);
+            String mensaje = nombreAula
+                    + " ya está ocupada "
+                    + momento
+                    + ". No se pudo asignar al grupo "
+                    + codigoGrupo(asignacion)
+                    + " ("
+                    + nombreAsignatura(asignacion)
+                    + ").";
 
             conflictoHorarioRegistroService
                     .registrarAulaOcupada(
                             horario,
-                            mensaje);
+                            mensaje,
+                            detalle(
+                                    dia,
+                                    franja,
+                                    nombreAula,
+                                    nombreAsignatura(asignacion),
+                                    nombreDocente(asignacion),
+                                    nombreAula,
+                                    codigoGrupo(asignacion)));
 
             throw new ConflictoHorarioException(
                     "AULA_OCUPADA",
@@ -1031,18 +1073,38 @@ public class HorarioService {
     private List<String> calcularAdvertencias(
             Horario horario,
             Grupo grupo,
-            Aula aula) {
+            Aula aula,
+            AsignacionAcademica asignacion,
+            DiasSemana dia,
+            FranjaHoraria franja) {
 
         if (haySobreaforo(grupo, aula)) {
-
-            String mensaje =
-                    "La cantidad de estudiantes supera "
-                            + "la capacidad del aula.";
+            String nombreAula = nombreAula(aula);
+            String codigo = grupo == null || grupo.getCodigo() == null
+                    ? "el grupo"
+                    : grupo.getCodigo().trim();
+            String mensaje = "El grupo "
+                    + codigo
+                    + " tiene "
+                    + grupo.getCantidadEstudiantes()
+                    + " estudiantes y "
+                    + nombreAula
+                    + " tiene capacidad para "
+                    + aula.getCapacidad()
+                    + ".";
 
             conflictoHorarioRegistroService
                     .registrarCapacidadAula(
                             horario,
-                            mensaje);
+                            mensaje,
+                            detalle(
+                                    dia,
+                                    franja,
+                                    nombreAula,
+                                    nombreAsignatura(asignacion),
+                                    nombreDocente(asignacion),
+                                    nombreAula,
+                                    codigo));
 
             return List.of(mensaje);
         }
@@ -1062,6 +1124,115 @@ public class HorarioService {
         return cantidadEstudiantes != null
                 && capacidad != null
                 && cantidadEstudiantes > capacidad;
+    }
+
+    private DetalleConflicto detalle(
+            DiasSemana dia,
+            FranjaHoraria franja,
+            String elemento,
+            String asignatura,
+            String docente,
+            String aula,
+            String grupo) {
+
+        return new DetalleConflicto(
+                etiquetaDia(dia),
+                etiquetaFranja(franja),
+                elemento,
+                asignatura,
+                docente,
+                aula,
+                grupo);
+    }
+
+    private String momento(DiasSemana dia, FranjaHoraria franja) {
+        String etiquetaDia = etiquetaDia(dia);
+        String etiquetaFranja = etiquetaFranja(franja);
+
+        if (etiquetaDia == null) {
+            return etiquetaFranja == null
+                    ? "en esa franja"
+                    : "en la franja " + etiquetaFranja;
+        }
+
+        if (etiquetaFranja == null) {
+            return "el " + etiquetaDia;
+        }
+
+        return "el " + etiquetaDia + ", " + etiquetaFranja;
+    }
+
+    private String etiquetaDia(DiasSemana dia) {
+        if (dia == null) {
+            return null;
+        }
+
+        return switch (dia) {
+            case LUNES -> "lunes";
+            case MARTES -> "martes";
+            case MIERCOLES -> "miércoles";
+            case JUEVES -> "jueves";
+            case VIERNES -> "viernes";
+        };
+    }
+
+    private String etiquetaFranja(FranjaHoraria franja) {
+        if (franja == null
+                || franja.getHoraInicio() == null
+                || franja.getHoraFin() == null) {
+            return null;
+        }
+
+        DateTimeFormatter formato = DateTimeFormatter.ofPattern("HH:mm");
+        return formato.format(franja.getHoraInicio())
+                + "–"
+                + formato.format(franja.getHoraFin());
+    }
+
+    private String nombreDocente(AsignacionAcademica asignacion) {
+        if (asignacion == null || asignacion.getDocente() == null) {
+            return "El docente";
+        }
+
+        String nombres = asignacion.getDocente().getNombres() == null
+                ? ""
+                : asignacion.getDocente().getNombres().trim();
+        String apellidos = asignacion.getDocente().getApellidos() == null
+                ? ""
+                : asignacion.getDocente().getApellidos().trim();
+        String nombre = (nombres + " " + apellidos).trim();
+
+        return nombre.isBlank() ? "El docente" : nombre;
+    }
+
+    private String nombreAsignatura(AsignacionAcademica asignacion) {
+        if (asignacion == null
+                || asignacion.getAsignatura() == null
+                || asignacion.getAsignatura().getNombre() == null
+                || asignacion.getAsignatura().getNombre().isBlank()) {
+            return "la asignatura";
+        }
+
+        return asignacion.getAsignatura().getNombre().trim();
+    }
+
+    private String codigoGrupo(AsignacionAcademica asignacion) {
+        if (asignacion == null
+                || asignacion.getGrupo() == null
+                || asignacion.getGrupo().getCodigo() == null
+                || asignacion.getGrupo().getCodigo().isBlank()) {
+            return "sin código";
+        }
+
+        return asignacion.getGrupo().getCodigo().trim();
+    }
+
+    private String nombreAula(Aula aula) {
+        if (aula == null || aula.getNombre() == null || aula.getNombre().isBlank()) {
+            return "El aula";
+        }
+
+        return aula.getNombre().trim();
     }
 
     // =====================================================

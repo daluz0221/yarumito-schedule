@@ -1,6 +1,7 @@
 package co.edu.ieruralyarumito.backend.service;
 
 import co.edu.ieruralyarumito.backend.dto.ConflictoResponse;
+import co.edu.ieruralyarumito.backend.dto.DetalleConflicto;
 import co.edu.ieruralyarumito.backend.entity.Conflicto;
 import co.edu.ieruralyarumito.backend.entity.Horario;
 import co.edu.ieruralyarumito.backend.entity.enums.SeveridadConflicto;
@@ -251,5 +252,35 @@ class ConflictoServiceTest {
                 .findByHorario_IdAndResueltoOrderByFechaDeteccionDesc(
                         horarioId,
                         false);
+    }
+
+    @Test
+    void registrarConflicto_guardaElDetalleParaElModal() {
+        UUID horarioId = UUID.randomUUID();
+        Horario horario = spy(new Horario());
+        doReturn(horarioId).when(horario).getId();
+
+        when(conflictoRepository.save(any(Conflicto.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ConflictoResponse response = conflictoService.registrarConflicto(
+                horario,
+                TipoConflicto.DOCENTE_OCUPADO,
+                "Ana Gómez ya tiene clase el lunes, 06:30–07:25.",
+                new DetalleConflicto(
+                        "lunes",
+                        "06:30–07:25",
+                        "Ana Gómez",
+                        "Matemáticas",
+                        "Ana Gómez",
+                        "Salón 6",
+                        "601"));
+
+        assertEquals("lunes", response.getDia());
+        assertEquals("06:30–07:25", response.getFranja());
+        assertEquals("Ana Gómez", response.getDocente());
+        assertEquals("Matemáticas", response.getAsignatura());
+        assertEquals("Salón 6", response.getAula());
+        assertEquals("601", response.getGrupo());
     }
 }

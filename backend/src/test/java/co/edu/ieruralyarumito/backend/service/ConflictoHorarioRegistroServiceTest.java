@@ -9,6 +9,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,14 +37,16 @@ class ConflictoHorarioRegistroServiceTest {
 
         registroService.registrarDocenteOcupado(
                 horario,
-                mensaje
+                mensaje,
+                null
         );
 
         verify(conflictoService)
                 .registrarConflicto(
-                        horario,
-                        TipoConflicto.DOCENTE_OCUPADO,
-                        mensaje
+                        eq(horario),
+                        eq(TipoConflicto.DOCENTE_OCUPADO),
+                        eq(mensaje),
+                        isNull()
                 );
     }
 
@@ -54,14 +58,16 @@ class ConflictoHorarioRegistroServiceTest {
 
         registroService.registrarAulaOcupada(
                 horario,
-                mensaje
+                mensaje,
+                null
         );
 
         verify(conflictoService)
                 .registrarConflicto(
-                        horario,
-                        TipoConflicto.AULA_OCUPADA,
-                        mensaje
+                        eq(horario),
+                        eq(TipoConflicto.AULA_OCUPADA),
+                        eq(mensaje),
+                        isNull()
                 );
     }
 
@@ -73,14 +79,16 @@ class ConflictoHorarioRegistroServiceTest {
 
         registroService.registrarCapacidadAula(
                 horario,
-                mensaje
+                mensaje,
+                null
         );
 
         verify(conflictoService)
                 .registrarConflicto(
-                        horario,
-                        TipoConflicto.CAPACIDAD_AULA,
-                        mensaje
+                        eq(horario),
+                        eq(TipoConflicto.CAPACIDAD_AULA),
+                        eq(mensaje),
+                        isNull()
                 );
     }
 }

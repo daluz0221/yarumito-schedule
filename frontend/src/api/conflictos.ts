@@ -1,3 +1,4 @@
+import { leerDetalleDelMensaje } from '../content/detalleConflicto'
 import type { ConflictKind, ReviewedConflict } from '../content/validations'
 import { api } from './client'
 
@@ -13,6 +14,13 @@ export type ConflictoResponse = {
   mensaje: string
   resuelto: boolean
   fechaDeteccion: string
+  dia?: string | null
+  franja?: string | null
+  elementoAfectado?: string | null
+  asignatura?: string | null
+  docente?: string | null
+  aula?: string | null
+  grupo?: string | null
 }
 
 export type ConflictoVista = ReviewedConflict & {
@@ -78,6 +86,14 @@ export function aConflictoRevisado(dto: ConflictoResponse, yearId: string): Conf
   }
 
   const severity = dto.severidad === 'ADVERTENCIA' ? 'ADVERTENCIA' : 'ERROR'
+  const leido = leerDetalleDelMensaje(dto.mensaje ?? '', dto.tipo)
+  const dia = texto(dto.dia) || leido.dia
+  const franja = texto(dto.franja) || leido.franja
+  const docente = texto(dto.docente) || leido.docente
+  const aula = texto(dto.aula) || leido.aula
+  const grupo = texto(dto.grupo) || leido.grupo
+  const asignatura = texto(dto.asignatura) || leido.asignatura
+  const elemento = texto(dto.elementoAfectado) || leido.elementoAfectado
 
   return {
     id: dto.id,
@@ -87,16 +103,21 @@ export function aConflictoRevisado(dto: ConflictoResponse, yearId: string): Conf
     message: dto.mensaje?.trim() || 'Conflicto detectado',
     day: null,
     bandId: null,
-    slotLabel: '—',
-    affected: '—',
-    subject: '',
-    teacherName: '',
-    classroom: '',
-    groupCode: '',
+    slotLabel: [dia, franja].filter(Boolean).join(', ') || '—',
+    affected: elemento || docente || aula || grupo || '—',
+    subject: asignatura,
+    teacherName: docente,
+    classroom: aula,
+    groupCode: grupo,
     groupIds: [],
-    teacherNames: [],
-    classrooms: [],
+    teacherNames: docente ? [docente] : [],
+    classrooms: aula ? [aula] : [],
     status: dto.resuelto ? 'RESUELTO' : 'PENDIENTE',
     detectedAt: formatoFechaDeteccion(dto.fechaDeteccion),
   }
+}
+
+function texto(value: string | null | undefined) {
+  const limpio = value?.trim()
+  return limpio || ''
 }
