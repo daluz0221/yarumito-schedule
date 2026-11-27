@@ -1,7 +1,8 @@
 import type { DatosPublicacion } from '../api/publicacionHorario'
 import type { AcademicYear } from './academicYear'
 import {
-  publishReadiness,
+  conflictosPorId,
+  contarConflictosPendientes,
   scheduleNameForYear,
   type ConflictKind,
   type PublishReadiness,
@@ -104,9 +105,8 @@ export function buildPublicationView({
   const { tableros, conflictos } = datos
   const scheduleName = scheduleNameForYear(year)
   const conRegistro = tableros.filter((item) => item.horarioId)
-  const pending = conflictos.filter((item) => item.status === 'PENDIENTE')
-  const errors = pending.filter((item) => item.severity === 'ERROR').length
-  const warnings = pending.filter((item) => item.severity === 'ADVERTENCIA').length
+  const conteo = contarConflictosPendientes(conflictos)
+  const { pending, errors, warnings } = conteo
   const pendingHours = tableros.reduce((total, item) => total + (item.resumen?.horasPendientes ?? 0), 0)
   const published =
     conRegistro.length > 0 && conRegistro.every((item) => item.estadoHorario === 'PUBLICADO')
@@ -125,7 +125,7 @@ export function buildPublicationView({
     warnings,
     pendingHours,
     publicationLabel: published ? 'Publicado' : 'Pendiente',
-    readiness: publishReadiness(errors, warnings),
+    readiness: conteo.readiness,
     checks: publicationChecks(pending, pendingHours),
     versionCaption: published
       ? `${scheduleName} · publicado`
@@ -135,7 +135,7 @@ export function buildPublicationView({
 }
 
 export function pendingPublicationWarnings(conflicts: ReviewedConflict[]): PublicationWarningItem[] {
-  return conflicts
+  return conflictosPorId(conflicts)
     .filter((item) => item.status === 'PENDIENTE' && item.severity === 'ADVERTENCIA')
     .map((item) => ({
       id: item.id,

@@ -13,8 +13,8 @@ function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === 'AbortError'
 }
 
-// Reúne el horario de cada grupo y los conflictos pendientes de cada horario
-// existente. El backend maneja un horario por grupo; la publicación los resume.
+// Reúne el horario de cada grupo y los conflictos pendientes. Varios grupos
+// comparten un mismo horario, así que cada horarioId se consulta una sola vez.
 export async function cargarDatosPublicacion(
   grupoIds: string[],
   yearId: string,
@@ -35,9 +35,11 @@ export async function cargarDatosPublicacion(
   const tableros = consultas.flatMap((item) => (item.status === 'fulfilled' ? [item.value] : []))
   let fallidos = consultas.length - tableros.length
 
-  const conRegistro = tableros.filter((item) => item.horarioId)
+  const horarioIds = [
+    ...new Set(tableros.flatMap((item) => (item.horarioId ? [item.horarioId] : []))),
+  ]
   const pendientes = await Promise.allSettled(
-    conRegistro.map((item) => listarConflictosPendientes(item.horarioId as string, signal)),
+    horarioIds.map((horarioId) => listarConflictosPendientes(horarioId, signal)),
   )
 
   const abortadaConflictos = pendientes.find(
@@ -49,6 +51,7 @@ export async function cargarDatosPublicacion(
   }
 
   const conflictos: ConflictoVista[] = []
+  const vistos = new Set<string>()
 
   pendientes.forEach((item) => {
     if (item.status === 'rejected') {
@@ -59,7 +62,8 @@ export async function cargarDatosPublicacion(
     item.value.forEach((dto) => {
       const conflicto = aConflictoRevisado(dto, yearId)
 
-      if (conflicto) {
+      if (conflicto && !vistos.has(conflicto.id)) {
+        vistos.add(conflicto.id)
         conflictos.push(conflicto)
       }
     })

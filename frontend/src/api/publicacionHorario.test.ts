@@ -23,6 +23,7 @@ vi.mock('./client', () => {
 import { ApiError, api } from './client'
 import type { HorarioGrupoResponse } from './horarios'
 import {
+  cargarDatosPublicacion,
   crearBorradoresDeMejora,
   horariosPublicables,
   publicarHorariosEnBorrador,
@@ -30,6 +31,7 @@ import {
 } from './publicacionHorario'
 
 const post = vi.mocked(api.post)
+const get = vi.mocked(api.get)
 
 function tablero(
   partial: Partial<HorarioGrupoResponse> & Pick<HorarioGrupoResponse, 'horarioId' | 'estadoHorario'>,
@@ -157,3 +159,85 @@ describe('crearBorradoresDeMejora', () => {
     expect(post).not.toHaveBeenCalled()
   })
 })
+
+describe('cargarDatosPublicacion', () => {
+  beforeEach(() => {
+    get.mockReset()
+  })
+
+  it('consulta una sola vez el horario compartido por ocho grupos', async () => {
+    const grupos = Array.from({ length: 8 }, (_, index) => `grupo-${index}`)
+    const pendientes = Array.from({ length: 9 }, (_, index) => ({
+      id: `error-${index}`,
+      horarioId: 'horario-compartido',
+      tipo: 'DOCENTE_OCUPADO',
+      severidad: 'ERROR',
+      mensaje: 'Docente ocupado',
+      resuelto: false,
+      fechaDeteccion: '2026-11-26T22:57:00',
+    }))
+
+    get.mockImplementation(async (path: string) => {
+      if (path.includes('/conflictos/')) {
+        return pendientes
+      }
+
+      const grupoId = path.match(/grupos\/([^?]+)/)?.[1] ?? 'grupo'
+      return tablero({
+        horarioId: 'horario-compartido',
+        estadoHorario: 'BORRADOR',
+        grupoId,
+        grupoCodigo: grupoId,
+      })
+    })
+
+    const datos = await cargarDatosPublicacion(grupos, 'anio-1')
+    const consultas = get.mock.calls
+      .map((call) => String(call[0]))
+      .filter((path) => path.includes('/conflictos/horario/horario-compartido/pendientes'))
+
+    expect(consultas).toHaveLength(1)
+    expect(datos.conflictos).toHaveLength(9)
+  })
+
+  it('suma los pendientes de horarios distintos sin repetir el mismo conflicto', async () => {
+    get.mockImplementation(async (path: string) => {
+      if (path.includes('/conflictos/horario/horario-a/pendientes')) {
+        return [pendiente('compartido', 'horario-a'), pendiente('solo-a', 'horario-a')]
+      }
+
+      if (path.includes('/conflictos/horario/horario-b/pendientes')) {
+        return [pendiente('compartido', 'horario-b'), pendiente('solo-b', 'horario-b', true)]
+      }
+
+      const grupoId = path.match(/grupos\/([^?]+)/)?.[1] ?? 'grupo'
+      return tablero({
+        horarioId: grupoId === 'grupo-b' ? 'horario-b' : 'horario-a',
+        estadoHorario: 'BORRADOR',
+        grupoId,
+        grupoCodigo: grupoId,
+      })
+    })
+
+    const datos = await cargarDatosPublicacion(['grupo-a', 'grupo-a', 'grupo-b'], 'anio-1')
+    const consultas = get.mock.calls.map((call) => String(call[0])).filter((path) => path.includes('/pendientes'))
+
+    expect(consultas).toEqual([
+      '/api/v1/conflictos/horario/horario-a/pendientes',
+      '/api/v1/conflictos/horario/horario-b/pendientes',
+    ])
+    expect(datos.conflictos.map((item) => item.id).sort()).toEqual(['compartido', 'solo-a', 'solo-b'])
+  })
+})
+
+function pendiente(id: string, horarioId: string, resuelto = false) {
+  return {
+    id,
+    horarioId,
+    tipo: 'DOCENTE_OCUPADO' as const,
+    severidad: 'ERROR' as const,
+    mensaje: 'Docente ocupado',
+    resuelto,
+    fechaDeteccion: '2026-11-26T22:57:00',
+  }
+}
