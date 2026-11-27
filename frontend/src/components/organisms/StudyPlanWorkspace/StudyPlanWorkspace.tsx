@@ -15,6 +15,7 @@ import {
   useCatalogoAniosEscolares,
   useCatalogoGrados,
 } from '../../../api'
+import { useAnioDeTrabajo } from '../../../content/anioDeTrabajo'
 import type { AreaResponse } from '../../../api/areas'
 import type { GradoResponse } from '../../../api/grados'
 import type { PlanEstudiosResponse } from '../../../api/planesEstudio'
@@ -73,7 +74,7 @@ function vistaGrado(grado: GradoResponse): StudyPlanGrade {
 export function StudyPlanWorkspace() {
   const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
   const catalogo = anios
-  const [yearId, setYearId] = useState('')
+  const [yearId, elegirAnio] = useAnioDeTrabajo()
   const [gradeId, setGradeId] = useState('')
   const [area, setArea] = useState('')
   const [query, setQuery] = useState('')
@@ -257,7 +258,7 @@ export function StudyPlanWorkspace() {
     .map((plan) => entradaDesdePlan(plan, areaPorAsignatura, turnoPorId))
 
   const selectYear = (nextYearId: string) => {
-    setYearId(nextYearId)
+    elegirAnio(nextYearId)
     setArea('')
     setQuery('')
   }

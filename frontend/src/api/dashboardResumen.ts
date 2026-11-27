@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { AlertItemData, StatBadgeTone, StatItemData } from '../content/dashboard'
+import { leerAnioDeTrabajo } from '../content/anioDeTrabajo'
 import { listarCatalogoAniosEscolares, anioEscolarVisible } from './aniosEscolares'
 import { listarCatalogoAreas } from './areas'
 import { contarDocentes } from './docentes'
@@ -54,7 +55,8 @@ export async function consultarResumenTablero(signal?: AbortSignal): Promise<Res
     contarDocentes('ACTIVO', signal),
   ])
 
-  const anio = anioEscolarVisible(anios)
+  const recordado = leerAnioDeTrabajo()
+  const anio = anios.find((item) => item.id === recordado) ?? anioEscolarVisible(anios)
   const gruposActivos = grupos.filter(
     (grupo) => grupo.activo && (!anio || grupo.anioEscolarId === anio.id),
   )

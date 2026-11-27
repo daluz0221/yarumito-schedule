@@ -17,6 +17,7 @@ import {
 import type { AsignacionAcademicaResponse } from '../../../api/asignaciones'
 import type { ClaseProgramadaResponse } from '../../../api/horarios'
 import type { UsuarioListado } from '../../../api/usuarios'
+import { guardarAnioDeTrabajo, leerAnioDeTrabajo } from '../../../content/anioDeTrabajo'
 import {
   consultaInicial,
   ENTIDADES_GRUPO,
@@ -150,7 +151,7 @@ export function AuditoriaWorkspace() {
   const usuarioAbort = useRef<AbortController | null>(null)
   const grupoElegido = useRef(false)
   const grupoAnterior = useRef<string | null>(null)
-  const [yearId, setYearId] = useState('')
+  const [yearId, setYearId] = useState(leerAnioDeTrabajo)
   const [groupId, setGroupId] = useState('')
   const [tipo, setTipo] = useState<EntidadGrupo>(
     esEntidadGrupo(entidadInicial) ? entidadInicial : 'AsignacionAcademica',
@@ -322,10 +323,13 @@ export function AuditoriaWorkspace() {
 
   if (!yearFijado && aniosListos && anios) {
     const grupoEnlace = (grupos ?? []).find((item) => item.id === grupoInicial)
+    const recordado = leerAnioDeTrabajo()
     const siguiente =
       grupoEnlace && anios.some((year) => year.id === grupoEnlace.anioEscolarId)
         ? grupoEnlace.anioEscolarId
-        : (anioEscolarVisible(anios)?.id ?? '')
+        : anios.some((year) => year.id === recordado)
+          ? recordado
+          : (anioEscolarVisible(anios)?.id ?? '')
 
     setYearFijado(true)
     setYearId(siguiente)
@@ -691,6 +695,7 @@ export function AuditoriaWorkspace() {
                 grupoElegido.current = true
                 setYearFijado(true)
                 setYearId(value)
+                guardarAnioDeTrabajo(value)
               }}
             />
             <SelectField

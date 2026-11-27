@@ -15,6 +15,7 @@ import type { AreaResponse } from '../../../api/areas'
 import type { FranjaHorariaResponse } from '../../../api/franjasHorarias'
 import type { RestriccionDocenteVista } from '../../../api/restriccionesDocentes'
 import type { TurnoResponse } from '../../../api/turnos'
+import { useAnioDeTrabajo } from '../../../content/anioDeTrabajo'
 import { idDisponible } from '../../../content/idDisponible'
 import { resolveAreaName } from '../../../content/teacherProfile'
 import { formatTeacherName, labelEstado, type Teacher } from '../../../content/teachers'
@@ -62,7 +63,7 @@ export function RestrictionsWorkspace() {
   const [searchParams] = useSearchParams()
   const requestedTeacherId = searchParams.get('docente') ?? ''
   const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
-  const [yearElegido, setYearElegido] = useState('')
+  const [yearElegido, elegirAnio] = useAnioDeTrabajo()
   const [teacherId, setTeacherId] = useState(requestedTeacherId)
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [turnos, setTurnos] = useState<TurnoResponse[]>([])
@@ -270,7 +271,7 @@ export function RestrictionsWorkspace() {
               areaName: resolveAreaName(item.areaNombramientoId, catalog.areas),
               active: item.estado === 'ACTIVO',
             }))}
-            onYearChange={setYearElegido}
+            onYearChange={elegirAnio}
             onTeacherChange={setTeacherId}
           />
 

@@ -17,8 +17,10 @@ import {
   type HorarioGrupoResponse,
   type SeveridadConflicto,
 } from '../../../api'
+import { useAnioDeTrabajo } from '../../../content/anioDeTrabajo'
 import {
   filterConflicts,
+  kindFilterOptions,
   summarizeConflicts,
   type ValidationFilters as ValidationFilterValues,
 } from '../../../content/validations'
@@ -32,15 +34,13 @@ import { ValidationMetrics } from '../ValidationMetrics'
 import { ValidationScheduleCard } from '../ValidationScheduleCard'
 import styles from './ValidationsWorkspace.module.css'
 
-const tiposConflicto = [
-  { value: '', label: 'Todos' },
-  { value: 'teacher-busy', label: 'Docente ocupado' },
-  { value: 'classroom-busy', label: 'Aula ocupada' },
-  { value: 'capacity', label: 'Sobreaforo' },
-]
-
-const filtroDocente = [{ value: '', label: 'Todos' }]
-const filtroAula = [{ value: '', label: 'Todas' }]
+const tiposConflicto = kindFilterOptions.filter(
+  (option) =>
+    option.value === '' ||
+    option.value === 'teacher-busy' ||
+    option.value === 'classroom-busy' ||
+    option.value === 'capacity',
+)
 
 function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === 'AbortError'
@@ -105,7 +105,7 @@ export function ValidationsWorkspace() {
   const navigate = useNavigate()
   const { anios, error: aniosError, loading: aniosLoading } = useCatalogoAniosEscolares()
   const { grupos, error: gruposError, loading: gruposLoading } = useCatalogoGrupos()
-  const [yearIdState, setYearIdState] = useState('')
+  const [yearIdState, elegirAnio] = useAnioDeTrabajo()
   const [groupIdState, setGroupIdState] = useState('')
   const [tablero, setTablero] = useState<HorarioGrupoResponse | null>(null)
   const [horarioCargando, setHorarioCargando] = useState(false)
@@ -256,7 +256,7 @@ export function ValidationsWorkspace() {
 
   const summary = summarizeConflicts(todos)
   const rows = filterConflicts(visibles, {
-    severity: '',
+    severity: consultaDe(filters) === 'severidad' ? '' : filters.severity,
     status: consultaDe(filters) === 'pendientes' ? '' : filters.status,
     kind: filters.kind,
     groupId: '',
@@ -337,7 +337,7 @@ export function ValidationsWorkspace() {
         campusLabel={tablero?.sedeNombre || grupo?.sedeNombre || '—'}
         statusLabel={etiquetaEstado(horarioId ? tablero?.estadoHorario : null)}
         statusTone={tonoEstado(horarioId ? tablero?.estadoHorario : null)}
-        onYearChange={setYearIdState}
+        onYearChange={elegirAnio}
       />
       <ValidationMetrics {...summary} />
       {horarioId ? (
@@ -371,8 +371,6 @@ export function ValidationsWorkspace() {
       <ValidationFilters
         values={{ ...filters, groupId }}
         groupOptions={groupOptions}
-        teacherOptions={filtroDocente}
-        classroomOptions={filtroAula}
         kindOptions={tiposConflicto}
         validating={cargando || horarioCargando}
         onChange={(patch) => {
@@ -385,8 +383,6 @@ export function ValidationsWorkspace() {
             ...(patch.severity !== undefined ? { severity: patch.severity } : {}),
             ...(patch.status !== undefined ? { status: patch.status } : {}),
             ...(patch.kind !== undefined ? { kind: patch.kind } : {}),
-            ...(patch.teacherName !== undefined ? { teacherName: patch.teacherName } : {}),
-            ...(patch.classroom !== undefined ? { classroom: patch.classroom } : {}),
           }))
         }}
         onRevalidate={() => setRevision((current) => current + 1)}
