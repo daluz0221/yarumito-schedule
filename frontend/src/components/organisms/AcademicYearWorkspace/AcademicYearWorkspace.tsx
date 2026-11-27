@@ -41,7 +41,7 @@ export function AcademicYearWorkspace() {
           Año lectivo
         </Text>
         <Text variant="body">
-          Configura el período académico y sus parámetros institucionales.
+          Configura el período académico y la carga semanal de los docentes.
         </Text>
       </div>
 

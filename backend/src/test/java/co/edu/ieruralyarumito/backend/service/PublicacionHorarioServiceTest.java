@@ -75,6 +75,9 @@ class PublicacionHorarioServiceTest {
     @Mock
     private RegistroAuditoriaService registroAuditoriaService;
 
+    @Mock
+    private HorarioService horarioService;
+
     private PublicacionHorarioService publicacionHorarioService;
 
     @BeforeEach
@@ -87,7 +90,8 @@ class PublicacionHorarioServiceTest {
                         conflictoRepository,
                         conflictoService,
                         usuarioRepository,
-                        registroAuditoriaService);
+                        registroAuditoriaService,
+                        horarioService);
     }
 
     @Test
@@ -252,6 +256,45 @@ class PublicacionHorarioServiceTest {
                         any(),
                         any(),
                         any());
+    }
+
+    @Test
+    void rechazaHorarioConGruposIncompletos() {
+
+        UUID horarioId = UUID.randomUUID();
+        Horario horario = horarioBorrador(horarioId);
+
+        when(horarioRepository.findById(horarioId))
+                .thenReturn(Optional.of(horario));
+
+        when(claseProgramadaRepository
+                .existsByHorarioId_Id(horarioId))
+                .thenReturn(true);
+
+        when(horarioService.describirGruposConHorasPendientes(horario))
+                .thenReturn(List.of(
+                        "601 (4 horas sin programar)",
+                        "602 (1 hora sin programar)"));
+
+        RelacionAcademicaInvalidaException exception =
+                assertThrows(
+                        RelacionAcademicaInvalidaException.class,
+                        () -> publicacionHorarioService.publicar(
+                                horarioId,
+                                CORREO));
+
+        assertEquals(
+                "No se puede publicar el horario: hay grupos "
+                        + "con el horario incompleto: "
+                        + "601 (4 horas sin programar), "
+                        + "602 (1 hora sin programar).",
+                exception.getMessage());
+
+        verify(horarioRepository, never())
+                .save(any(Horario.class));
+
+        verify(conflictoService, never())
+                .listarPendientes(any());
     }
 
     @Test

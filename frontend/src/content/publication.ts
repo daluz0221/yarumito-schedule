@@ -1,6 +1,7 @@
 import type { DatosPublicacion } from '../api/publicacionHorario'
 import type { AcademicYear } from './academicYear'
 import {
+  conflictosHorasIncompletas,
   conflictosPorId,
   contarConflictosPendientes,
   scheduleNameForYear,
@@ -105,7 +106,17 @@ export function buildPublicationView({
   const { tableros, conflictos } = datos
   const scheduleName = scheduleNameForYear(year)
   const conRegistro = tableros.filter((item) => item.horarioId)
-  const conteo = contarConflictosPendientes(conflictos)
+  const conteo = contarConflictosPendientes([
+    ...conflictos,
+    ...conflictosHorasIncompletas(
+      tableros.map((item) => ({
+        grupoId: item.grupoId,
+        grupoCodigo: item.grupoCodigo,
+        horasPendientes: item.resumen?.horasPendientes ?? 0,
+      })),
+      year.id,
+    ),
+  ])
   const { pending, errors, warnings } = conteo
   const pendingHours = tableros.reduce((total, item) => total + (item.resumen?.horasPendientes ?? 0), 0)
   const published =

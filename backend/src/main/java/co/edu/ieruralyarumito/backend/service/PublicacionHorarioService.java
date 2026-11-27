@@ -41,6 +41,7 @@ public class PublicacionHorarioService {
     private final ConflictoService conflictoService;
     private final UsuarioRepository usuarioRepository;
     private final RegistroAuditoriaService registroAuditoriaService;
+    private final HorarioService horarioService;
 
     public PublicacionHorarioService(
             HorarioRepository horarioRepository,
@@ -48,7 +49,8 @@ public class PublicacionHorarioService {
             ConflictoRepository conflictoRepository,
             ConflictoService conflictoService,
             UsuarioRepository usuarioRepository,
-            RegistroAuditoriaService registroAuditoriaService) {
+            RegistroAuditoriaService registroAuditoriaService,
+            HorarioService horarioService) {
 
         this.horarioRepository = horarioRepository;
         this.claseProgramadaRepository = claseProgramadaRepository;
@@ -56,6 +58,7 @@ public class PublicacionHorarioService {
         this.conflictoService = conflictoService;
         this.usuarioRepository = usuarioRepository;
         this.registroAuditoriaService = registroAuditoriaService;
+        this.horarioService = horarioService;
     }
 
     // H-10: BORRADOR -> PUBLICADO.
@@ -94,6 +97,17 @@ public class PublicacionHorarioService {
             throw new RelacionAcademicaInvalidaException(
                     "El horario no tiene clases programadas; "
                             + "no es posible publicarlo");
+        }
+
+        List<String> incompletos =
+                horarioService.describirGruposConHorasPendientes(horario);
+
+        if (!incompletos.isEmpty()) {
+            throw new RelacionAcademicaInvalidaException(
+                    "No se puede publicar el horario: hay grupos "
+                            + "con el horario incompleto: "
+                            + String.join(", ", incompletos)
+                            + ".");
         }
 
         // Misma fuente que GET /api/v1/conflictos/horario/{id}/pendientes.
